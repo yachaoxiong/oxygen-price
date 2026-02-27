@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  --background: #03050b;
+  --foreground: #e7edf7;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 20% 0%, #0b1626 0%, #03050b 35%, #020308 100%);
+  color: var(--foreground);
+  font-family: Inter, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+@keyframes icon-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(16, 185, 129, 0), 0 0 0 rgba(16, 185, 129, 0);
+    border-color: rgba(110, 231, 183, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.45), 0 0 24px rgba(16, 185, 129, 0.2);
+    border-color: rgba(110, 231, 183, 0.7);
+  }
+}
+
+.pt-card:hover .pt-icon,
+.pt-card:focus-within .pt-icon {
+  animation: icon-breathe 1.8s ease-in-out infinite;
+}
