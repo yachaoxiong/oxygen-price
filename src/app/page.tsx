@@ -21,6 +21,7 @@ import {
   CalendarRange,
   Gift,
   Sparkles,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -61,6 +62,18 @@ type PtRow = {
   member1v2?: number;
   nonMember1v1?: number;
   nonMember1v2?: number;
+};
+
+type CyclePlanRow = {
+  key: string;
+  program: string;
+  weeklySessions: string;
+  wpdFollowups: string;
+  assessmentsReports: string;
+  minSessions: string;
+  membershipGift: string;
+  extraBenefits: string;
+  unitPrice: number;
 };
 
 function getMembershipRank(nameZh: string) {
@@ -282,6 +295,26 @@ export default function Home() {
   const [ptUnitInputEmpty, setPtUnitInputEmpty] = useState(false);
   const [ptQtyInputEmpty, setPtQtyInputEmpty] = useState(false);
   const [ptCreditInputEmpty, setPtCreditInputEmpty] = useState(false);
+  const [ptProgramPickerOpen, setPtProgramPickerOpen] = useState(false);
+
+  const [selectedCyclePlan, setSelectedCyclePlan] = useState<CyclePlanRow | null>(null);
+  const [cycleStep, setCycleStep] = useState<1 | 2 | 3>(1);
+  const [cycleSelectedPtProgram, setCycleSelectedPtProgram] = useState<PtRow | null>(null);
+  const [cycleClientName, setCycleClientName] = useState("");
+  const [cycleCopied, setCycleCopied] = useState(false);
+  const [cyclePtPreset, setCyclePtPreset] = useState<"member_1v1" | "non_member_1v1" | "member_1v2" | "non_member_1v2">("member_1v1");
+  const [cycleUnitMember1v1, setCycleUnitMember1v1] = useState<number>(0);
+  const [cycleUnitNonMember1v1, setCycleUnitNonMember1v1] = useState<number>(0);
+  const [cycleUnitMember1v2, setCycleUnitMember1v2] = useState<number>(0);
+  const [cycleUnitNonMember1v2, setCycleUnitNonMember1v2] = useState<number>(0);
+  const [cycleQtyMember1v1, setCycleQtyMember1v1] = useState<number>(12);
+  const [cycleUnitInputStr, setCycleUnitInputStr] = useState<string>("");
+  const [cycleQtyInputStr, setCycleQtyInputStr] = useState<string>("");
+  const [cycleQtyNonMember1v1, setCycleQtyNonMember1v1] = useState<number>(12);
+  const [cycleQtyMember1v2, setCycleQtyMember1v2] = useState<number>(12);
+  const [cycleQtyNonMember1v2, setCycleQtyNonMember1v2] = useState<number>(12);
+  const [cycleCredit, setCycleCredit] = useState<number>(0);
+  const [cycleCreditInputStr, setCycleCreditInputStr] = useState<string>("0");
 
   const [pricingItems, setPricingItems] = useState<PricingItem[]>(mockPricing);
   const [pricingBenefits, setPricingBenefits] = useState<PricingBenefit[]>([]);
@@ -434,17 +467,7 @@ export default function Home() {
       });
 
     let ptSection: { category: PricingItem["category"]; rows: PtRow[] } | null = null;
-    let cyclePlanRows:
-      | {
-          program: string;
-          weeklySessions: string;
-          wpdFollowups: string;
-          assessmentsReports: string;
-          minSessions: string;
-          membershipGift: string;
-          extraBenefits: string;
-        }[]
-      | null = null;
+    let cyclePlanRows: CyclePlanRow[] | null = null;
 
     if ((categoryFilter === "all" || categoryFilter === "personal_training") && grouped.personal_training.length > 0) {
       const ptMap = new Map<string, PtRow>();
@@ -487,6 +510,7 @@ export default function Home() {
           const membershipGift = weeks ? `${weeks}-Week Membership / ${weeks}周会员` : "-";
 
           return {
+            key: item.id,
             program: `${item.name_zh.includes("计划") ? item.name_zh : `${weeks ?? "-"}周计划`} / ${weeks ?? "-"}-Week Program`,
             weeklySessions: sessionsPerWeek,
             wpdFollowups,
@@ -494,6 +518,7 @@ export default function Home() {
             minSessions: minSessions ? String(minSessions) : "-",
             membershipGift,
             extraBenefits: "Member-rate packages / 会员价购买套餐课",
+            unitPrice: item.price,
           };
         })
         .sort((a, b) => getCycleRankFromProgram(a.program) - getCycleRankFromProgram(b.program));
@@ -501,6 +526,28 @@ export default function Home() {
 
     return { standardSections, ptSection, cyclePlanRows };
   }, [pricingItems, categoryFilter]);
+
+  const cyclePtProgramOptions = useMemo(() => {
+    const ptItems = pricingItems.filter((item) => item.category === "personal_training");
+    const ptMap = new Map<string, PtRow>();
+
+    ptItems.forEach((item) => {
+      const key = item.name_zh;
+      if (!ptMap.has(key)) {
+        ptMap.set(key, { key, itemIds: [item.id], nameZh: item.name_zh, nameEn: item.name_en });
+      }
+
+      const row = ptMap.get(key)!;
+      if (!row.itemIds.includes(item.id)) row.itemIds.push(item.id);
+
+      if (item.member_type === "member" && item.session_mode === "1v1") row.member1v1 = item.price;
+      if (item.member_type === "member" && item.session_mode === "1v2") row.member1v2 = item.price;
+      if (item.member_type === "non_member" && item.session_mode === "1v1") row.nonMember1v1 = item.price;
+      if (item.member_type === "non_member" && item.session_mode === "1v2") row.nonMember1v2 = item.price;
+    });
+
+    return Array.from(ptMap.values()).sort((a, b) => (a.member1v1 ?? 0) - (b.member1v1 ?? 0));
+  }, [pricingItems]);
 
   const rechargeResult = useMemo(() => {
     const matched = pricingRules
@@ -605,6 +652,15 @@ export default function Home() {
     setPtReportOpen(false);
   }
 
+  function openPtProgramPicker() {
+    setPtProgramPickerOpen(true);
+  }
+
+  function selectPtProgramAndOpenCalculator(row: PtRow) {
+    setPtProgramPickerOpen(false);
+    openPtCalculator(row);
+  }
+
   const ptCalcMember1v1 = ptUnitMember1v1 * ptQtyMember1v1;
   const ptCalcNonMember1v1 = ptUnitNonMember1v1 * ptQtyNonMember1v1;
   const ptCalcMember1v2 = ptUnitMember1v2 * ptQtyMember1v2;
@@ -639,6 +695,33 @@ export default function Home() {
   const ptFinalTotal = ptAfterCredit + ptTaxAfterAdjust;
 
   const ptReportDate = new Date().toLocaleDateString("en-CA");
+
+  const cycleCalcMember1v1 = cycleUnitMember1v1 * cycleQtyMember1v1;
+  const cycleCalcNonMember1v1 = cycleUnitNonMember1v1 * cycleQtyNonMember1v1;
+  const cycleCalcMember1v2 = cycleUnitMember1v2 * cycleQtyMember1v2;
+  const cycleCalcNonMember1v2 = cycleUnitNonMember1v2 * cycleQtyNonMember1v2;
+
+  const cycleActiveLabel =
+    cyclePtPreset === "member_1v1"
+      ? "会员 1v1 / Member 1v1"
+      : cyclePtPreset === "non_member_1v1"
+        ? "非会员 1v1 / Non-member 1v1"
+        : cyclePtPreset === "member_1v2"
+          ? "会员 1v2 / Member 1v2"
+          : "非会员 1v2 / Non-member 1v2";
+
+  const cycleSubtotal =
+    cyclePtPreset === "member_1v1"
+      ? cycleCalcMember1v1
+      : cyclePtPreset === "non_member_1v1"
+        ? cycleCalcNonMember1v1
+        : cyclePtPreset === "member_1v2"
+          ? cycleCalcMember1v2
+          : cycleCalcNonMember1v2;
+
+  const cycleAfterCredit = Math.max(0, cycleSubtotal - cycleCredit);
+  const cycleTax = cycleAfterCredit * 0.13;
+  const cycleTotal = cycleAfterCredit + cycleTax;
 
   const [ptClientName, setPtClientName] = useState("");
 
@@ -881,6 +964,92 @@ export default function Home() {
     setPtQtyNonMember1v1(12);
     setPtQtyMember1v2(12);
     setPtQtyNonMember1v2(12);
+  }
+
+  function openCyclePlanCalculator(row: CyclePlanRow) {
+    setSelectedCyclePlan(row);
+    setCycleStep(1);
+    setCycleSelectedPtProgram(null);
+    setCycleCredit(0);
+    setCycleCreditInputStr("0");
+  }
+
+  function selectCyclePtProgramAndContinue(row: PtRow) {
+    setCycleSelectedPtProgram(row);
+
+    setCycleUnitMember1v1(row.member1v1 ?? 0);
+    setCycleUnitNonMember1v1(row.nonMember1v1 ?? 0);
+    setCycleUnitMember1v2(row.member1v2 ?? 0);
+    setCycleUnitNonMember1v2(row.nonMember1v2 ?? 0);
+
+    setCycleQtyMember1v1(12);
+    setCycleQtyNonMember1v1(12);
+    setCycleQtyMember1v2(12);
+    setCycleQtyNonMember1v2(12);
+
+    setCyclePtPreset("member_1v1");
+    setCycleUnitInputStr(String(row.member1v1 ?? 0));
+    setCycleQtyInputStr("12");
+    setCycleStep(2);
+  }
+
+  function closeCyclePlanCalculator() {
+    setSelectedCyclePlan(null);
+    setCycleStep(1);
+    setCycleSelectedPtProgram(null);
+  }
+
+  async function handleCopyCycleSummary() {
+    if (!selectedCyclePlan || !cycleSelectedPtProgram) return;
+    const summary = [
+      `日期: ${ptReportDate}`,
+      `客户姓名: ${cycleClientName || "未填写"}`,
+      `周期计划: ${selectedCyclePlan.program}`,
+      `私教课程: ${cycleSelectedPtProgram.nameZh}${cycleSelectedPtProgram.nameEn ? ` / ${cycleSelectedPtProgram.nameEn}` : ""}`,
+      `方案: ${cycleActiveLabel}`,
+      `单价: ${formatMoney(
+        cyclePtPreset === "member_1v1"
+          ? cycleUnitMember1v1
+          : cyclePtPreset === "non_member_1v1"
+            ? cycleUnitNonMember1v1
+            : cyclePtPreset === "member_1v2"
+              ? cycleUnitMember1v2
+              : cycleUnitNonMember1v2,
+      )}`,
+      `数量: ${
+        cyclePtPreset === "member_1v1"
+          ? cycleQtyMember1v1
+          : cyclePtPreset === "non_member_1v1"
+            ? cycleQtyNonMember1v1
+            : cyclePtPreset === "member_1v2"
+              ? cycleQtyMember1v2
+              : cycleQtyNonMember1v2
+      }`,
+      `小计: ${formatMoney(cycleSubtotal)}`,
+      `积分抵扣: ${formatMoney(cycleCredit)}`,
+      `抵扣后金额: ${formatMoney(cycleAfterCredit)}`,
+      `税费(13%): ${formatMoney(cycleTax)}`,
+      `总计: ${formatMoney(cycleTotal)}`,
+    ].join("\n");
+
+    await navigator.clipboard.writeText(summary);
+    setCycleCopied(true);
+    setTimeout(() => setCycleCopied(false), 2000);
+  }
+
+  function handleDownloadCyclePdf() {
+    if (!selectedCyclePlan || !cycleSelectedPtProgram) return;
+    const unitPrice = cyclePtPreset === "member_1v1" ? cycleUnitMember1v1 : cyclePtPreset === "non_member_1v1" ? cycleUnitNonMember1v1 : cyclePtPreset === "member_1v2" ? cycleUnitMember1v2 : cycleUnitNonMember1v2;
+    const qty = cyclePtPreset === "member_1v1" ? cycleQtyMember1v1 : cyclePtPreset === "non_member_1v1" ? cycleQtyNonMember1v1 : cyclePtPreset === "member_1v2" ? cycleQtyMember1v2 : cycleQtyNonMember1v2;
+    const reportDate = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
+    const html = `<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"/><title>Cycle Plan Quotation</title><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');*{box-sizing:border-box;margin:0;padding:0}html,body{width:210mm;height:297mm}body{font-family:'Inter',system-ui,sans-serif;background:#fff;color:#1a2332;font-size:11px;line-height:1.4}.page{width:210mm;height:297mm;display:flex;flex-direction:column;overflow:hidden}.hdr{background:linear-gradient(135deg,#0b1f3a 0%,#0e2d50 60%,#0a2240 100%);padding:18px 28px;position:relative;overflow:hidden;flex-shrink:0}.hdr::before{content:'';position:absolute;top:-50px;right:-50px;width:200px;height:200px;border-radius:50%;background:rgba(6,182,212,0.1)}.hdr-inner{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start}.hdr-left .brand{display:flex;align-items:center;gap:6px;margin-bottom:8px}.brand-dot{width:7px;height:7px;border-radius:50%;background:#06b6d4}.brand-name{font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.45)}.hdr-left h1{font-size:20px;font-weight:700;color:#fff;line-height:1.15}.hdr-left p{font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;letter-spacing:0.04em}.hdr-right{text-align:right;display:flex;flex-direction:column;gap:6px}.meta-item .ml{font-size:8.5px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.3)}.meta-item .mv{font-size:11px;font-weight:500;color:rgba(255,255,255,0.8);margin-top:1px}.abar{height:3px;background:linear-gradient(90deg,#06b6d4,#10b981,#06b6d4);flex-shrink:0}.body{padding:16px 28px;flex:1;display:flex;flex-direction:column;gap:12px;overflow:hidden}.stitle{font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:#64748b;display:flex;align-items:center;gap:6px;margin-bottom:7px}.stitle::after{content:'';flex:1;height:1px;background:#e2e8f0}.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}.card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:8px 10px}.card .cl{font-size:8.5px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:#94a3b8}.card .cv{font-size:12px;font-weight:600;color:#1e293b;margin-top:2px}.card.gc{background:#f0fdf4;border-color:#bbf7d0}.card.gc .cl{color:#16a34a}.card.gc .cv{color:#15803d;font-size:11px}.card.cc{background:#ecfeff;border-color:#a5f3fc}.card.cc .cl{color:#0891b2}.card.cc .cv{color:#0e7490;font-size:11px}.card.span2{grid-column:span 2}.ptbl{width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0}.ptbl thead tr{background:linear-gradient(135deg,#0b1f3a,#0d2d4f)}.ptbl thead th{padding:7px 12px;text-align:left;font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.09em;color:rgba(255,255,255,0.55)}.ptbl thead th:last-child{text-align:right}.ptbl tbody td{padding:7px 12px;font-size:11px;color:#334155;border-bottom:1px solid #f1f5f9}.ptbl tbody td:last-child{text-align:right;font-weight:600;color:#1e293b}.totals{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-top:7px}.titem{padding:8px 12px;border-right:1px solid #e2e8f0}.titem:last-child{border-right:none;background:linear-gradient(135deg,#0b1f3a,#0d2d4f)}.titem .tl{font-size:8.5px;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8}.titem:last-child .tl{color:rgba(255,255,255,0.45)}.titem .tv{font-size:13px;font-weight:700;color:#1e293b;margin-top:2px}.titem:last-child .tv{color:#fff;font-size:15px}.titem .tv.red{color:#dc2626}.ftr{background:#f8fafc;border-top:1px solid #e2e8f0;padding:10px 28px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}.ftr-note{font-size:8.5px;color:#94a3b8;line-height:1.5}.ftr-brand{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#cbd5e1}@media print{html,body{width:210mm;height:297mm}.page{page-break-after:avoid}}</style></head><body><div class="page"><div class="hdr"><div class="hdr-inner"><div class="hdr-left"><div class="brand"><div class="brand-dot"></div><span class="brand-name">Oxygen Fitness</span></div><h1>${selectedCyclePlan.program}</h1><p>Cycle Plan Quotation / 周期计划报价单</p></div><div class="hdr-right"><div class="meta-item"><div class="ml">报价日期 Date</div><div class="mv">${reportDate}</div></div><div class="meta-item"><div class="ml">客户 Client</div><div class="mv">${cycleClientName || "—"}</div></div><div class="meta-item"><div class="ml">方案 Plan Type</div><div class="mv">${cycleActiveLabel}</div></div></div></div></div><div class="abar"></div><div class="body"><div><div class="stitle">私教课程 PT Program</div><div class="row2"><div class="card cc span2"><div class="cl">课程名称 Program Name</div><div class="cv">${cycleSelectedPtProgram.nameZh}${cycleSelectedPtProgram.nameEn ? " / " + cycleSelectedPtProgram.nameEn : ""}</div></div></div></div><div><div class="stitle">周期计划参数 Cycle Plan Parameters</div><div class="row4"><div class="card"><div class="cl">每周次数 Weekly</div><div class="cv">${selectedCyclePlan.weeklySessions}</div></div><div class="card"><div class="cl">最少课时 Min Sessions</div><div class="cv">${selectedCyclePlan.minSessions}</div></div><div class="card"><div class="cl">跟进次数 Followups</div><div class="cv">${selectedCyclePlan.wpdFollowups}</div></div><div class="card"><div class="cl">评估报告 Assessments</div><div class="cv">${selectedCyclePlan.assessmentsReports}</div></div></div></div><div><div class="stitle">附加权益 Included Benefits</div><div class="row2"><div class="card gc"><div class="cl">赠送会籍 Membership Gift</div><div class="cv">${selectedCyclePlan.membershipGift}</div></div><div class="card cc"><div class="cl">额外权益 Extra Benefits</div><div class="cv">${selectedCyclePlan.extraBenefits}</div></div></div></div><div><div class="stitle">价格明细 Pricing Breakdown</div><table class="ptbl"><thead><tr><th>项目 Item</th><th>单价 Unit Price</th><th>数量 Qty</th><th>小计 Subtotal</th></tr></thead><tbody><tr><td>周期计划课时 Cycle Sessions</td><td>${formatMoney(unitPrice)}</td><td>${qty} 课时</td><td>${formatMoney(cycleSubtotal)}</td></tr></tbody></table><div class="totals"><div class="titem"><div class="tl">积分抵扣 Credit</div><div class="tv red">− ${formatMoney(cycleCredit)}</div></div><div class="titem"><div class="tl">抵扣后 After Credit</div><div class="tv">${formatMoney(cycleAfterCredit)}</div></div><div class="titem"><div class="tl">税费 Tax 13%</div><div class="tv">${formatMoney(cycleTax)}</div></div><div class="titem"><div class="tl">总计 Grand Total</div><div class="tv">${formatMoney(cycleTotal)}</div></div></div></div></div><div class="ftr"><div class="ftr-note">本报价单仅供销售演示参考，最终价格以正式合同为准。This quotation is for reference only. Final pricing subject to signed contract.</div><div class="ftr-brand">Oxygen Fitness</div></div></div></body></html>`;
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) return;
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
   }
 
   function applyPtPreset(preset: "member_1v1" | "non_member_1v1" | "member_1v2" | "non_member_1v2") {
@@ -1335,28 +1504,114 @@ export default function Home() {
             ))}
 
             {(categoryFilter === "all" || categoryFilter === "stored_value") && (
-              <article className={`${glass} p-4`}>
-                <h3 className="mb-3 text-lg font-semibold text-white">Store Credit / 储值计划</h3>
-                <div className="grid gap-3 md:grid-cols-3">
-                  {rechargePlans.map((plan) => (
-                    <div key={plan.amount} className="rounded-2xl border border-white/10 bg-[#090f1a] p-4">
-                      <p className="text-xs text-slate-400">{plan.amountZh}</p>
-                      <p className="text-2xl font-bold text-emerald-200">{plan.amount}</p>
-                      <p className="mt-2 text-sm text-slate-200">{plan.membershipGift}</p>
-                      <p className="text-xs text-slate-400">{plan.membershipGiftZh}</p>
-                      <p className="mt-2 text-sm text-cyan-200">Bonus: {plan.bonusCredit}</p>
-                      <p className="text-sm text-emerald-200">Total: {plan.totalValue}</p>
+              <article className={`${glass} relative overflow-hidden p-4 md:p-6`}>
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(16,185,129,0.2),transparent_35%),radial-gradient(circle_at_90%_85%,rgba(56,189,248,0.16),transparent_35%)]" />
+
+                <div className="relative mb-5 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-xl font-bold tracking-tight text-white">Store Credit / 储值计划</h3>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-100">
+                    <Sparkles size={14} />
+                    SMART VALUE TIERS
+                  </div>
+                </div>
+
+                <div className="relative grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+                  <div className="overflow-hidden rounded-2xl border border-white/12 bg-[#070f1b]/90">
+                    <div className="grid grid-cols-4 border-b border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-medium uppercase tracking-[0.08em] text-slate-400">
+                      <p>Tier</p>
+                      <p>Recharge</p>
+                      <p>Membership Gift</p>
+                      <p>Bonus</p>
                     </div>
-                  ))}
+
+                    <div className="divide-y divide-white/10">
+                      {rechargePlans.map((plan, index) => {
+                        const isTopTier = index === rechargePlans.length - 1;
+                        return (
+                          <div
+                            key={plan.amount}
+                            className={`grid grid-cols-4 items-center px-4 py-4 transition ${
+                              isTopTier
+                                ? "bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-transparent"
+                                : "hover:bg-white/[0.03]"
+                            }`}
+                          >
+                            <div>
+                              <p className="text-xs text-slate-400">{`T0${index + 1}`}</p>
+                              <p className="text-sm font-semibold text-white">{plan.amountZh.replace("冲 ", "")}</p>
+                            </div>
+                            <p className="text-lg font-bold text-emerald-200">{plan.amount}</p>
+                            <div>
+                              <p className="text-sm font-medium text-slate-100">{plan.membershipGift}</p>
+                              <p className="text-[10px] text-slate-400">{plan.membershipGiftZh}</p>
+                            </div>
+                            <p className="font-semibold text-cyan-200">{plan.bonusCredit}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {rechargePlans.map((plan, index) => {
+                      const isMidTier = index === 1;
+                      const isTopTier = index === rechargePlans.length - 1;
+                      return (
+                        <div
+                          key={`${plan.amount}-gift`}
+                          className={`relative overflow-hidden rounded-2xl border p-4 ${
+                            isTopTier
+                              ? "border-emerald-300/45 bg-gradient-to-br from-emerald-500/18 via-cyan-500/12 to-[#0a1526]"
+                              : isMidTier
+                                ? "border-cyan-300/35 bg-gradient-to-br from-cyan-500/12 via-blue-500/8 to-[#0a1526]"
+                                : "border-white/12 bg-[#081120]/85"
+                          }`}
+                        >
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-xs text-slate-400">{plan.amount}</span>
+                            <Gift size={14} className={isTopTier ? "text-emerald-100" : isMidTier ? "text-cyan-100" : "text-emerald-200"} />
+                          </div>
+                          <p className="text-sm font-semibold text-white">{plan.membershipGift}</p>
+                          <p className="text-xs text-slate-400">{plan.membershipGiftZh}</p>
+
+                          <p className="mt-2 text-xs text-cyan-200/85">
+                            Bonus Credit: <span className="font-semibold text-cyan-100">{plan.bonusCredit}</span>
+                          </p>
+
+                          {isMidTier && (
+                            <div className="mt-3 inline-flex rounded-md border border-cyan-300/45 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-50">
+                              Most Popular / 最受欢迎
+                            </div>
+                          )}
+
+                          {isTopTier && (
+                            <div className="mt-3 inline-flex rounded-md border border-emerald-300/40 bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold text-emerald-50">
+                              Best Value / 最划算
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </article>
             )}
 
             {groupedSections.ptSection && (
               <article className={`${glass} p-4`}>
-                <div className="mb-4 flex items-end justify-between">
-                  <h3 className="text-lg font-semibold text-white">Personal Training / 私教课程</h3>
-                  <p className="text-xs text-slate-400">分栏清单布局 / Split-list layout</p>
+                <div className="mb-4 flex items-end justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Personal Training / 私教课程</h3>
+                    <p className="text-xs text-slate-400">分栏清单布局 / Split-list layout</p>
+                  </div>
+                  <button
+                    onClick={openPtProgramPicker}
+                    className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-100 hover:bg-emerald-500/25"
+                  >
+                    选择课程并报价 / Select Program
+                  </button>
                 </div>
 
                 <div className="space-y-3">
@@ -1424,37 +1679,41 @@ export default function Home() {
                   <p className="text-xs font-medium text-cyan-200">Timeline Ledger</p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {groupedSections.cyclePlanRows.map((row, idx) => (
-                    <section key={row.program} className="border-l-2 border-cyan-300/50 bg-[#070f1b] px-4 py-3">
-                      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                        <div className="min-w-[240px]">
-                          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-medium text-cyan-200/90">T{String(idx + 1).padStart(2, "0")}</p>
-                          <p className="mt-1 text-base font-semibold text-white">{row.program}</p>
+                    <section
+                      key={row.program}
+                      onClick={() => openCyclePlanCalculator(row)}
+                      className="cursor-pointer border-l-2 border-cyan-300/55 bg-[#070f1b] px-4 py-3.5 transition hover:bg-[#091428]"
+                    >
+                      <div className="flex flex-col gap-3.5 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="min-w-[240px] leading-snug tracking-[0.01em]">
+                          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/95">T{String(idx + 1).padStart(2, "0")}</p>
+                          <p className="mt-1.5 text-[17px] font-semibold leading-snug text-white/95">{row.program}</p>
                         </div>
 
-                        <div className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2 text-sm md:grid-cols-4">
-                          <div>
-                            <p className="text-[11px] font-medium text-slate-400">每周次数</p>
-                            <p className="font-semibold text-cyan-50">{row.weeklySessions}</p>
+                        <div className="grid flex-1 grid-cols-2 gap-x-7 gap-y-2.5 text-sm md:grid-cols-4">
+                          <div className="leading-snug tracking-[0.01em]">
+                            <p className="text-[11px] font-medium text-slate-400">每周次数 / Weekly</p>
+                            <p className="mt-0.5 text-[15px] font-semibold text-cyan-50">{row.weeklySessions}</p>
                           </div>
-                          <div>
-                            <p className="text-[11px] font-medium text-slate-400">最少课时</p>
-                            <p className="font-semibold text-cyan-50">{row.minSessions}</p>
+                          <div className="leading-snug tracking-[0.01em]">
+                            <p className="text-[11px] font-medium text-slate-400">最少课时 / Min Sessions</p>
+                            <p className="mt-0.5 text-[15px] font-semibold text-cyan-50">{row.minSessions}</p>
                           </div>
-                          <div>
-                            <p className="text-[11px] font-medium text-slate-400">跟进次数</p>
-                            <p className="font-semibold text-cyan-50">{row.wpdFollowups}</p>
+                          <div className="leading-snug tracking-[0.01em]">
+                            <p className="text-[11px] font-medium text-slate-400">跟进次数 / Followups</p>
+                            <p className="mt-0.5 text-[15px] font-semibold text-cyan-50">{row.wpdFollowups}</p>
                           </div>
-                          <div>
-                            <p className="text-[11px] font-medium text-slate-400">评估报告</p>
-                            <p className="font-semibold text-cyan-50">{row.assessmentsReports}</p>
+                          <div className="leading-snug tracking-[0.01em]">
+                            <p className="text-[11px] font-medium text-slate-400">评估报告 / Assessments</p>
+                            <p className="mt-0.5 text-[15px] font-semibold text-cyan-50">{row.assessmentsReports}</p>
                           </div>
                         </div>
 
-                        <div className="min-w-[320px] space-y-1.5 text-sm">
-                          <p className="font-medium text-emerald-100">赠送会籍：<span className="font-semibold text-emerald-50">{row.membershipGift}</span></p>
-                          <p className="font-medium text-cyan-100">额外权益：<span className="font-semibold text-cyan-50">{row.extraBenefits}</span></p>
+                        <div className="min-w-[320px] space-y-1.5 text-sm leading-snug tracking-[0.01em]">
+                          <p className="font-medium text-emerald-100">赠送会籍 / Membership Gift：<span className="font-semibold text-emerald-50">{row.membershipGift}</span></p>
+                          <p className="font-medium text-cyan-100">额外权益 / Extra Benefits：<span className="font-semibold text-cyan-50">{row.extraBenefits}</span></p>
                         </div>
                       </div>
                     </section>
@@ -1534,13 +1793,46 @@ export default function Home() {
           </section>
         )}
 
+      {ptProgramPickerOpen && groupedSections.ptSection && (
+        <div className="fixed inset-0 z-[48] flex items-center justify-center bg-black/45 px-4 backdrop-blur-md">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-3xl border border-emerald-300/25 bg-[#0b1220]/95 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Step 1 / 选择课程 Program</p>
+                <h3 className="mt-1 text-xl font-semibold text-emerald-100">请选择私教课程</h3>
+              </div>
+              <button
+                onClick={() => setPtProgramPickerOpen(false)}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-slate-100 hover:bg-white/10"
+              >
+                <X size={14} />
+                关闭
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {groupedSections.ptSection.rows.map((row) => (
+                <button
+                  key={row.key}
+                  onClick={() => selectPtProgramAndOpenCalculator(row)}
+                  className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2.5 text-left transition hover:border-emerald-300/40 hover:bg-emerald-500/8"
+                >
+                  <p className="text-sm font-semibold text-white">{row.nameZh}</p>
+                  {row.nameEn && <p className="text-xs text-slate-400">{row.nameEn}</p>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedPtRow && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-xl">
           <div className="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-3xl border border-white/15 bg-[#0f1115]/92 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
             <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] tracking-[0.08em] text-slate-500">课程价格计算器 / Course Pricing Calculator</p>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Step 2 / 计算方案价格明细 · Course Pricing Calculator</p>
                   <h3 className="mt-1 text-2xl font-semibold text-white">{selectedPtRow.nameZh}</h3>
                   {selectedPtRow.nameEn && <p className="text-sm text-slate-400">{selectedPtRow.nameEn}</p>}
                 </div>
@@ -1561,11 +1853,11 @@ export default function Home() {
 
                   <div className="grid gap-2 sm:grid-cols-2">
                     {[
-  { key: "member_1v1", label: "会员 1v1", icon: <User size={14} className="text-emerald-200" /> },
-  { key: "non_member_1v1", label: "非会员 1v1", icon: <User size={14} className="text-amber-200" /> },
-  { key: "member_1v2", label: "会员 1v2", icon: <Users size={14} className="text-emerald-200" /> },
-  { key: "non_member_1v2", label: "非会员 1v2", icon: <Users size={14} className="text-amber-200" /> },
-].map(({key, label, icon}) => (
+                      ["member_1v1", "会员 1v1", <User key="i1" size={14} className="text-emerald-200" />],
+                      ["non_member_1v1", "非会员 1v1", <User key="i2" size={14} className="text-amber-200" />],
+                      ["member_1v2", "会员 1v2", <Users key="i3" size={14} className="text-emerald-200" />],
+                      ["non_member_1v2", "非会员 1v2", <Users key="i4" size={14} className="text-amber-200" />],
+                    ].map(([key, label, icon]) => (
                       <button
                         key={key}
                         onClick={() => applyPtPreset(key as "member_1v1" | "non_member_1v1" | "member_1v2" | "non_member_1v2")}
@@ -1788,6 +2080,332 @@ export default function Home() {
                 <p className="mt-2 text-[11px] text-slate-400">价格仅供销售演示，最终以合同为准 / For quotation preview only.</p>
               </aside>
             </div>
+          </div>
+        </div>
+      )}
+
+      {selectedCyclePlan && (
+        <div className="fixed inset-0 z-[58] flex items-center justify-center bg-black/45 px-4 backdrop-blur-md">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-auto rounded-3xl border border-cyan-300/25 bg-[#0b1220]/95 p-6 shadow-[0_24px_70px_rgba(0,0,0,0.6)]">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Cycle Plan Dedicated Flow / 周期计划专属流程</p>
+                <h3 className="mt-1 text-xl font-semibold text-cyan-100">{selectedCyclePlan.program}</h3>
+                <p className="mt-1 text-xs text-slate-400">Step {cycleStep} / 3</p>
+              </div>
+              <button
+                onClick={closeCyclePlanCalculator}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-slate-100 hover:bg-white/10"
+              >
+                <X size={14} />
+                关闭
+              </button>
+            </div>
+
+            <div className="mb-5 grid grid-cols-3 overflow-hidden rounded-xl border border-white/12 text-xs">
+              {[
+                [1, "选私教课程"],
+                [2, "算价格明细"],
+                [3, "生成完整报告"],
+              ].map(([step, label]) => (
+                <div
+                  key={String(step)}
+                  className={`px-3 py-2 text-center ${cycleStep >= Number(step) ? "bg-cyan-500/15 text-cyan-100" : "bg-black/20 text-slate-400"}`}
+                >
+                  {`Step ${step} · ${label}`}
+                </div>
+              ))}
+            </div>
+
+            {cycleStep === 1 && (
+              <div>
+                <p className="mb-2 text-[11px] uppercase tracking-widest text-slate-500">选择私教课程 / Select PT Program · 按价格升序</p>
+                {/* column headers */}
+                <div className="mb-1 grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-x-3 px-3 text-[10px] font-medium uppercase tracking-wider text-slate-600">
+                  <span>课程 Program</span>
+                  <span className="text-center text-emerald-500/80">1v1 会员<br/>Member</span>
+                  <span className="text-center text-amber-500/80">1v1 非会员<br/>Non-Mbr</span>
+                  <span className="text-center text-emerald-500/60">1v2 会员<br/>Member</span>
+                  <span className="text-center text-amber-500/60">1v2 非会员<br/>Non-Mbr</span>
+                </div>
+                <div className="space-y-1">
+                  {cyclePtProgramOptions.map((row, idx) => {
+                    const info = personalTrainingProgramInfo[row.nameZh];
+                    const ProgramIcon = info?.icon ?? Activity;
+                    return (
+                      <button
+                        key={row.key}
+                        onClick={() => selectCyclePtProgramAndContinue(row)}
+                        className="group grid w-full grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-x-3 rounded-xl border border-transparent bg-white/[0.03] px-3 py-2.5 text-left transition hover:border-cyan-400/30 hover:bg-[#0d2035]"
+                      >
+                        {/* name col */}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="shrink-0 font-mono text-[10px] text-slate-600 w-4">{idx + 1}</span>
+                          <div className="shrink-0 rounded-md border border-white/10 bg-white/[0.05] p-1.5 text-slate-300 group-hover:border-cyan-400/30 group-hover:text-cyan-300 transition-colors">
+                            <ProgramIcon size={13} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-[13px] font-semibold text-white/90">{row.nameZh}</p>
+                            {row.nameEn && <p className="truncate text-[10px] text-slate-500">{row.nameEn}</p>}
+                          </div>
+                        </div>
+                        {/* price cols */}
+                        <p className="text-center text-[13px] font-semibold text-emerald-300">{formatMoney(row.member1v1)}</p>
+                        <p className="text-center text-[13px] font-semibold text-amber-300">{formatMoney(row.nonMember1v1)}</p>
+                        <p className="text-center text-[13px] font-medium text-emerald-400/80">{formatMoney(row.member1v2)}</p>
+                        <p className="text-center text-[13px] font-medium text-amber-400/80">{formatMoney(row.nonMember1v2)}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                {cyclePtProgramOptions.length === 0 && (
+                  <p className="mt-2 rounded-xl border border-white/12 bg-white/[0.03] px-3 py-3 text-sm text-slate-300">
+                    暂无可选私教课程，请先在数据中配置 Personal Training。
+                  </p>
+                )}
+              </div>
+            )}
+
+            {cycleStep === 2 && cycleSelectedPtProgram && (
+              <>
+                <p className="mb-3 text-sm text-slate-300">已选私教课程 / PT Program: <span className="font-medium text-cyan-100">{cycleSelectedPtProgram.nameZh}{cycleSelectedPtProgram.nameEn ? ` / ${cycleSelectedPtProgram.nameEn}` : ""}</span></p>
+
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <p className="mb-3 text-sm font-medium text-slate-200">方案与参数 / Plan & Inputs</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {[
+                      ["member_1v1", "会员 1v1 / Member 1v1", <User key="cp1" size={14} className="text-emerald-200" />],
+                      ["non_member_1v1", "非会员 1v1 / Non-Member 1v1", <User key="cp2" size={14} className="text-amber-200" />],
+                      ["member_1v2", "会员 1v2 / Member 1v2", <Users key="cp3" size={14} className="text-emerald-200" />],
+                      ["non_member_1v2", "非会员 1v2 / Non-Member 1v2", <Users key="cp4" size={14} className="text-amber-200" />],
+                    ].map(([key, label, icon]) => (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          const preset = key as "member_1v1" | "non_member_1v1" | "member_1v2" | "non_member_1v2";
+                          setCyclePtPreset(preset);
+                          setCycleQtyMember1v1(preset === "member_1v1" ? 12 : 0);
+                          setCycleQtyNonMember1v1(preset === "non_member_1v1" ? 12 : 0);
+                          setCycleQtyMember1v2(preset === "member_1v2" ? 12 : 0);
+                          setCycleQtyNonMember1v2(preset === "non_member_1v2" ? 12 : 0);
+                          setCycleQtyInputStr("12");
+                          const unitVal =
+                            preset === "member_1v1" ? cycleUnitMember1v1
+                            : preset === "non_member_1v1" ? cycleUnitNonMember1v1
+                            : preset === "member_1v2" ? cycleUnitMember1v2
+                            : cycleUnitNonMember1v2;
+                          setCycleUnitInputStr(String(unitVal));
+                        }}
+                        className={`inline-flex items-center justify-between rounded-xl border px-3 py-2 text-xs transition ${
+                          cyclePtPreset === key
+                            ? "border-cyan-300/60 bg-cyan-500/16 text-cyan-100"
+                            : "border-white/12 bg-white/[0.03] text-slate-300 hover:border-cyan-300/30"
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-2">{icon}<span>{label}</span></span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-cyan-500/8 to-emerald-500/8 p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-cyan-100">{cycleActiveLabel}</p>
+                    <span className="rounded-full border border-white/15 bg-black/20 px-2 py-0.5 text-[11px] text-slate-300">默认 12 课时</span>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-[1.2fr_1fr_1fr]">
+                    <div>
+                      <label className="text-[11px] text-slate-400">客户姓名 / Client Name</label>
+                      <input
+                        value={cycleClientName}
+                        onChange={(e) => setCycleClientName(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-white/15 bg-black/35 px-3 py-2 text-sm text-slate-100"
+                        placeholder="请输入客户姓名"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-400">单价 / Unit Price</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={cycleUnitInputStr}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (!/^\d*$/.test(raw)) return;
+                          setCycleUnitInputStr(raw);
+                          const n = raw === "" ? 0 : parseInt(raw, 10);
+                          if (cyclePtPreset === "member_1v1") setCycleUnitMember1v1(n);
+                          else if (cyclePtPreset === "non_member_1v1") setCycleUnitNonMember1v1(n);
+                          else if (cyclePtPreset === "member_1v2") setCycleUnitMember1v2(n);
+                          else setCycleUnitNonMember1v2(n);
+                        }}
+                        onBlur={() => {
+                          const n = cycleUnitInputStr === "" ? 0 : parseInt(cycleUnitInputStr, 10);
+                          setCycleUnitInputStr(String(n));
+                          if (cyclePtPreset === "member_1v1") setCycleUnitMember1v1(n);
+                          else if (cyclePtPreset === "non_member_1v1") setCycleUnitNonMember1v1(n);
+                          else if (cyclePtPreset === "member_1v2") setCycleUnitMember1v2(n);
+                          else setCycleUnitNonMember1v2(n);
+                        }}
+                        className="mt-1 w-full rounded-lg border border-white/15 bg-black/35 px-3 py-2 text-sm text-slate-100"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-slate-400">数量 / Quantity</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={cycleQtyInputStr}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (!/^\d*$/.test(raw)) return;
+                          setCycleQtyInputStr(raw);
+                          const n = raw === "" ? 0 : parseInt(raw, 10);
+                          if (cyclePtPreset === "member_1v1") setCycleQtyMember1v1(n);
+                          else if (cyclePtPreset === "non_member_1v1") setCycleQtyNonMember1v1(n);
+                          else if (cyclePtPreset === "member_1v2") setCycleQtyMember1v2(n);
+                          else setCycleQtyNonMember1v2(n);
+                        }}
+                        onBlur={() => {
+                          const n = cycleQtyInputStr === "" ? 0 : parseInt(cycleQtyInputStr, 10);
+                          setCycleQtyInputStr(String(n));
+                          if (cyclePtPreset === "member_1v1") setCycleQtyMember1v1(n);
+                          else if (cyclePtPreset === "non_member_1v1") setCycleQtyNonMember1v1(n);
+                          else if (cyclePtPreset === "member_1v2") setCycleQtyMember1v2(n);
+                          else setCycleQtyNonMember1v2(n);
+                        }}
+                        className="mt-1 w-full rounded-lg border border-white/15 bg-black/35 px-3 py-2 text-sm text-slate-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {[12, 24, 36, 48].map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => {
+                          if (cyclePtPreset === "member_1v1") setCycleQtyMember1v1(q);
+                          else if (cyclePtPreset === "non_member_1v1") setCycleQtyNonMember1v1(q);
+                          else if (cyclePtPreset === "member_1v2") setCycleQtyMember1v2(q);
+                          else setCycleQtyNonMember1v2(q);
+                          setCycleQtyInputStr(String(q));
+                        }}
+                        className="rounded-lg border border-white/12 px-3 py-1 text-xs text-slate-300 hover:border-cyan-300/40"
+                      >
+                        {q} 课时
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-2 text-sm md:grid-cols-2">
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">当前方案 / Active Plan</p><p className="font-medium text-cyan-100">{cycleActiveLabel}</p></div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">积分抵扣 / Credit</p><input type="text" inputMode="numeric" value={cycleCreditInputStr} onChange={(e) => { const raw = e.target.value; if (!/^\d*$/.test(raw)) return; setCycleCreditInputStr(raw); setCycleCredit(raw === "" ? 0 : parseInt(raw, 10)); }} onBlur={() => { const n = cycleCreditInputStr === "" ? 0 : parseInt(cycleCreditInputStr, 10); setCycleCreditInputStr(String(n)); setCycleCredit(n); }} className="mt-1 w-full rounded-md border border-white/15 bg-black/35 px-2 py-1 text-sm text-slate-100" /></div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">小计 / Subtotal</p><p className="font-semibold text-cyan-100">{formatMoney(cycleSubtotal)}</p></div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">抵扣后 / After Credit</p><p className="font-semibold text-cyan-100">{formatMoney(cycleAfterCredit)}</p></div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">税费 Tax (13%)</p><p className="font-semibold text-cyan-100">{formatMoney(cycleTax)}</p></div>
+                  <div className="rounded-lg border border-emerald-300/35 bg-emerald-500/12 px-3 py-2"><p className="text-[11px] text-slate-300">总计 / Total</p><p className="text-xl font-bold text-emerald-100">{formatMoney(cycleTotal)}</p></div>
+                </div>
+
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => setCycleStep(1)}
+                    className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300 hover:bg-white/[0.08]"
+                  >
+                    <ChevronRight size={14} className="rotate-180" />
+                    返回 Back
+                  </button>
+                  <button
+                    onClick={() => setCycleStep(3)}
+                    className="flex-1 rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+                  >
+                    下一步：生成完整报告
+                  </button>
+                </div>
+              </>
+            )}
+
+            {cycleStep === 3 && cycleSelectedPtProgram && (
+              <>
+                <div className="mb-4 grid gap-2 text-sm md:grid-cols-2">
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><span className="text-slate-400">每周次数 / Weekly Sessions：</span><span className="text-cyan-100 font-medium">{selectedCyclePlan.weeklySessions}</span></div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><span className="text-slate-400">最少课时 / Min Sessions：</span><span className="text-cyan-100 font-medium">{selectedCyclePlan.minSessions}</span></div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><span className="text-slate-400">跟进次数 / Followups：</span><span className="text-cyan-100 font-medium">{selectedCyclePlan.wpdFollowups}</span></div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><span className="text-slate-400">评估报告 / Assessments：</span><span className="text-cyan-100 font-medium">{selectedCyclePlan.assessmentsReports}</span></div>
+                  <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 md:col-span-2"><span className="text-emerald-100">赠送会籍 / Membership Gift：{selectedCyclePlan.membershipGift}</span></div>
+                  <div className="rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 md:col-span-2"><span className="text-cyan-100">额外权益 / Extra Benefits：{selectedCyclePlan.extraBenefits}</span></div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 md:col-span-2"><span className="text-slate-400">私教课程 / PT Program：</span><span className="text-cyan-100 font-medium">{cycleSelectedPtProgram.nameZh}{cycleSelectedPtProgram.nameEn ? ` / ${cycleSelectedPtProgram.nameEn}` : ""}</span></div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                  <p className="mb-2 text-sm font-medium text-slate-100">价格明细 / Pricing Breakdown</p>
+                  <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr] bg-white/[0.05] px-3 py-2 text-[11px] text-slate-400">
+                    <p>项目 / Item</p><p>单价 / Unit</p><p>数量 / Qty</p><p>小计 / Subtotal</p>
+                  </div>
+                  <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr] border-t border-white/10 bg-cyan-500/10 px-3 py-2 text-sm">
+                    <p className="text-slate-200">周期计划</p>
+                    <p className="text-slate-300">{formatMoney(
+                      cyclePtPreset === "member_1v1"
+                        ? cycleUnitMember1v1
+                        : cyclePtPreset === "non_member_1v1"
+                          ? cycleUnitNonMember1v1
+                          : cyclePtPreset === "member_1v2"
+                            ? cycleUnitMember1v2
+                            : cycleUnitNonMember1v2,
+                    )}</p>
+                    <p className="text-slate-300">{
+                      cyclePtPreset === "member_1v1"
+                        ? cycleQtyMember1v1
+                        : cyclePtPreset === "non_member_1v1"
+                          ? cycleQtyNonMember1v1
+                          : cyclePtPreset === "member_1v2"
+                            ? cycleQtyMember1v2
+                            : cycleQtyNonMember1v2
+                    }</p>
+                    <p className="font-medium text-cyan-100">{formatMoney(cycleSubtotal)}</p>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+                    <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">积分抵扣 / Credit</p><p className="font-medium text-cyan-200">{formatMoney(cycleCredit)}</p></div>
+                    <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">抵扣后金额 / After Credit</p><p className="font-medium text-cyan-200">{formatMoney(cycleAfterCredit)}</p></div>
+                    <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">税费 / Tax (13%)</p><p className="font-medium text-cyan-200">{formatMoney(cycleTax)}</p></div>
+                    <div className="rounded-lg border border-emerald-300/35 bg-emerald-500/12 px-3 py-2"><p className="text-[11px] text-slate-300">总计 / Total</p><p className="text-2xl font-bold text-emerald-100">{formatMoney(cycleTotal)}</p></div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  <button
+                    onClick={() => setCycleStep(2)}
+                    className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2 text-sm text-slate-300 hover:bg-white/[0.08]"
+                  >
+                    <ChevronRight size={14} className="rotate-180" />
+                    返回 Back
+                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative">
+                      <button
+                        onClick={handleCopyCycleSummary}
+                        className="rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-slate-100 hover:bg-white/10"
+                      >
+                        {cycleCopied ? "已复制 Copied ✓" : "复制报告摘要 / Copy Summary"}
+                      </button>
+                      {cycleCopied && (
+                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-700 px-2 py-1 text-[11px] text-slate-100 shadow-lg">
+                          已复制到剪贴板 Copied to clipboard
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleDownloadCyclePdf}
+                      className="rounded-lg bg-cyan-400 px-3 py-1.5 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+                    >
+                      下载 PDF / Download PDF
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
