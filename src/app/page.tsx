@@ -1853,11 +1853,11 @@ export default function Home() {
 
                   <div className="grid gap-2 sm:grid-cols-2">
                     {[
-                      ["member_1v1", "会员 1v1", <User key="i1" size={14} className="text-emerald-200" />],
-                      ["non_member_1v1", "非会员 1v1", <User key="i2" size={14} className="text-amber-200" />],
-                      ["member_1v2", "会员 1v2", <Users key="i3" size={14} className="text-emerald-200" />],
-                      ["non_member_1v2", "非会员 1v2", <Users key="i4" size={14} className="text-amber-200" />],
-                    ].map(([key, label, icon]) => (
+  { key: "member_1v1", label: "会员 1v1", icon: <User size={14} className="text-emerald-200" /> },
+  { key: "non_member_1v1", label: "非会员 1v1", icon: <User size={14} className="text-amber-200" /> },
+  { key: "member_1v2", label: "会员 1v2", icon: <Users size={14} className="text-emerald-200" /> },
+  { key: "non_member_1v2", label: "非会员 1v2", icon: <Users size={14} className="text-amber-200" /> },
+                      ].map(({ key, label, icon }) => (
                       <button
                         key={key}
                         onClick={() => applyPtPreset(key as "member_1v1" | "non_member_1v1" | "member_1v2" | "non_member_1v2")}
