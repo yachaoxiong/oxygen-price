@@ -12,9 +12,15 @@ import {
   Baby,
   Apple,
   UserCheck,
+  User,
+  Users,
+  X,
   CupSoda,
   UtensilsCrossed,
   CalendarDays,
+  CalendarRange,
+  Gift,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -270,6 +276,12 @@ export default function Home() {
   const [ptQtyMember1v2, setPtQtyMember1v2] = useState<number>(12);
   const [ptQtyNonMember1v2, setPtQtyNonMember1v2] = useState<number>(12);
   const [ptPreset, setPtPreset] = useState<"member_1v1" | "non_member_1v1" | "member_1v2" | "non_member_1v2">("member_1v1");
+  const [ptCredit, setPtCredit] = useState<number>(0);
+  const [ptReportOpen, setPtReportOpen] = useState(false);
+  const [ptCopySuccess, setPtCopySuccess] = useState(false);
+  const [ptUnitInputEmpty, setPtUnitInputEmpty] = useState(false);
+  const [ptQtyInputEmpty, setPtQtyInputEmpty] = useState(false);
+  const [ptCreditInputEmpty, setPtCreditInputEmpty] = useState(false);
 
   const [pricingItems, setPricingItems] = useState<PricingItem[]>(mockPricing);
   const [pricingBenefits, setPricingBenefits] = useState<PricingBenefit[]>([]);
@@ -590,6 +602,7 @@ export default function Home() {
 
   function closePtCalculator() {
     setSelectedPtRow(null);
+    setPtReportOpen(false);
   }
 
   const ptCalcMember1v1 = ptUnitMember1v1 * ptQtyMember1v1;
@@ -621,8 +634,247 @@ export default function Home() {
           ? ptCalcMember1v2
           : ptCalcNonMember1v2;
 
-  const ptActiveTax = ptActiveSubtotal * 0.13;
-  const ptActiveTotalWithTax = ptActiveSubtotal + ptActiveTax;
+  const ptAfterCredit = Math.max(0, ptActiveSubtotal - ptCredit);
+  const ptTaxAfterAdjust = ptAfterCredit * 0.13;
+  const ptFinalTotal = ptAfterCredit + ptTaxAfterAdjust;
+
+  const ptReportDate = new Date().toLocaleDateString("en-CA");
+
+  const [ptClientName, setPtClientName] = useState("");
+
+  async function handleCopyQuoteSummary() {
+    if (!selectedPtRow) return;
+    setPtCopySuccess(false);
+    const unit =
+      ptPreset === "member_1v1"
+        ? ptUnitMember1v1
+        : ptPreset === "non_member_1v1"
+          ? ptUnitNonMember1v1
+          : ptPreset === "member_1v2"
+            ? ptUnitMember1v2
+            : ptUnitNonMember1v2;
+    const qty =
+      ptPreset === "member_1v1"
+        ? ptQtyMember1v1
+        : ptPreset === "non_member_1v1"
+          ? ptQtyNonMember1v1
+          : ptPreset === "member_1v2"
+            ? ptQtyMember1v2
+            : ptQtyNonMember1v2;
+
+    const summary = [
+      `日期: ${ptReportDate}`,
+      `客户姓名: ${ptClientName || "未填写"}`,
+      `课程: ${selectedPtRow.nameZh}${selectedPtRow.nameEn ? ` / ${selectedPtRow.nameEn}` : ""}`,
+      `方案: ${ptActiveLabel}`,
+      `单价: ${formatMoney(unit)}`,
+      `数量: ${qty}`,
+      `小计: ${formatMoney(ptActiveSubtotal)}`,
+      `积分抵扣: ${formatMoney(ptCredit)}`,
+      `抵扣后金额: ${formatMoney(ptAfterCredit)}`,
+      `税费(13%): ${formatMoney(ptTaxAfterAdjust)}`,
+      `总计: ${formatMoney(ptFinalTotal)}`,
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(summary);
+      setPtCopySuccess(true);
+      setTimeout(() => setPtCopySuccess(false), 2000);
+    } catch {
+      setPtCopySuccess(false);
+    }
+  }
+
+  function handleDownloadQuotePdf() {
+    if (!selectedPtRow) return;
+
+    const unit =
+      ptPreset === "member_1v1"
+        ? ptUnitMember1v1
+        : ptPreset === "non_member_1v1"
+          ? ptUnitNonMember1v1
+          : ptPreset === "member_1v2"
+            ? ptUnitMember1v2
+            : ptUnitNonMember1v2;
+    const qty =
+      ptPreset === "member_1v1"
+        ? ptQtyMember1v1
+        : ptPreset === "non_member_1v1"
+          ? ptQtyNonMember1v1
+          : ptPreset === "member_1v2"
+            ? ptQtyMember1v2
+            : ptQtyNonMember1v2;
+
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OXYGEN Item Report</title>
+  <style>
+    :root {
+      --bg: #070f1d;
+      --panel: #0d182b;
+      --line: rgba(255,255,255,.14);
+      --text: #e6edf7;
+      --muted: #9fb0c8;
+      --brand: #8ff2d2;
+      --brand-2: #55d7ff;
+      --accent: #07261f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 28px;
+    }
+    .sheet {
+      max-width: 920px;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      background: linear-gradient(180deg, #0a1424 0%, #07111f 100%);
+    }
+    .header {
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(90deg, rgba(143,242,210,.12), rgba(85,215,255,.08));
+    }
+    .eyebrow { font-size: 11px; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+    h1 { margin: 6px 0 2px; font-size: 30px; color: var(--brand); }
+    .sub { color: var(--muted); font-size: 16px; }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 14px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+    .meta-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(0,0,0,.2);
+      padding: 10px 12px;
+    }
+    .k { color: var(--muted); font-size: 12px; }
+    .v { margin-top: 4px; font-size: 20px; font-weight: 700; }
+
+    .section { padding: 16px 22px; }
+    .section h2 { margin: 0 0 10px; font-size: 18px; }
+
+    table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    thead th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(255,255,255,.04);
+      border-bottom: 1px solid var(--line);
+    }
+    tbody td {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 15px;
+    }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr.active { background: linear-gradient(90deg, rgba(143,242,210,.10), rgba(85,215,255,.06)); }
+
+    .summary {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(0,0,0,.2);
+      padding: 10px 12px;
+    }
+    .total {
+      grid-column: 1 / -1;
+      background: linear-gradient(90deg, rgba(143,242,210,.18), rgba(85,215,255,.10));
+      border-color: rgba(143,242,210,.45);
+    }
+    .total .v { font-size: 32px; color: var(--brand); }
+
+    .footer {
+      padding: 12px 22px 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media print {
+      body { background: #fff; color: #0f172a; padding: 0; }
+      .sheet { border: none; border-radius: 0; background: #fff; }
+      .header { background: #f8fafc; }
+      .eyebrow, .sub, .k, .footer { color: #475569; }
+      h1 { color: #0f766e; }
+      .meta-item, table, .card { border-color: #cbd5e1; background: #fff; }
+      .total { background: #ecfeff; border-color: #99f6e4; }
+      .total .v { color: #0f766e; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="header">
+      <div class="eyebrow">ITEM REPORT / 项目报告单</div>
+      <h1>${selectedPtRow.nameZh}</h1>
+      <div class="sub">${selectedPtRow.nameEn ?? ""}</div>
+    </div>
+
+    <div class="meta">
+      <div class="meta-item"><div class="k">Date / 日期</div><div class="v">${ptReportDate}</div></div>
+      <div class="meta-item"><div class="k">Client Name / 客户姓名</div><div class="v">${ptClientName || "N/A"}</div></div>
+    </div>
+
+    <div class="section">
+      <h2>项目明细 / Item Details</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>项目 / Item</th>
+            <th>单价 / Unit</th>
+            <th>数量 / Qty</th>
+            <th>小计 / Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="active">
+            <td>${ptActiveLabel}</td>
+            <td>${formatMoney(unit)}</td>
+            <td>${qty}</td>
+            <td>${formatMoney(ptActiveSubtotal)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="summary">
+        <div class="card"><div class="k">Credit / 积分抵扣</div><div class="v">${formatMoney(ptCredit)}</div></div>
+        <div class="card"><div class="k">After Credit / 抵扣后金额</div><div class="v">${formatMoney(ptAfterCredit)}</div></div>
+        <div class="card"><div class="k">Tax (13%) / 税费</div><div class="v">${formatMoney(ptTaxAfterAdjust)}</div></div>
+        <div class="card total"><div class="k">Total / 总计</div><div class="v">${formatMoney(ptFinalTotal)}</div></div>
+      </div>
+    </div>
+
+    <div class="footer">This report is for quotation reference. Final amount is subject to contract terms. / 本报告用于报价参考，最终金额以合同为准。</div>
+  </div>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank", "width=980,height=760");
+    if (!win) return;
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
 
   function resetPtCalculator() {
     setPtQtyMember1v1(12);
@@ -866,19 +1118,28 @@ export default function Home() {
 
                       const cycleLabel =
                         name.includes("日") || name.includes("day")
-                          ? "日卡 / Day"
+                          ? "日卡 / Day Pass"
                           : name.includes("周") || name.includes("week")
-                            ? "周卡 / Week"
-                            : name.includes("月") || name.includes("month") || name.includes("monthly")
-                              ? "月卡 / Month"
-                              : name.includes("年") || name.includes("year") || name.includes("annual")
-                                ? "年卡 / Annual"
+                            ? "周卡 / Week Pass"
+                            : name.includes("年") || name.includes("year") || name.includes("annual")
+                              ? "年卡 / Annual Pass"
+                              : name.includes("月") || name.includes("month") || name.includes("monthly")
+                                ? "月卡 / Month Pass"
                                 : "会籍 / Membership";
 
                       const isMonthly = name.includes("月") || name.includes("month") || name.includes("monthly");
                       const isAnnual = name.includes("年") || name.includes("year") || name.includes("annual");
 
-                      const coreAccess = "全天入场、氧吧餐饮、训练区域、体测报告 / Full access, bar & cafe, training zones, body report";
+                      const coreAccessItems = [
+                        "全日入场 / FULL DAY CLUB ENTRY",
+                        "餐饮与餐厅区 / OXYGEN BAR & CAFE",
+                        "力量、有氧、训练、拉伸区、拳击区 / STRENGTH AREA · CARDIO AREA · STRETCHING AREA · BOXING AREA",
+                        "全面体脂测试与详细报告 / BODY COMPOSITION SCAN + REPORT",
+                        "电影、桌游、娱乐区 / LOUNGE & RECREATION AREA",
+                        "私人储物柜 / PRIVATE KEYLESS LOCKERS",
+                        "舒缓干桑拿 / THERAPY DRY SAUNA",
+                        "私人洗浴间 / PRIVATE SHOWER",
+                      ];
 
                       const bonusItems = isAnnual
                         ? [
@@ -906,7 +1167,6 @@ export default function Home() {
                             <div>
                               <p className="font-semibold text-white">{index + 1}. {row.nameZh}</p>
                               <p className="text-xs text-slate-400">周期 / Cycle: {cycleLabel}</p>
-                              <p className="text-xs text-slate-500">类型 / Type: {row.mode ?? "Standard"}</p>
                             </div>
 
                             <div>
@@ -922,7 +1182,13 @@ export default function Home() {
                                 <div className="px-2 py-1">加赠福利 / Bonus</div>
                               </div>
                               <div className="grid grid-cols-2 text-xs">
-                                <div className="border-r border-white/10 px-2 py-2 text-slate-300">{coreAccess}</div>
+                                <div className="border-r border-white/10 px-2 py-2 text-slate-300">
+                                  <ul className="list-disc space-y-1 pl-4 text-xs">
+                                    {coreAccessItems.map((item) => (
+                                      <li key={item}>{item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
                                 <div className="px-2 py-2 text-slate-300">
                                   {bonusItems.length > 0 ? (
                                     <div className="space-y-1.5">
@@ -1153,20 +1419,45 @@ export default function Home() {
 
             {groupedSections.cyclePlanRows && (
               <article className={`${glass} p-4`}>
-                <h3 className="mb-3 text-lg font-semibold text-white">Cycle Plans / 周期计划</h3>
-                <div className="grid gap-3 md:grid-cols-3">
-                  {groupedSections.cyclePlanRows.map((row) => (
-                    <div key={row.program} className="rounded-2xl border border-white/10 bg-[#090f1a] p-4 text-sm">
-                      <p className="font-semibold text-indigo-100">{row.program}</p>
-                      <div className="mt-2 space-y-1 text-slate-300">
-                        <p>每周次数：{row.weeklySessions}</p>
-                        <p>最少课时：{row.minSessions}</p>
-                        <p>跟进次数：{row.wpdFollowups}</p>
-                        <p>评估报告：{row.assessmentsReports}</p>
+                <div className="mb-4 flex items-center justify-between gap-2">
+                  <h3 className="text-xl font-bold tracking-tight text-white">Cycle Plans / 周期计划</h3>
+                  <p className="text-xs font-medium text-cyan-200">Timeline Ledger</p>
+                </div>
+
+                <div className="space-y-2">
+                  {groupedSections.cyclePlanRows.map((row, idx) => (
+                    <section key={row.program} className="border-l-2 border-cyan-300/50 bg-[#070f1b] px-4 py-3">
+                      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="min-w-[240px]">
+                          <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-medium text-cyan-200/90">T{String(idx + 1).padStart(2, "0")}</p>
+                          <p className="mt-1 text-base font-semibold text-white">{row.program}</p>
+                        </div>
+
+                        <div className="grid flex-1 grid-cols-2 gap-x-6 gap-y-2 text-sm md:grid-cols-4">
+                          <div>
+                            <p className="text-[11px] font-medium text-slate-400">每周次数</p>
+                            <p className="font-semibold text-cyan-50">{row.weeklySessions}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-medium text-slate-400">最少课时</p>
+                            <p className="font-semibold text-cyan-50">{row.minSessions}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-medium text-slate-400">跟进次数</p>
+                            <p className="font-semibold text-cyan-50">{row.wpdFollowups}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-medium text-slate-400">评估报告</p>
+                            <p className="font-semibold text-cyan-50">{row.assessmentsReports}</p>
+                          </div>
+                        </div>
+
+                        <div className="min-w-[320px] space-y-1.5 text-sm">
+                          <p className="font-medium text-emerald-100">赠送会籍：<span className="font-semibold text-emerald-50">{row.membershipGift}</span></p>
+                          <p className="font-medium text-cyan-100">额外权益：<span className="font-semibold text-cyan-50">{row.extraBenefits}</span></p>
+                        </div>
                       </div>
-                      <p className="mt-2 text-cyan-200">{row.membershipGift}</p>
-                      <p className="text-emerald-200">{row.extraBenefits}</p>
-                    </div>
+                    </section>
                   ))}
                 </div>
               </article>
@@ -1244,129 +1535,367 @@ export default function Home() {
         )}
 
       {selectedPtRow && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
-          onClick={closePtCalculator}
-        >
-          <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl border border-white/15 bg-[#070b12] p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-white">课程价格计算器 / Course Pricing Calculator</h3>
-                <p className="text-sm text-slate-300">{selectedPtRow.nameZh}{selectedPtRow.nameEn ? ` · ${selectedPtRow.nameEn}` : ""}</p>
-                <p className="text-xs text-slate-500">可修改单价，并按课时实时计算总价 / Editable unit price with real-time totals</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={restorePtUnitPrices} className="rounded-md border border-white/15 px-3 py-1 text-sm text-slate-200 hover:bg-white/10">
-                  恢复基准单价 / Restore Base
-                </button>
-                <button onClick={resetPtCalculator} className="rounded-md border border-white/15 px-3 py-1 text-sm text-slate-200 hover:bg-white/10">
-                  清空课时 / Clear Qty
-                </button>
-                <button onClick={closePtCalculator} className="rounded-md border border-white/15 px-3 py-1 text-sm text-slate-200 hover:bg-white/10">
-                  关闭 / Close
-                </button>
-              </div>
-            </div>
-
-            <div className="mb-3 flex flex-wrap gap-2">
-              {[
-                ["member_1v1", "会员 1v1 / Member 1v1"],
-                ["non_member_1v1", "非会员 1v1 / Non-member 1v1"],
-                ["member_1v2", "会员 1v2 / Member 1v2"],
-                ["non_member_1v2", "非会员 1v2 / Non-member 1v2"],
-              ].map(([key, label]) => (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-xl">
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-3xl border border-white/15 bg-[#0f1115]/92 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+            <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] tracking-[0.08em] text-slate-500">课程价格计算器 / Course Pricing Calculator</p>
+                  <h3 className="mt-1 text-2xl font-semibold text-white">{selectedPtRow.nameZh}</h3>
+                  {selectedPtRow.nameEn && <p className="text-sm text-slate-400">{selectedPtRow.nameEn}</p>}
+                </div>
                 <button
-                  key={key}
-                  onClick={() => applyPtPreset(key as "member_1v1" | "non_member_1v1" | "member_1v2" | "non_member_1v2")}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                    ptPreset === key
-                      ? "border-emerald-300/50 bg-emerald-500/15 text-emerald-100"
-                      : "border-white/12 bg-white/[0.03] text-slate-300 hover:border-emerald-300/30"
-                  }`}
+                  onClick={closePtCalculator}
+                  className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-1.5 text-sm text-slate-100 hover:bg-white/[0.08]"
                 >
-                  {label}
+                  <X size={14} />
+                  关闭
                 </button>
-              ))}
+              </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0b111b]">
-              <div className="grid grid-cols-[1.6fr_1fr_1fr] bg-white/[0.05] px-4 py-2.5 text-[11px] font-medium tracking-wide text-slate-400">
-                <p>项目 / Item</p>
-                <p>单价 / Unit Price</p>
-                <p>课时 / Sessions</p>
-              </div>
+            <div className="grid gap-4 xl:grid-cols-[1.15fr_1fr]">
+              <section className="space-y-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <p className="mb-3 text-sm font-medium text-slate-200">方案与参数 / Plan & Inputs</p>
 
-              {[
-                {
-                  label: "1v1 会员 / 1v1 Member",
-                  unit: ptUnitMember1v1,
-                  setUnit: setPtUnitMember1v1,
-                  qty: ptQtyMember1v1,
-                  setQty: setPtQtyMember1v1,
-                },
-                {
-                  label: "1v1 非会员 / 1v1 Non-member",
-                  unit: ptUnitNonMember1v1,
-                  setUnit: setPtUnitNonMember1v1,
-                  qty: ptQtyNonMember1v1,
-                  setQty: setPtQtyNonMember1v1,
-                },
-                {
-                  label: "1v2 会员 / 1v2 Member",
-                  unit: ptUnitMember1v2,
-                  setUnit: setPtUnitMember1v2,
-                  qty: ptQtyMember1v2,
-                  setQty: setPtQtyMember1v2,
-                },
-                {
-                  label: "1v2 非会员 / 1v2 Non-member",
-                  unit: ptUnitNonMember1v2,
-                  setUnit: setPtUnitNonMember1v2,
-                  qty: ptQtyNonMember1v2,
-                  setQty: setPtQtyNonMember1v2,
-                },
-              ].map((line, idx) => (
-                <div key={line.label} className="grid grid-cols-[1.6fr_1fr_1fr] items-center gap-3 border-t border-white/10 px-4 py-2.5 text-sm first:border-t-0">
-                  <p className="text-slate-200">{idx + 1}. {line.label}</p>
-                  <input
-                    type="number"
-                    value={line.unit}
-                    onChange={(e) => line.setUnit(Number(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-white/15 bg-black/35 px-3 py-2 text-sm"
-                  />
-                  <input
-                    type="number"
-                    value={line.qty}
-                    onChange={(e) => line.setQty(Number(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-white/15 bg-black/35 px-3 py-2 text-sm"
-                  />
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {[
+                      ["member_1v1", "会员 1v1", <User key="i1" size={14} className="text-emerald-200" />],
+                      ["non_member_1v1", "非会员 1v1", <User key="i2" size={14} className="text-amber-200" />],
+                      ["member_1v2", "会员 1v2", <Users key="i3" size={14} className="text-emerald-200" />],
+                      ["non_member_1v2", "非会员 1v2", <Users key="i4" size={14} className="text-amber-200" />],
+                    ].map(([key, label, icon]) => (
+                      <button
+                        key={key}
+                        onClick={() => applyPtPreset(key as "member_1v1" | "non_member_1v1" | "member_1v2" | "non_member_1v2")}
+                        className={`inline-flex items-center justify-between rounded-xl border px-3 py-2 text-xs transition ${
+                          ptPreset === key
+                            ? "border-emerald-300/60 bg-emerald-500/16 text-emerald-100"
+                            : "border-white/12 bg-white/[0.03] text-slate-300 hover:border-emerald-300/30"
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-2">{icon}<span>{label}</span></span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              ))}
+
+                {[
+                  {
+                    key: "member_1v1",
+                    label: "1v1 会员 / 1v1 Member",
+                    icon: <User size={16} className="text-emerald-200" />,
+                    unit: ptUnitMember1v1,
+                    setUnit: setPtUnitMember1v1,
+                    qty: ptQtyMember1v1,
+                    setQty: setPtQtyMember1v1,
+                  },
+                  {
+                    key: "non_member_1v1",
+                    label: "1v1 非会员 / 1v1 Non-member",
+                    icon: <User size={16} className="text-amber-200" />,
+                    unit: ptUnitNonMember1v1,
+                    setUnit: setPtUnitNonMember1v1,
+                    qty: ptQtyNonMember1v1,
+                    setQty: setPtQtyNonMember1v1,
+                  },
+                  {
+                    key: "member_1v2",
+                    label: "1v2 会员 / 1v2 Member",
+                    icon: <Users size={16} className="text-emerald-200" />,
+                    unit: ptUnitMember1v2,
+                    setUnit: setPtUnitMember1v2,
+                    qty: ptQtyMember1v2,
+                    setQty: setPtQtyMember1v2,
+                  },
+                  {
+                    key: "non_member_1v2",
+                    label: "1v2 非会员 / 1v2 Non-member",
+                    icon: <Users size={16} className="text-amber-200" />,
+                    unit: ptUnitNonMember1v2,
+                    setUnit: setPtUnitNonMember1v2,
+                    qty: ptQtyNonMember1v2,
+                    setQty: setPtQtyNonMember1v2,
+                  },
+                ]
+                  .filter((line) => line.key === ptPreset)
+                  .map((line) => (
+                    <div key={line.label} className="rounded-2xl border border-emerald-300/20 bg-gradient-to-r from-emerald-500/8 to-cyan-500/8 p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="flex items-center gap-2 text-sm font-semibold text-emerald-100">{line.icon}{line.label}</p>
+                        <span className="rounded-full border border-white/15 bg-black/20 px-2 py-0.5 text-[11px] text-slate-300">默认 12 课时</span>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-[1.2fr_1fr]">
+                        <div>
+                          <label className="text-[11px] text-slate-400">单价 / Unit Price</label>
+                          <input
+                            type="number"
+                            value={ptUnitInputEmpty ? "" : String(line.unit)}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === "") {
+                                setPtUnitInputEmpty(true);
+                                line.setUnit(0);
+                                return;
+                              }
+                              setPtUnitInputEmpty(false);
+                              line.setUnit(Number(raw));
+                            }}
+                            onBlur={() => {
+                              if (ptUnitInputEmpty) {
+                                setPtUnitInputEmpty(false);
+                                line.setUnit(0);
+                              }
+                            }}
+                            className="mt-1 w-full rounded-lg border border-white/15 bg-black/35 px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] text-slate-400">数量 / Quantity</label>
+                          <input
+                            type="number"
+                            value={ptQtyInputEmpty ? "" : String(line.qty)}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === "") {
+                                setPtQtyInputEmpty(true);
+                                line.setQty(0);
+                                return;
+                              }
+                              setPtQtyInputEmpty(false);
+                              line.setQty(Number(raw));
+                            }}
+                            onBlur={() => {
+                              if (ptQtyInputEmpty) {
+                                setPtQtyInputEmpty(false);
+                                line.setQty(0);
+                              }
+                            }}
+                            className="mt-1 w-full rounded-lg border border-white/15 bg-black/35 px-3 py-2 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {[12, 24, 36, 48].map((q) => (
+                          <button
+                            key={q}
+                            onClick={() => line.setQty(q)}
+                            className={`rounded-lg border px-3 py-1 text-xs transition ${
+                              line.qty === q
+                                ? "border-emerald-300/60 bg-emerald-500/18 text-emerald-100"
+                                : "border-white/12 text-slate-300 hover:border-emerald-300/30"
+                            }`}
+                          >
+                            {q} 课时
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+              </section>
+
+              <aside className="rounded-2xl border border-emerald-300/30 bg-gradient-to-b from-emerald-500/14 via-emerald-500/8 to-cyan-500/10 p-4">
+                <p className="text-sm font-medium text-emerald-100">方案汇总 / Plan Summary</p>
+                <div className="mt-2 rounded-lg border border-white/15 bg-black/25 px-3 py-2">
+                  <p className="text-[11px] text-slate-400">当前方案 / Active Plan</p>
+                  <p className="text-sm font-medium text-emerald-100">{ptActiveLabel}</p>
+                </div>
+
+                <div className="mt-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-300">单价 / Unit Price</span>
+                    <span className="font-medium text-slate-100">
+                      {formatMoney(
+                        ptPreset === "member_1v1"
+                          ? ptUnitMember1v1
+                          : ptPreset === "non_member_1v1"
+                            ? ptUnitNonMember1v1
+                            : ptPreset === "member_1v2"
+                              ? ptUnitMember1v2
+                              : ptUnitNonMember1v2,
+                      )}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className="text-slate-300">数量 / Quantity</span>
+                    <span className="font-medium text-slate-100">
+                      {ptPreset === "member_1v1"
+                        ? ptQtyMember1v1
+                        : ptPreset === "non_member_1v1"
+                          ? ptQtyNonMember1v1
+                          : ptPreset === "member_1v2"
+                            ? ptQtyMember1v2
+                            : ptQtyNonMember1v2}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                    <span className="text-slate-300">小计 / Subtotal</span>
+                    <span className="font-semibold text-emerald-200">{formatMoney(ptActiveSubtotal)}</span>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-300">积分抵扣 / Credit</span>
+                      <input
+                        type="number"
+                        value={ptCreditInputEmpty ? "" : String(ptCredit)}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            setPtCreditInputEmpty(true);
+                            setPtCredit(0);
+                            return;
+                          }
+                          setPtCreditInputEmpty(false);
+                          setPtCredit(Number(raw));
+                        }}
+                        onBlur={() => {
+                          if (ptCreditInputEmpty) {
+                            setPtCreditInputEmpty(false);
+                            setPtCredit(0);
+                          }
+                        }}
+                        className="w-28 rounded-md border border-white/15 bg-black/35 px-2 py-1 text-right text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                    <span className="text-slate-300">抵扣后金额 / After Credit</span>
+                    <span className="font-semibold text-emerald-200">{formatMoney(ptAfterCredit)}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                    <span className="text-slate-300">税费 / Tax (13%)</span>
+                    <span className="font-semibold text-cyan-200">{formatMoney(ptTaxAfterAdjust)}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-emerald-300/35 bg-emerald-500/12 px-3 py-2">
+                    <span className="text-slate-100">总计 / Total</span>
+                    <span className="text-lg font-bold text-emerald-100">{formatMoney(ptFinalTotal)}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setPtReportOpen(true)}
+                  className="mt-4 w-full rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-emerald-300"
+                >
+                  生成报告单 / Generate Report
+                </button>
+                <p className="mt-2 text-[11px] text-slate-400">价格仅供销售演示，最终以合同为准 / For quotation preview only.</p>
+              </aside>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ptReportOpen && selectedPtRow && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 px-4 backdrop-blur-md">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-auto rounded-3xl border border-emerald-300/25 bg-gradient-to-b from-[#071326] via-[#07111f] to-[#050b16] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.72)]">
+            <div className="mb-5 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Quotation Report / 报告单</p>
+                <h3 className="text-2xl font-semibold text-emerald-100">{selectedPtRow.nameZh}</h3>
+                {selectedPtRow.nameEn && <p className="text-sm text-slate-300">{selectedPtRow.nameEn}</p>}
+              </div>
+              <button
+                onClick={() => setPtReportOpen(false)}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-slate-100 hover:bg-white/10"
+              >
+                <X size={14} />
+                关闭
+              </button>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-emerald-300/30 bg-gradient-to-br from-emerald-500/14 via-emerald-500/8 to-cyan-500/10 p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-medium text-slate-100">当前方案 / Active Plan</p>
-                <span className="rounded-full border border-emerald-300/40 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-100">{ptActiveLabel}</span>
+            <div className="mb-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-[11px] text-slate-400">日期 / Date</p>
+                <p className="font-medium text-slate-100">{ptReportDate}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-[11px] text-slate-400">客户姓名 / Client Name</p>
+                <input
+                  value={ptClientName}
+                  onChange={(e) => setPtClientName(e.target.value)}
+                  placeholder="请输入客户姓名 / Enter client name"
+                  className="mt-1 w-full rounded-md border border-white/15 bg-black/35 px-2 py-1 text-sm text-slate-100"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+              <p className="mb-3 text-sm font-medium text-slate-100">项目明细 / Item Details</p>
+
+              <div className="overflow-hidden rounded-xl border border-white/10">
+                <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr] bg-white/[0.05] px-4 py-2 text-[11px] tracking-wide text-slate-400">
+                  <p>项目 / Item</p>
+                  <p>单价 / Unit</p>
+                  <p>数量 / Qty</p>
+                  <p>小计 / Subtotal</p>
+                </div>
+
+                {[
+                  { key: "member_1v1", label: "1v1 会员 / Member", unit: ptUnitMember1v1, qty: ptQtyMember1v1, subtotal: ptCalcMember1v1 },
+                  { key: "non_member_1v1", label: "1v1 非会员 / Non-member", unit: ptUnitNonMember1v1, qty: ptQtyNonMember1v1, subtotal: ptCalcNonMember1v1 },
+                  { key: "member_1v2", label: "1v2 会员 / Member", unit: ptUnitMember1v2, qty: ptQtyMember1v2, subtotal: ptCalcMember1v2 },
+                  { key: "non_member_1v2", label: "1v2 非会员 / Non-member", unit: ptUnitNonMember1v2, qty: ptQtyNonMember1v2, subtotal: ptCalcNonMember1v2 },
+                ]
+                  .filter((line) => line.key === ptPreset)
+                  .map((line) => (
+                    <div key={line.key} className="grid grid-cols-[1.6fr_1fr_1fr_1fr] border-t border-white/10 bg-emerald-500/10 px-4 py-2.5 text-sm">
+                      <p className="text-slate-200">{line.label}</p>
+                      <p className="text-slate-300">{formatMoney(line.unit)}</p>
+                      <p className="text-slate-300">{line.qty}</p>
+                      <p className="font-medium text-emerald-200">{formatMoney(line.subtotal)}</p>
+                    </div>
+                  ))}
               </div>
 
-              <div className="grid gap-2 md:grid-cols-3">
-                <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2">
-                  <p className="text-[11px] text-slate-400">方案小计 / Plan Subtotal</p>
-                  <p className="text-base font-semibold text-emerald-200">{formatMoney(ptActiveSubtotal)}</p>
+              <div className="mt-4 grid gap-2 text-sm md:grid-cols-2">
+                <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                  <p className="text-[11px] text-slate-400">当前方案 / Active Plan</p>
+                  <p className="font-medium text-emerald-100">{ptActiveLabel}</p>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2">
+                <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                  <p className="text-[11px] text-slate-400">积分抵扣 / Credit</p>
+                  <p className="font-medium text-cyan-200">{formatMoney(ptCredit)}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                  <p className="text-[11px] text-slate-400">抵扣后金额 / After Credit</p>
+                  <p className="font-semibold text-emerald-200">{formatMoney(ptAfterCredit)}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                   <p className="text-[11px] text-slate-400">税费 / Tax (13%)</p>
-                  <p className="text-base font-semibold text-cyan-200">{formatMoney(ptActiveTax)}</p>
+                  <p className="font-semibold text-cyan-200">{formatMoney(ptTaxAfterAdjust)}</p>
                 </div>
-                <div className="rounded-lg border border-emerald-300/35 bg-emerald-500/10 px-3 py-2">
-                  <p className="text-[11px] text-slate-200">含税总计 / Total with Tax</p>
-                  <p className="text-lg font-bold text-emerald-100">{formatMoney(ptActiveTotalWithTax)}</p>
+                <div className="rounded-lg border border-emerald-300/35 bg-emerald-500/12 px-3 py-2 md:col-span-2">
+                  <p className="text-[11px] text-slate-300">总计 / Total</p>
+                  <p className="text-2xl font-bold text-emerald-100">{formatMoney(ptFinalTotal)}</p>
                 </div>
               </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+              {ptCopySuccess && (
+                <span className="rounded-md border border-emerald-300/40 bg-emerald-500/15 px-2 py-1 text-xs text-emerald-100">
+                  已复制 / Copied
+                </span>
+              )}
+              <button
+                onClick={handleCopyQuoteSummary}
+                className="rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-slate-100 hover:bg-white/10"
+              >
+                复制项目摘要 / Copy Item Summary
+              </button>
+              <button
+                onClick={handleDownloadQuotePdf}
+                className="rounded-lg bg-emerald-400 px-3 py-1.5 text-sm font-semibold text-slate-950 hover:bg-emerald-300"
+              >
+                下载 PDF / Download PDF
+              </button>
             </div>
           </div>
         </div>

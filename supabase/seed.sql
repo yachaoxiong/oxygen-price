@@ -5,7 +5,7 @@ INSERT INTO public.pricing_items (category, name_zh, name_en, session_mode, pric
 ('membership', '日卡', 'Day Pass', 'single', 35, '{"billing_cycle":"day"}'::jsonb, 1),
 ('membership', '周卡', 'Week Pass', 'weekly_pass', 99, '{"billing_cycle":"week"}'::jsonb, 2),
 ('membership', '月卡', 'Monthly Membership', 'monthly_pass', 175, '{"billing_cycle":"month"}'::jsonb, 3),
-('membership', '年卡（按月付）', 'Annual Membership (Monthly Pay)', 'monthly_pass', 99, '{"billing_cycle":"month","plan_length_months":12,"note":"年卡每个月支付99"}'::jsonb, 4),
+('membership', '年卡（按月付）', 'Annual Membership (Monthly Pay)', 'annual_pass', 99, '{"billing_cycle":"month","plan_length_months":12,"note":"年卡每个月支付99"}'::jsonb, 4),
 ('membership', '激活费', 'Activation Fee', NULL, 120, '{"one_time":true}'::jsonb, 5);
 
 INSERT INTO public.pricing_benefits (item_id, benefit_type, description, value_json, sort_order)
