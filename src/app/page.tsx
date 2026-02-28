@@ -518,7 +518,7 @@ export default function Home() {
             minSessions: minSessions ? String(minSessions) : "-",
             membershipGift,
             extraBenefits: "Member-rate packages / 会员价购买套餐课",
-            unitPrice: item.price,
+            unitPrice: item.price ?? 0,
           };
         })
         .sort((a, b) => getCycleRankFromProgram(a.program) - getCycleRankFromProgram(b.program));
