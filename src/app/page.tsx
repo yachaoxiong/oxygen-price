@@ -295,7 +295,7 @@ export default function Home() {
   const [ptUnitInputEmpty, setPtUnitInputEmpty] = useState(false);
   const [ptQtyInputEmpty, setPtQtyInputEmpty] = useState(false);
   const [ptCreditInputEmpty, setPtCreditInputEmpty] = useState(false);
-  const [ptProgramPickerOpen, setPtProgramPickerOpen] = useState(false);
+
 
   const [selectedCyclePlan, setSelectedCyclePlan] = useState<CyclePlanRow | null>(null);
   const [cycleStep, setCycleStep] = useState<1 | 2 | 3>(1);
@@ -650,15 +650,6 @@ export default function Home() {
   function closePtCalculator() {
     setSelectedPtRow(null);
     setPtReportOpen(false);
-  }
-
-  function openPtProgramPicker() {
-    setPtProgramPickerOpen(true);
-  }
-
-  function selectPtProgramAndOpenCalculator(row: PtRow) {
-    setPtProgramPickerOpen(false);
-    openPtCalculator(row);
   }
 
   const ptCalcMember1v1 = ptUnitMember1v1 * ptQtyMember1v1;
@@ -1145,74 +1136,7 @@ export default function Home() {
           )}
         </header>
 
-        <section className={`${glass} mt-4 p-4`}>
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-emerald-200">Promotion Highlights / 规则高亮</h2>
-            <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-100">
-              Additional Promotions & Benefits
-            </span>
-          </div>
-
-          <div className="mt-4">
-            <div className="mb-3 flex flex-wrap gap-2">
-              {promotionGroups.map((group) => (
-                <button
-                  key={group.key}
-                  onClick={() => setActivePromotionGroup(group.key)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                    activePromotionGroup === group.key
-                      ? "border-emerald-300/50 bg-emerald-500/15 text-emerald-100"
-                      : "border-white/12 bg-white/[0.03] text-slate-300 hover:border-emerald-300/30 hover:text-emerald-100"
-                  }`}
-                >
-                  {group.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {(promotionGroups.find((g) => g.key === activePromotionGroup)?.items ?? promotionGroups[0]?.items ?? []).map((promo, index) => {
-                const isActive = pricingRules.some((r) => r.rule_code === promo.trigger.replace("Policy: ", ""));
-                return (
-                  <div
-                    key={promo.trigger}
-                    className={`group relative overflow-hidden rounded-2xl border p-4 transition-all duration-200 ${
-                      isActive
-                        ? "border-emerald-300/45 bg-gradient-to-br from-emerald-400/15 via-emerald-500/10 to-transparent shadow-[0_0_0_1px_rgba(16,185,129,0.15)]"
-                        : "border-white/12 bg-white/[0.03] hover:border-emerald-300/25 hover:bg-emerald-500/[0.06]"
-                    }`}
-                  >
-                    <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-emerald-400/10 blur-2xl" />
-
-                    <div className="relative flex items-start gap-3">
-                      <div
-                        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-                          isActive ? "bg-emerald-300/90 text-slate-950" : "bg-slate-700 text-slate-200"
-                        }`}
-                      >
-                        {index + 1}
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold leading-5 text-slate-100">{promo.title}</p>
-                        <p className="mt-1.5 text-xs leading-5 text-slate-300">{promo.detail}</p>
-                        <p
-                          className={`mt-3 inline-flex rounded-md border px-2 py-1 text-[10px] tracking-wide ${
-                            isActive
-                              ? "border-emerald-300/40 bg-emerald-500/15 text-emerald-100"
-                              : "border-white/10 bg-slate-800/60 text-slate-400"
-                          }`}
-                        >
-                          {promo.trigger}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+    
 
         {(tab === "pricing" || clientDemoMode) && (
           <section className="mt-5 space-y-5">
@@ -1596,7 +1520,77 @@ export default function Home() {
                     })}
                   </div>
                 </div>
+
+                <section className={`${glass} mt-4 p-4`}>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-emerald-200">Promotion Highlights / 规则高亮</h2>
+            <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-100">
+              Additional Promotions & Benefits
+            </span>
+          </div>
+
+          <div className="mt-4">
+            <div className="mb-3 flex flex-wrap gap-2">
+              {promotionGroups.map((group) => (
+                <button
+                  key={group.key}
+                  onClick={() => setActivePromotionGroup(group.key)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    activePromotionGroup === group.key
+                      ? "border-emerald-300/50 bg-emerald-500/15 text-emerald-100"
+                      : "border-white/12 bg-white/[0.03] text-slate-300 hover:border-emerald-300/30 hover:text-emerald-100"
+                  }`}
+                >
+                  {group.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {(promotionGroups.find((g) => g.key === activePromotionGroup)?.items ?? promotionGroups[0]?.items ?? []).map((promo, index) => {
+                const isActive = pricingRules.some((r) => r.rule_code === promo.trigger.replace("Policy: ", ""));
+                return (
+                  <div
+                    key={promo.trigger}
+                    className={`group relative overflow-hidden rounded-2xl border p-4 transition-all duration-200 ${
+                      isActive
+                        ? "border-emerald-300/45 bg-gradient-to-br from-emerald-400/15 via-emerald-500/10 to-transparent shadow-[0_0_0_1px_rgba(16,185,129,0.15)]"
+                        : "border-white/12 bg-white/[0.03] hover:border-emerald-300/25 hover:bg-emerald-500/[0.06]"
+                    }`}
+                  >
+                    <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-emerald-400/10 blur-2xl" />
+
+                    <div className="relative flex items-start gap-3">
+                      <div
+                        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                          isActive ? "bg-emerald-300/90 text-slate-950" : "bg-slate-700 text-slate-200"
+                        }`}
+                      >
+                        {index + 1}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold leading-5 text-slate-100">{promo.title}</p>
+                        <p className="mt-1.5 text-xs leading-5 text-slate-300">{promo.detail}</p>
+                        <p
+                          className={`mt-3 inline-flex rounded-md border px-2 py-1 text-[10px] tracking-wide ${
+                            isActive
+                              ? "border-emerald-300/40 bg-emerald-500/15 text-emerald-100"
+                              : "border-white/10 bg-slate-800/60 text-slate-400"
+                          }`}
+                        >
+                          {promo.trigger}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
               </article>
+             
             )}
 
             {groupedSections.ptSection && (
@@ -1606,12 +1600,6 @@ export default function Home() {
                     <h3 className="text-lg font-semibold text-white">Personal Training / 私教课程</h3>
                     <p className="text-xs text-slate-400">分栏清单布局 / Split-list layout</p>
                   </div>
-                  <button
-                    onClick={openPtProgramPicker}
-                    className="rounded-lg border border-emerald-300/35 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-100 hover:bg-emerald-500/25"
-                  >
-                    选择课程并报价 / Select Program
-                  </button>
                 </div>
 
                 <div className="space-y-3">
@@ -1724,6 +1712,8 @@ export default function Home() {
           </section>
         )}
 
+    
+
         {!clientDemoMode && tab === "calculator" && (
           <section className="mt-5 grid gap-4 lg:grid-cols-2">
             <article className={`${glass} p-5`}>
@@ -1793,38 +1783,6 @@ export default function Home() {
           </section>
         )}
 
-      {ptProgramPickerOpen && groupedSections.ptSection && (
-        <div className="fixed inset-0 z-[48] flex items-center justify-center bg-black/45 px-4 backdrop-blur-md">
-          <div className="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-3xl border border-emerald-300/25 bg-[#0b1220]/95 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Step 1 / 选择课程 Program</p>
-                <h3 className="mt-1 text-xl font-semibold text-emerald-100">请选择私教课程</h3>
-              </div>
-              <button
-                onClick={() => setPtProgramPickerOpen(false)}
-                className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-sm text-slate-100 hover:bg-white/10"
-              >
-                <X size={14} />
-                关闭
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {groupedSections.ptSection.rows.map((row) => (
-                <button
-                  key={row.key}
-                  onClick={() => selectPtProgramAndOpenCalculator(row)}
-                  className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2.5 text-left transition hover:border-emerald-300/40 hover:bg-emerald-500/8"
-                >
-                  <p className="text-sm font-semibold text-white">{row.nameZh}</p>
-                  {row.nameEn && <p className="text-xs text-slate-400">{row.nameEn}</p>}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {selectedPtRow && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-xl">
