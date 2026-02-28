@@ -137,13 +137,17 @@ const promotionHighlights = [
   },
 ];
 
-const annualMembershipBenefits = [
+const newSignupBenefits = [
   "首月包括一次一对一专属身体评估 / 1 Professional Personal Wellness Consultation by Program Director",
   "一份专属训练计划 / 1 Month Wellness Training Program by Program Director",
   "一次营养评估及饮食计划设计 / 1 Personal Nutrition Assessment and Planning",
   "一次团课体验 / 1 Group Training Session",
 ];
-
+const programBenefits = [
+  "Program validity includes 2 bonus weeks./课程有效期包含额外2周赠送时间。",
+  "If sessions are not completed within the validity period, 50% of remaining value can be used as renewal credit./如在有效期内未完成课程，剩余价值的50%可用于续费抵扣。",
+  "Professional assessment, progress tracking, and personalized adjustments included./包含专业评估、进度跟踪及个性化训练调整。"
+];
 const personalTrainingProgramInfo: Record<string, { focus: string; idealFor: string; icon: LucideIcon }> = {
   "基础力量训练": {
     focus: "Build strength, stability, and movement foundation / 建立力量、稳定性与动作基础",
@@ -1416,9 +1420,9 @@ export default function Home() {
 
                 {category === "membership" && (
                   <div className="mt-4 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-                    <h4 className="text-sm font-semibold text-cyan-100">Annual Membership Benefits</h4>
+                    <h4 className="text-sm font-semibold text-cyan-100">New Signup / 新手福利</h4>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                      {annualMembershipBenefits.map((benefit) => (
+                      {newSignupBenefits.map((benefit) => (
                         <li key={benefit}>{benefit}</li>
                       ))}
                     </ul>
@@ -1657,6 +1661,7 @@ export default function Home() {
                     );
                   })}
                 </div>
+             
               </article>
             )}
 
@@ -1707,6 +1712,14 @@ export default function Home() {
                     </section>
                   ))}
                 </div>
+                <div className="mt-4 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
+                    <h4 className="text-sm font-semibold text-cyan-100">Program Benefits / 课程福利</h4>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                      {programBenefits.map((benefit) => (
+                        <li key={benefit}>{benefit}</li>
+                      ))}
+                    </ul>
+                  </div>
               </article>
             )}
           </section>
