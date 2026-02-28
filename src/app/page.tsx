@@ -1853,11 +1853,27 @@ export default function Home() {
 
                   <div className="grid gap-2 sm:grid-cols-2">
                     {[
-  { key: "member_1v1", label: "会员 1v1", icon: <User size={14} className="text-emerald-200" /> },
-  { key: "non_member_1v1", label: "非会员 1v1", icon: <User size={14} className="text-amber-200" /> },
-  { key: "member_1v2", label: "会员 1v2", icon: <Users size={14} className="text-emerald-200" /> },
-  { key: "non_member_1v2", label: "非会员 1v2", icon: <Users size={14} className="text-amber-200" /> },
-                      ].map(({ key, label, icon }) => (
+  {
+    key: "member_1v1",
+    label: "会员 1v1 / Member 1v1",
+    icon: <User size={14} className="text-emerald-200" />,
+  },
+  {
+    key: "non_member_1v1",
+    label: "非会员 1v1 / Non-Member 1v1",
+    icon: <User size={14} className="text-amber-200" />,
+  },
+  {
+    key: "member_1v2",
+    label: "会员 1v2 / Member 1v2",
+    icon: <Users size={14} className="text-emerald-200" />,
+  },
+  {
+    key: "non_member_1v2",
+    label: "非会员 1v2 / Non-Member 1v2",
+    icon: <Users size={14} className="text-amber-200" />,
+  },
+].map(({ key, label, icon }) => (
                       <button
                         key={key}
                         onClick={() => applyPtPreset(key as "member_1v1" | "non_member_1v1" | "member_1v2" | "non_member_1v2")}
@@ -2174,11 +2190,27 @@ export default function Home() {
                   <p className="mb-3 text-sm font-medium text-slate-200">方案与参数 / Plan & Inputs</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {[
-                      ["member_1v1", "会员 1v1 / Member 1v1", <User key="cp1" size={14} className="text-emerald-200" />],
-                      ["non_member_1v1", "非会员 1v1 / Non-Member 1v1", <User key="cp2" size={14} className="text-amber-200" />],
-                      ["member_1v2", "会员 1v2 / Member 1v2", <Users key="cp3" size={14} className="text-emerald-200" />],
-                      ["non_member_1v2", "非会员 1v2 / Non-Member 1v2", <Users key="cp4" size={14} className="text-amber-200" />],
-                    ].map(([key, label, icon]) => (
+  {
+    key: "member_1v1",
+    label: "会员 1v1 / Member 1v1",
+    icon: <User size={14} className="text-emerald-200" />,
+  },
+  {
+    key: "non_member_1v1",
+    label: "非会员 1v1 / Non-Member 1v1",
+    icon: <User size={14} className="text-amber-200" />,
+  },
+  {
+    key: "member_1v2",
+    label: "会员 1v2 / Member 1v2",
+    icon: <Users size={14} className="text-emerald-200" />,
+  },
+  {
+    key: "non_member_1v2",
+    label: "非会员 1v2 / Non-Member 1v2",
+    icon: <Users size={14} className="text-amber-200" />,
+  },
+                      ].map(({ key, label, icon }) => (
                       <button
                         key={key}
                         onClick={() => {
