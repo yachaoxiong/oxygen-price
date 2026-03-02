@@ -492,11 +492,6 @@ export default function Home() {
             if (rankDiff !== 0) return rankDiff;
           }
 
-          if (category === "group_class") {
-            const modeRankDiff = getModeSortRank(a.modeKey) - getModeSortRank(b.modeKey);
-            if (modeRankDiff !== 0) return modeRankDiff;
-          }
-
           return a.nameZh.localeCompare(b.nameZh);
         });
 
