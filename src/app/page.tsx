@@ -1,6 +1,7 @@
 "use client";
 /* cSpell:words supabase fullpay */
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -37,9 +38,13 @@ import {
 } from "@/lib/supabase";
 import { mockPricing, type PricingItem } from "@/lib/mockData";
 
-type Tab = "pricing" | "calculator" | "qa";
 type AuthState = "loading" | "authed" | "guest";
 type CategoryFilter = "all" | PricingItem["category"];
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
 
 type CompareRow = {
   key: string;
@@ -91,7 +96,7 @@ function getCycleRankFromProgram(program: string) {
 }
 
 const categoryMeta: Record<PricingItem["category"], { en: string; zh: string }> = {
-  membership: { en: "Membership", zh: "会员会籍" },
+  membership: { en: "Membership & Group Classes", zh: "会员&团课" },
   group_class: { en: "Group Classes", zh: "团体课程" },
   personal_training: { en: "Personal Training", zh: "私教课程" },
   assessment: { en: "Assessments", zh: "专项评估" },
@@ -274,16 +279,14 @@ const solidButtonBase =
   "rounded-[10px] border border-white/12 px-3 py-1.5 font-medium transition-all duration-200 text-slate-300 bg-[#121824]/90 hover:border-white/25 hover:bg-[#1a2233]/95";
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>("pricing");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [activePromotionGroup, setActivePromotionGroup] = useState("new");
   const [presentationMode, setPresentationMode] = useState(false);
-  const [clientDemoMode, setClientDemoMode] = useState(false);
-  const [recharge, setRecharge] = useState(6000);
-  const [sessions, setSessions] = useState(12);
-  const [question, setQuestion] = useState("冲6000有什么权益和福利？");
+  const [selectedRechargeIndex, setSelectedRechargeIndex] = useState(1);
+  const [selectedPromoTrigger, setSelectedPromoTrigger] = useState(promotionHighlights[0]?.trigger ?? "");
 
   const [selectedPtRow, setSelectedPtRow] = useState<PtRow | null>(null);
+  const [ptPreviewRow, setPtPreviewRow] = useState<PtRow | null>(null);
   const [ptUnitMember1v1, setPtUnitMember1v1] = useState<number>(0);
   const [ptUnitNonMember1v1, setPtUnitNonMember1v1] = useState<number>(0);
   const [ptUnitMember1v2, setPtUnitMember1v2] = useState<number>(0);
@@ -302,6 +305,7 @@ export default function Home() {
 
 
   const [selectedCyclePlan, setSelectedCyclePlan] = useState<CyclePlanRow | null>(null);
+  const [cyclePreviewPlan, setCyclePreviewPlan] = useState<CyclePlanRow | null>(null);
   const [cycleStep, setCycleStep] = useState<1 | 2 | 3>(1);
   const [cycleSelectedPtProgram, setCycleSelectedPtProgram] = useState<PtRow | null>(null);
   const [cycleClientName, setCycleClientName] = useState("");
@@ -329,11 +333,14 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showInstallHint, setShowInstallHint] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     async function init() {
       const user = await getCurrentUser();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       if (!mounted) return;
       if (user) {
         setUserId(user.id);
@@ -374,6 +381,28 @@ export default function Home() {
       mounted = false;
     };
   }, [authState]);
+
+  useEffect(() => {
+    const ua = navigator.userAgent || "";
+    const isAndroid = /Android/i.test(ua);
+    if (!isAndroid) return;
+
+    const isStandalone = window.matchMedia?.("(display-mode: standalone)").matches;
+    if (isStandalone) return;
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      const dismissed = window.localStorage.getItem("pwa-install-hint-dismissed") === "1";
+      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
+      if (!dismissed) setShowInstallHint(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    };
+  }, []);
 
   const benefitsByItemId = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -421,7 +450,14 @@ export default function Home() {
     );
 
     const standardSections = (Object.keys(grouped) as PricingItem["category"][])
-      .filter((category) => category !== "personal_training" && category !== "stored_value" && category !== "cycle_plan")
+      .filter(
+        (category) =>
+          category !== "group_class" &&
+          category !== "personal_training" &&
+          category !== "assessment" &&
+          category !== "stored_value" &&
+          category !== "cycle_plan",
+      )
       .filter((category) => grouped[category].length > 0)
       .filter((category) => categoryFilter === "all" || category === categoryFilter)
       .map((category) => {
@@ -470,10 +506,49 @@ export default function Home() {
         };
       });
 
+    const groupClassRows =
+      (categoryFilter === "all" || categoryFilter === "group_class" || categoryFilter === "membership") && grouped.group_class.length > 0
+        ? grouped.group_class
+            .reduce<CompareRow[]>((acc, item) => {
+              const rowKey = `${item.name_zh}|${item.session_mode ?? "general"}`;
+              const existing = acc.find((row) => row.key === rowKey);
+
+              if (!existing) {
+                const next: CompareRow = {
+                  key: rowKey,
+                  itemIds: [item.id],
+                  nameZh: item.name_zh,
+                  nameEn: item.name_en,
+                  mode: displayMode(item.session_mode),
+                  modeKey: item.session_mode,
+                };
+                if (item.member_type === "member") next.memberPrice = item.price;
+                else if (item.member_type === "non_member") next.nonMemberPrice = item.price;
+                else next.generalPrice = item.price;
+                acc.push(next);
+                return acc;
+              }
+
+              if (!existing.itemIds.includes(item.id)) existing.itemIds.push(item.id);
+              if (item.member_type === "member") existing.memberPrice = item.price;
+              else if (item.member_type === "non_member") existing.nonMemberPrice = item.price;
+              else existing.generalPrice = item.price;
+              return acc;
+            }, [])
+            .sort((a, b) => {
+              const modeRankDiff = getModeSortRank(a.modeKey) - getModeSortRank(b.modeKey);
+              if (modeRankDiff !== 0) return modeRankDiff;
+              return a.nameZh.localeCompare(b.nameZh);
+            })
+        : null;
+
     let ptSection: { category: PricingItem["category"]; rows: PtRow[] } | null = null;
     let cyclePlanRows: CyclePlanRow[] | null = null;
 
-    if ((categoryFilter === "all" || categoryFilter === "personal_training") && grouped.personal_training.length > 0) {
+    if (
+      (categoryFilter === "all" || categoryFilter === "personal_training" || categoryFilter === "assessment") &&
+      (grouped.personal_training.length > 0 || grouped.assessment.length > 0)
+    ) {
       const ptMap = new Map<string, PtRow>();
 
       grouped.personal_training.forEach((item) => {
@@ -491,9 +566,29 @@ export default function Home() {
         if (item.member_type === "non_member" && item.session_mode === "1v2") row.nonMember1v2 = item.price;
       });
 
+      grouped.assessment.forEach((item) => {
+        const key = `assessment:${item.name_zh}`;
+        if (!ptMap.has(key)) {
+          ptMap.set(key, {
+            key,
+            itemIds: [item.id],
+            nameZh: item.name_zh,
+            nameEn: item.name_en,
+            member1v1: item.price,
+            nonMember1v1: item.price,
+            member1v2: item.price,
+            nonMember1v2: item.price,
+          });
+        }
+      });
+
       ptSection = {
         category: "personal_training",
         rows: Array.from(ptMap.values()).sort((a, b) => {
+          const aIsAssessment = a.key.startsWith("assessment:");
+          const bIsAssessment = b.key.startsWith("assessment:");
+          if (aIsAssessment !== bIsAssessment) return aIsAssessment ? 1 : -1;
+
           const aPrice = a.member1v1 ?? a.member1v2 ?? a.nonMember1v1 ?? a.nonMember1v2 ?? Number.MAX_SAFE_INTEGER;
           const bPrice = b.member1v1 ?? b.member1v2 ?? b.nonMember1v1 ?? b.nonMember1v2 ?? Number.MAX_SAFE_INTEGER;
           if (aPrice !== bPrice) return aPrice - bPrice;
@@ -528,7 +623,7 @@ export default function Home() {
         .sort((a, b) => getCycleRankFromProgram(a.program) - getCycleRankFromProgram(b.program));
     }
 
-    return { standardSections, ptSection, cyclePlanRows };
+    return { standardSections, groupClassRows, ptSection, cyclePlanRows };
   }, [pricingItems, categoryFilter]);
 
   const cyclePtProgramOptions = useMemo(() => {
@@ -553,66 +648,9 @@ export default function Home() {
     return Array.from(ptMap.values()).sort((a, b) => (a.member1v1 ?? 0) - (b.member1v1 ?? 0));
   }, [pricingItems]);
 
-  const rechargeResult = useMemo(() => {
-    const matched = pricingRules
-      .filter((r) => r.trigger_type === "recharge")
-      .find((r) => {
-        const gte = asNumber(r.trigger_json.amount_gte);
-        const lt = asNumber(r.trigger_json.amount_lt);
-        return (gte === null || recharge >= gte) && (lt === null || recharge < lt);
-      });
-
-    if (matched) {
-      return {
-        plan: String(matched.result_json.matched_plan ?? "Matched Plan"),
-        benefits: Array.isArray(matched.result_json.benefits)
-          ? matched.result_json.benefits.map((x) => String(x))
-          : ["Rule based benefits"],
-      };
-    }
-
-    if (recharge >= 9000) return { plan: "储值卡9000", benefits: ["赠送1年会员", "赠送金额1500", "赠送总价值3161"] };
-    if (recharge >= 6000) return { plan: "储值卡6000", benefits: ["赠送6个月会员", "赠送金额600", "赠送总价值1314"] };
-    if (recharge >= 3000) return { plan: "储值卡3000", benefits: ["赠送1个月会员", "赠送金额300", "赠送总价值595"] };
-    return { plan: "未匹配档位", benefits: ["建议从$3000开始"] };
-  }, [pricingRules, recharge]);
-
-  const sessionResult = useMemo(() => {
-    const matched = pricingRules
-      .filter((r) => r.trigger_type === "buy_sessions")
-      .find((r) => {
-        const gte = asNumber(r.trigger_json.sessions_gte);
-        const lt = asNumber(r.trigger_json.sessions_lt);
-        return (gte === null || sessions >= gte) && (lt === null || sessions < lt);
-      });
-
-    if (matched) {
-      return {
-        plan: String(matched.result_json.matched_plan ?? "Matched Plan"),
-        conditions: Array.isArray(matched.result_json.conditions)
-          ? matched.result_json.conditions.map((x) => String(x)).join("，")
-          : "参考计划条件",
-      };
-    }
-
-    if (sessions >= 48) return { plan: "24周计划", conditions: "每周2-4次，最少48节" };
-    if (sessions >= 24) return { plan: "12周计划", conditions: "每周2-4次，最少24节" };
-    if (sessions >= 12) return { plan: "6周计划", conditions: "每周2-4次，最少12节" };
-    return { plan: "未匹配计划", conditions: "建议至少12节" };
-  }, [pricingRules, sessions]);
-
-  const qaAnswer = useMemo(() => {
-    if (/\d+/.test(question) && /充|充值|储值|recharge/.test(question)) {
-      return `匹配方案：${rechargeResult.plan}。权益：${rechargeResult.benefits.join("、")}`;
-    }
-    if (/\d+/.test(question) && /课|节|session/.test(question)) {
-      return `匹配计划：${sessionResult.plan}。条件：${sessionResult.conditions}`;
-    }
-    return "示例：冲6000有什么权益？ / What are the benefits for $6000 recharge?";
-  }, [question, rechargeResult, sessionResult]);
 
   async function logQuery(queryText: string, intent: string, input: Record<string, unknown>, output: Record<string, unknown>) {
-    if (!userId || presentationMode || clientDemoMode) return;
+    if (!userId || presentationMode) return;
     try {
       await insertQueryLog({ userId, queryText, intent, input, output });
     } catch {
@@ -638,6 +676,21 @@ export default function Home() {
     setAuthState("guest");
   }
 
+  async function handleInstallApp() {
+    if (!deferredInstallPrompt) return;
+    await deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    if (choice.outcome === "accepted") {
+      setShowInstallHint(false);
+    }
+    setDeferredInstallPrompt(null);
+  }
+
+  function handleDismissInstallHint() {
+    setShowInstallHint(false);
+    window.localStorage.setItem("pwa-install-hint-dismissed", "1");
+  }
+
   function openPtCalculator(row: PtRow) {
     setSelectedPtRow(row);
     setPtUnitMember1v1(row.member1v1 ?? 0);
@@ -649,6 +702,19 @@ export default function Home() {
     setPtQtyMember1v2(12);
     setPtQtyNonMember1v2(12);
     setPtPreset("member_1v1");
+  }
+
+  function handlePtCardTap(row: PtRow) {
+    if (presentationMode) {
+      openPtCalculator(row);
+      return;
+    }
+
+    if (ptPreviewRow?.key === row.key) {
+      openPtCalculator(row);
+      return;
+    }
+    setPtPreviewRow(row);
   }
 
   function closePtCalculator() {
@@ -951,7 +1017,9 @@ export default function Home() {
     win.document.write(html);
     win.document.close();
     win.focus();
-    win.print();
+    setTimeout(() => {
+      win.print();
+    }, 250);
   }
 
   function resetPtCalculator() {
@@ -967,6 +1035,19 @@ export default function Home() {
     setCycleSelectedPtProgram(null);
     setCycleCredit(0);
     setCycleCreditInputStr("0");
+  }
+
+  function handleCyclePlanCardTap(row: CyclePlanRow) {
+    if (presentationMode) {
+      openCyclePlanCalculator(row);
+      return;
+    }
+
+    if (cyclePreviewPlan?.program === row.program) {
+      openCyclePlanCalculator(row);
+      return;
+    }
+    setCyclePreviewPlan(row);
   }
 
   function selectCyclePtProgramAndContinue(row: PtRow) {
@@ -1037,7 +1118,7 @@ export default function Home() {
     const unitPrice = cyclePtPreset === "member_1v1" ? cycleUnitMember1v1 : cyclePtPreset === "non_member_1v1" ? cycleUnitNonMember1v1 : cyclePtPreset === "member_1v2" ? cycleUnitMember1v2 : cycleUnitNonMember1v2;
     const qty = cyclePtPreset === "member_1v1" ? cycleQtyMember1v1 : cyclePtPreset === "non_member_1v1" ? cycleQtyNonMember1v1 : cyclePtPreset === "member_1v2" ? cycleQtyMember1v2 : cycleQtyNonMember1v2;
     const reportDate = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
-    const html = `<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"/><title>Cycle Plan Quotation</title><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');*{box-sizing:border-box;margin:0;padding:0}html,body{width:210mm;height:297mm}body{font-family:'Inter',system-ui,sans-serif;background:#fff;color:#1a2332;font-size:11px;line-height:1.4}.page{width:210mm;height:297mm;display:flex;flex-direction:column;overflow:hidden}.hdr{background:linear-gradient(135deg,#0b1f3a 0%,#0e2d50 60%,#0a2240 100%);padding:18px 28px;position:relative;overflow:hidden;flex-shrink:0}.hdr::before{content:'';position:absolute;top:-50px;right:-50px;width:200px;height:200px;border-radius:50%;background:rgba(6,182,212,0.1)}.hdr-inner{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start}.hdr-left .brand{display:flex;align-items:center;gap:6px;margin-bottom:8px}.brand-dot{width:7px;height:7px;border-radius:50%;background:#06b6d4}.brand-name{font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.45)}.hdr-left h1{font-size:20px;font-weight:700;color:#fff;line-height:1.15}.hdr-left p{font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;letter-spacing:0.04em}.hdr-right{text-align:right;display:flex;flex-direction:column;gap:6px}.meta-item .ml{font-size:8.5px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.3)}.meta-item .mv{font-size:11px;font-weight:500;color:rgba(255,255,255,0.8);margin-top:1px}.abar{height:3px;background:linear-gradient(90deg,#06b6d4,#10b981,#06b6d4);flex-shrink:0}.body{padding:16px 28px;flex:1;display:flex;flex-direction:column;gap:12px;overflow:hidden}.stitle{font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:#64748b;display:flex;align-items:center;gap:6px;margin-bottom:7px}.stitle::after{content:'';flex:1;height:1px;background:#e2e8f0}.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}.card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:8px 10px}.card .cl{font-size:8.5px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:#94a3b8}.card .cv{font-size:12px;font-weight:600;color:#1e293b;margin-top:2px}.card.gc{background:#f0fdf4;border-color:#bbf7d0}.card.gc .cl{color:#16a34a}.card.gc .cv{color:#15803d;font-size:11px}.card.cc{background:#ecfeff;border-color:#a5f3fc}.card.cc .cl{color:#0891b2}.card.cc .cv{color:#0e7490;font-size:11px}.card.span2{grid-column:span 2}.ptbl{width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0}.ptbl thead tr{background:linear-gradient(135deg,#0b1f3a,#0d2d4f)}.ptbl thead th{padding:7px 12px;text-align:left;font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.09em;color:rgba(255,255,255,0.55)}.ptbl thead th:last-child{text-align:right}.ptbl tbody td{padding:7px 12px;font-size:11px;color:#334155;border-bottom:1px solid #f1f5f9}.ptbl tbody td:last-child{text-align:right;font-weight:600;color:#1e293b}.totals{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-top:7px}.titem{padding:8px 12px;border-right:1px solid #e2e8f0}.titem:last-child{border-right:none;background:linear-gradient(135deg,#0b1f3a,#0d2d4f)}.titem .tl{font-size:8.5px;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8}.titem:last-child .tl{color:rgba(255,255,255,0.45)}.titem .tv{font-size:13px;font-weight:700;color:#1e293b;margin-top:2px}.titem:last-child .tv{color:#fff;font-size:15px}.titem .tv.red{color:#dc2626}.ftr{background:#f8fafc;border-top:1px solid #e2e8f0;padding:10px 28px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}.ftr-note{font-size:8.5px;color:#94a3b8;line-height:1.5}.ftr-brand{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#cbd5e1}@media print{html,body{width:210mm;height:297mm}.page{page-break-after:avoid}}</style></head><body><div class="page"><div class="hdr"><div class="hdr-inner"><div class="hdr-left"><div class="brand"><div class="brand-dot"></div><span class="brand-name">Oxygen Fitness</span></div><h1>${selectedCyclePlan.program}</h1><p>Cycle Plan Quotation / 周期计划报价单</p></div><div class="hdr-right"><div class="meta-item"><div class="ml">报价日期 Date</div><div class="mv">${reportDate}</div></div><div class="meta-item"><div class="ml">客户 Client</div><div class="mv">${cycleClientName || "—"}</div></div><div class="meta-item"><div class="ml">方案 Plan Type</div><div class="mv">${cycleActiveLabel}</div></div></div></div></div><div class="abar"></div><div class="body"><div><div class="stitle">私教课程 PT Program</div><div class="row2"><div class="card cc span2"><div class="cl">课程名称 Program Name</div><div class="cv">${cycleSelectedPtProgram.nameZh}${cycleSelectedPtProgram.nameEn ? " / " + cycleSelectedPtProgram.nameEn : ""}</div></div></div></div><div><div class="stitle">周期计划参数 Cycle Plan Parameters</div><div class="row4"><div class="card"><div class="cl">每周次数 Weekly</div><div class="cv">${selectedCyclePlan.weeklySessions}</div></div><div class="card"><div class="cl">最少课时 Min Sessions</div><div class="cv">${selectedCyclePlan.minSessions}</div></div><div class="card"><div class="cl">跟进次数 Followups</div><div class="cv">${selectedCyclePlan.wpdFollowups}</div></div><div class="card"><div class="cl">评估报告 Assessments</div><div class="cv">${selectedCyclePlan.assessmentsReports}</div></div></div></div><div><div class="stitle">附加权益 Included Benefits</div><div class="row2"><div class="card gc"><div class="cl">赠送会籍 Membership Gift</div><div class="cv">${selectedCyclePlan.membershipGift}</div></div><div class="card cc"><div class="cl">额外权益 Extra Benefits</div><div class="cv">${selectedCyclePlan.extraBenefits}</div></div></div></div><div><div class="stitle">价格明细 Pricing Breakdown</div><table class="ptbl"><thead><tr><th>项目 Item</th><th>单价 Unit Price</th><th>数量 Qty</th><th>小计 Subtotal</th></tr></thead><tbody><tr><td>周期计划课时 Cycle Sessions</td><td>${formatMoney(unitPrice)}</td><td>${qty} 课时</td><td>${formatMoney(cycleSubtotal)}</td></tr></tbody></table><div class="totals"><div class="titem"><div class="tl">积分抵扣 Credit</div><div class="tv red">− ${formatMoney(cycleCredit)}</div></div><div class="titem"><div class="tl">抵扣后 After Credit</div><div class="tv">${formatMoney(cycleAfterCredit)}</div></div><div class="titem"><div class="tl">税费 Tax 13%</div><div class="tv">${formatMoney(cycleTax)}</div></div><div class="titem"><div class="tl">总计 Grand Total</div><div class="tv">${formatMoney(cycleTotal)}</div></div></div></div></div><div class="ftr"><div class="ftr-note">本报价单仅供销售演示参考，最终价格以正式合同为准。This quotation is for reference only. Final pricing subject to signed contract.</div><div class="ftr-brand">Oxygen Fitness</div></div></div></body></html>`;
+    const html = `<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"/><title>Cycle Plan Quotation</title><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');*{box-sizing:border-box;margin:0;padding:0}html,body{width:210mm;height:297mm}body{font-family:'Inter',system-ui,sans-serif;background:#fff;color:#1a2332;font-size:11px;line-height:1.4}.page{width:210mm;height:297mm;display:flex;flex-direction:column;overflow:hidden}.hdr{background:linear-gradient(135deg,#0b1f3a 0%,#0e2d50 60%,#0a2240 100%);padding:18px 28px;position:relative;overflow:hidden;flex-shrink:0}.hdr::before{content:'';position:absolute;top:-50px;right:-50px;width:200px;height:200px;border-radius:50%;background:rgba(6,182,212,0.1)}.hdr-inner{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start}.hdr-left .brand{display:flex;align-items:center;gap:6px;margin-bottom:8px}.brand-dot{width:7px;height:7px;border-radius:50%;background:#06b6d4}.brand-name{font-size:9px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.45)}.hdr-left h1{font-size:20px;font-weight:700;color:#fff;line-height:1.15}.hdr-left p{font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;letter-spacing:0.04em}.hdr-right{text-align:right;display:flex;flex-direction:column;gap:6px}.meta-item .ml{font-size:8.5px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.3)}.meta-item .mv{font-size:11px;font-weight:500;color:rgba(255,255,255,0.8);margin-top:1px}.abar{height:3px;background:linear-gradient(90deg,#06b6d4,#10b981,#06b6d4);flex-shrink:0}.body{padding:16px 28px;flex:1;display:flex;flex-direction:column;gap:12px;overflow:hidden}.stitle{font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.14em;color:#64748b;display:flex;align-items:center;gap:6px;margin-bottom:7px}.stitle::after{content:'';flex:1;height:1px;background:#e2e8f0}.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}.card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:8px 10px}.card .cl{font-size:8.5px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:#94a3b8}.card .cv{font-size:12px;font-weight:600;color:#1e293b;margin-top:2px}.card.gc{background:#f0fdf4;border-color:#bbf7d0}.card.gc .cl{color:#16a34a}.card.gc .cv{color:#15803d;font-size:11px}.card.cc{background:#ecfeff;border-color:#a5f3fc}.card.cc .cl{color:#0891b2}.card.cc .cv{color:#0e7490;font-size:11px}.card.span2{grid-column:span 2}.ptbl{width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0}.ptbl thead tr{background:linear-gradient(135deg,#0b1f3a,#0d2d4f)}.ptbl thead th{padding:7px 12px;text-align:left;font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.09em;color:rgba(255,255,255,0.55)}.ptbl thead th:last-child{text-align:right}.ptbl tbody td{padding:7px 12px;font-size:11px;color:#334155;border-bottom:1px solid #f1f5f9}.ptbl tbody td:last-child{text-align:right;font-weight:600;color:#1e293b}.totals{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-top:7px}.titem{padding:8px 12px;border-right:1px solid #e2e8f0}.titem:last-child{border-right:none;background:linear-gradient(135deg,#0b1f3a,#0d2d4f)}.titem .tl{font-size:8.5px;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8}.titem:last-child .tl{color:rgba(255,255,255,0.45)}.titem .tv{font-size:13px;font-weight:700;color:#1e293b;margin-top:2px}.titem:last-child .tv{color:#fff;font-size:15px}.titem .tv.red{color:#dc2626}.ftr{background:#f8fafc;border-top:1px solid #e2e8f0;padding:10px 28px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}.ftr-note{font-size:8.5px;color:#94a3b8;line-height:1.5}.ftr-brand{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#cbd5e1}@page{size:A4;margin:0}@media print{html,body{width:210mm;height:297mm;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{page-break-after:avoid;break-after:avoid;break-inside:avoid}}</style></head><body><div class="page"><div class="hdr"><div class="hdr-inner"><div class="hdr-left"><div class="brand"><div class="brand-dot"></div><span class="brand-name">Oxygen Fitness</span></div><h1>${selectedCyclePlan.program}</h1><p>Cycle Plan Quotation / 周期计划报价单</p></div><div class="hdr-right"><div class="meta-item"><div class="ml">报价日期 Date</div><div class="mv">${reportDate}</div></div><div class="meta-item"><div class="ml">客户 Client</div><div class="mv">${cycleClientName || "—"}</div></div><div class="meta-item"><div class="ml">方案 Plan Type</div><div class="mv">${cycleActiveLabel}</div></div></div></div></div><div class="abar"></div><div class="body"><div><div class="stitle">私教课程 PT Program</div><div class="row2"><div class="card cc span2"><div class="cl">课程名称 Program Name</div><div class="cv">${cycleSelectedPtProgram.nameZh}${cycleSelectedPtProgram.nameEn ? " / " + cycleSelectedPtProgram.nameEn : ""}</div></div></div></div><div><div class="stitle">周期计划参数 Cycle Plan Parameters</div><div class="row4"><div class="card"><div class="cl">每周次数 Weekly</div><div class="cv">${selectedCyclePlan.weeklySessions}</div></div><div class="card"><div class="cl">最少课时 Min Sessions</div><div class="cv">${selectedCyclePlan.minSessions}</div></div><div class="card"><div class="cl">跟进次数 Followups</div><div class="cv">${selectedCyclePlan.wpdFollowups}</div></div><div class="card"><div class="cl">评估报告 Assessments</div><div class="cv">${selectedCyclePlan.assessmentsReports}</div></div></div></div><div><div class="stitle">附加权益 Included Benefits</div><div class="row2"><div class="card gc"><div class="cl">赠送会籍 Membership Gift</div><div class="cv">${selectedCyclePlan.membershipGift}</div></div><div class="card cc"><div class="cl">额外权益 Extra Benefits</div><div class="cv">${selectedCyclePlan.extraBenefits}</div></div></div></div><div><div class="stitle">价格明细 Pricing Breakdown</div><table class="ptbl"><thead><tr><th>项目 Item</th><th>单价 Unit Price</th><th>数量 Qty</th><th>小计 Subtotal</th></tr></thead><tbody><tr><td>周期计划课时 Cycle Sessions</td><td>${formatMoney(unitPrice)}</td><td>${qty} 课时</td><td>${formatMoney(cycleSubtotal)}</td></tr></tbody></table><div class="totals"><div class="titem"><div class="tl">积分抵扣 Credit</div><div class="tv red">− ${formatMoney(cycleCredit)}</div></div><div class="titem"><div class="tl">抵扣后 After Credit</div><div class="tv">${formatMoney(cycleAfterCredit)}</div></div><div class="titem"><div class="tl">税费 Tax 13%</div><div class="tv">${formatMoney(cycleTax)}</div></div><div class="titem"><div class="tl">总计 Grand Total</div><div class="tv">${formatMoney(cycleTotal)}</div></div></div></div></div><div class="ftr"><div class="ftr-note">本报价单仅供销售演示参考，最终价格以正式合同为准。This quotation is for reference only. Final pricing subject to signed contract.</div><div class="ftr-brand">Oxygen Fitness</div></div></div></body></html>`;
     const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
     win.document.open();
@@ -1064,21 +1145,96 @@ export default function Home() {
   }
 
   if (authState === "loading") {
-    return <div className="flex min-h-screen items-center justify-center bg-[#05070d] text-slate-300">Loading...</div>;
+    return (
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#03050b] text-slate-100">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,255,163,0.18),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(59,130,246,0.14),transparent_28%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-20 [background-size:3px_3px] [background-image:radial-gradient(rgba(255,255,255,0.4)_0.4px,transparent_0.4px)]" />
+
+        <div className="relative w-[min(92vw,420px)] rounded-3xl border border-cyan-300/25 bg-[#071222]/80 p-6 shadow-[0_0_45px_rgba(34,211,238,0.16)] backdrop-blur">
+          <div className="mb-5 flex items-center justify-between">
+            <p className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold tracking-[0.08em] text-cyan-100">
+              <Sparkles size={12} /> OXYGEN PRICING
+            </p>
+            <p className="text-[11px] text-slate-400">Loading</p>
+          </div>
+
+          <div className="mb-4 flex items-center justify-center gap-3">
+            <span className="h-3 w-3 animate-[pulse_1.1s_ease-in-out_infinite] rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.85)]" />
+            <span className="h-3 w-3 animate-[pulse_1.1s_ease-in-out_0.2s_infinite] rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.85)]" />
+            <span className="h-3 w-3 animate-[pulse_1.1s_ease-in-out_0.4s_infinite] rounded-full bg-sky-300 shadow-[0_0_14px_rgba(125,211,252,0.85)]" />
+          </div>
+
+          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full w-full animate-pulse rounded-full bg-gradient-to-r from-emerald-300 via-cyan-300 to-sky-300" />
+          </div>
+
+          <p className="mt-3 text-center text-xs text-slate-300">正在载入价格与权益数据...</p>
+        </div>
+      </div>
+    );
   }
 
   if (authState === "guest") {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-[#03050b] px-4 py-16 text-slate-100">
-        <div className="mx-auto max-w-md rounded-3xl border border-white/10 bg-[#0a0f1b] p-7 shadow-2xl">
-          <h1 className="text-2xl font-semibold">Sales Login / 销售登录</h1>
-          <p className="mt-2 text-sm text-slate-400">Internal system only / 内部系统</p>
-          <label className="mt-4 block text-sm">Email / 邮箱</label>
-          <input className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-3 py-2" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <label className="mt-3 block text-sm">Password / 密码</label>
-          <input type="password" className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-3 py-2" value={password} onChange={(e) => setPassword(e.target.value)} />
-          {authError && <p className="mt-3 text-sm text-rose-400">{authError}</p>}
-          <button onClick={handleSignIn} className="mt-4 w-full rounded-xl bg-emerald-400 px-4 py-2 font-semibold text-slate-950">Sign In / 登录</button>
+      <div className="relative min-h-screen overflow-hidden bg-[#03050b] px-4 py-12 text-slate-100 md:py-16">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(16,185,129,0.18),transparent_34%),radial-gradient(circle_at_85%_12%,rgba(56,189,248,0.16),transparent_30%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-20 [background-size:3px_3px] [background-image:radial-gradient(rgba(255,255,255,0.4)_0.4px,transparent_0.4px)]" />
+
+        <div className="relative mx-auto max-w-md rounded-3xl border border-cyan-300/25 bg-gradient-to-b from-[#0a1324]/95 to-[#081120]/95 p-7 shadow-[0_0_46px_rgba(34,211,238,0.18)] backdrop-blur">
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5">
+                <div className="relative h-7 w-7 overflow-hidden rounded-lg ring-1 ring-white/15">
+                  <Image src="/logo.png" alt="Oxygen logo" fill className="object-cover" sizes="28px" priority />
+                </div>
+                <p className="text-sm font-semibold tracking-tight text-white">
+                  Oxygen<span className="text-emerald-300">Pricing</span>
+                </p>
+              </div>
+
+              <h1 className="mt-3 text-2xl font-bold tracking-tight text-white">Sales Login / 销售登录</h1>
+              <p className="mt-1 text-sm text-slate-400">Oxygen Pricing Console</p>
+            </div>
+            <div className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 p-2">
+              <UserCheck size={18} className="text-emerald-200" />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="block">
+              <span className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-300">
+                <User size={13} className="text-cyan-200" /> Email / 邮箱
+              </span>
+              <input
+                className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none transition focus:border-cyan-300/60 focus:ring-2 focus:ring-cyan-400/20"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@oxygen.com"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-300">
+                <Shield size={13} className="text-emerald-200" /> Password / 密码
+              </span>
+              <input
+                type="password"
+                className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-300/60 focus:ring-2 focus:ring-emerald-400/20"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </label>
+          </div>
+
+          {authError && <p className="mt-3 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">{authError}</p>}
+
+          <button
+            onClick={handleSignIn}
+            className="mt-5 w-full rounded-xl bg-gradient-to-r from-emerald-300 to-cyan-300 px-4 py-2.5 text-sm font-bold text-[#04111f] transition hover:brightness-105 active:scale-[0.99]"
+          >
+            Sign In / 登录
+          </button>
         </div>
       </div>
     );
@@ -1089,8 +1245,8 @@ export default function Home() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,255,163,0.18),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(59,130,246,0.14),transparent_28%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-size:3px_3px] [background-image:radial-gradient(rgba(255,255,255,0.4)_0.4px,transparent_0.4px)]" />
 
-      <div className="relative mx-auto max-w-7xl px-4 py-24 md:px-6 md:py-24">
-        <header className={`${glass} p-4 md:p-6`}>
+      <div className={`relative mx-auto px-4 py-16 md:px-6 ${presentationMode ? "max-w-[92rem] md:py-16" : "max-w-7xl md:py-24"}`}>
+        <header className={`${glass} p-4 md:p-6 ${presentationMode ? "sticky top-3 z-40 border border-cyan-300/20 bg-[#060d18]/88 backdrop-blur-xl" : ""}`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white md:text-3xl">
@@ -1105,46 +1261,42 @@ export default function Home() {
               >
                 {presentationMode ? "Presentation: ON" : "Presentation: OFF"}
               </button>
-              <button
-                onClick={() => setClientDemoMode((v) => !v)}
-                className={`${solidButtonBase} text-xs ${clientDemoMode ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400" : ""}`}
-              >
-                {clientDemoMode ? "Client Demo: ON" : "Client Demo: OFF"}
-              </button>
-              <button onClick={handleSignOut} className={`${solidButtonBase} text-xs bg-rose-500/90 hover:bg-rose-400/90`}>
-                Sign out / 退出
-              </button>
+              {!presentationMode && (
+                <button onClick={handleSignOut} className={`${solidButtonBase} text-xs bg-rose-500/90 hover:bg-rose-400/90`}>
+                  Sign out / 退出
+                </button>
+              )}
             </div>
           </div>
 
-          {!clientDemoMode && (
-            <div className="mt-5 flex flex-wrap gap-2">
-              {([
-                ["pricing", "Pricing"],
-                ["calculator", "Calculator"],
-                ["qa", "Q&A"],
-              ] as const).map(([value, label]) => (
-                <button
-                  key={value}
-                  onClick={() => setTab(value)}
-                  className={`${solidButtonBase} px-4 py-2 text-sm ${
-                    tab === value
-                      ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
-                      : "bg-slate-700/90 text-slate-100 hover:bg-slate-600/90"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
         </header>
 
-    
+        {showInstallHint && deferredInstallPrompt && (
+          <div className="fixed top-2 z-[90] rounded-2xl border border-emerald-300/30 bg-[#072417]/95 p-3 backdrop-blur">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium text-emerald-100 md:text-sm">
+                可安装到手机主屏，点击“立即安装”即可。
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  onClick={handleInstallApp}
+                  className="rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-emerald-300 md:text-sm"
+                >
+                  立即安装
+                </button>
+                <button
+                  onClick={handleDismissInstallHint}
+                  className="rounded-lg border border-white/20 bg-black/25 px-3 py-1.5 text-xs text-slate-100 hover:bg-white/10 md:text-sm"
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
-        {(tab === "pricing" || clientDemoMode) && (
-          <section className="mt-5 space-y-5">
-            {!clientDemoMode && (
+          <section className={`mt-5 space-y-5 ${presentationMode ? "pb-20" : ""}`}>
+            {!presentationMode && (
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setCategoryFilter("all")}
@@ -1156,7 +1308,9 @@ export default function Home() {
                 >
                   全部
                 </button>
-                {(Object.keys(categoryMeta) as PricingItem["category"][]).map((cat) => (
+                {(Object.keys(categoryMeta) as PricingItem["category"][])
+                  .filter((cat) => cat !== "assessment" && cat !== "group_class")
+                  .map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setCategoryFilter(cat)}
@@ -1174,42 +1328,35 @@ export default function Home() {
 
             {groupedSections.standardSections.map(({ category, rows }) => (
               <article key={category} className={`${glass} p-4`}>
-                <h3 className="mb-4 text-lg font-semibold text-white">
-                  {categoryMeta[category].en} · {categoryMeta[category].zh}
-                </h3>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-white md:text-xl">
+                    {categoryMeta[category].en} · {categoryMeta[category].zh}
+                  </h3>
+                  <span className="inline-flex items-center rounded-full border border-emerald-300/35 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold tracking-[0.08em] text-emerald-100">
+                    PREMIUM ACCESS
+                  </span>
+                </div>
 
-                <div
-                  className={
-                    category === "membership"
-                      ? "space-y-2"
-                      : category === "group_class"
-                        ? "space-y-2"
-                        : "grid gap-3 md:grid-cols-2 xl:grid-cols-3"
-                  }
-                >
-                  {(category === "membership"
-                    ? (() => {
-                        const pickByType = new Map<number, (typeof rows)[number]>();
-                        const getType = (nameZh: string) => {
-                          const n = nameZh.toLowerCase();
-                          if (n.includes("vip") || n.includes("plus")) return -1;
-                          if (n.includes("日") || n.includes("day")) return 0;
-                          if (n.includes("周") || n.includes("week")) return 1;
-                          if (n.includes("年") || n.includes("year") || n.includes("annual")) return 3;
-                          if (n.includes("月") || n.includes("month") || n.includes("monthly")) return 2;
-                          return -1;
-                        };
+                <div className="space-y-2">
+                  {(() => {
+                    const pickByType = new Map<number, (typeof rows)[number]>();
+                    const getType = (nameZh: string) => {
+                      const n = nameZh.toLowerCase();
+                      if (n.includes("vip") || n.includes("plus")) return -1;
+                      if (n.includes("日") || n.includes("day")) return 0;
+                      if (n.includes("周") || n.includes("week")) return 1;
+                      if (n.includes("年") || n.includes("year") || n.includes("annual")) return 3;
+                      if (n.includes("月") || n.includes("month") || n.includes("monthly")) return 2;
+                      return -1;
+                    };
 
-                        rows.forEach((row) => {
-                          const t = getType(row.nameZh);
-                          if (t >= 0 && !pickByType.has(t)) pickByType.set(t, row);
-                        });
+                    rows.forEach((row) => {
+                      const t = getType(row.nameZh);
+                      if (t >= 0 && !pickByType.has(t)) pickByType.set(t, row);
+                    });
 
-                        return [0, 1, 2, 3].map((t) => pickByType.get(t)).filter(Boolean) as typeof rows;
-                      })()
-                    : rows
-                  ).map((row, index) => {
-                    if (category === "membership") {
+                    return [0, 1, 2, 3].map((t) => pickByType.get(t)).filter(Boolean) as typeof rows;
+                  })().map((row, index) => {
                       const membershipPrice = row.generalPrice ?? row.nonMemberPrice ?? row.memberPrice;
                       const name = row.nameZh.toLowerCase();
 
@@ -1259,17 +1406,19 @@ export default function Home() {
                           : "-";
 
                       return (
-                        <article key={row.key} className="border-b border-white/10 py-3 last:border-b-0">
-                          <div className="grid gap-2 md:grid-cols-[1.2fr_1.1fr_2.2fr] md:items-start">
+                        <article key={row.key} className="relative overflow-hidden rounded-2xl border border-white/12 bg-[linear-gradient(135deg,rgba(8,15,30,0.92),rgba(6,24,34,0.85))] p-3 md:p-4">
+                          <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-cyan-300/10 blur-2xl" />
+                          <div className="grid gap-3 md:grid-cols-[1.05fr_0.9fr_2.05fr] md:items-start">
                             <div>
-                              <p className="font-semibold text-white">{index + 1}. {row.nameZh}</p>
-                              <p className="text-xs text-slate-400">周期 / Cycle: {cycleLabel}</p>
+                              <p className="text-[11px] uppercase tracking-[0.14em] text-cyan-200/80">Plan {index + 1}</p>
+                              <p className="mt-1 font-semibold text-white">{index + 1}. {row.nameZh}</p>
+                              <p className="mt-1 text-xs text-slate-300">周期 / Cycle: {cycleLabel}</p>
                             </div>
 
-                            <div>
-                              <p className="text-[10px] text-slate-500">会籍价格 / Membership Price</p>
+                            <div className="rounded-xl px-3 py-2">
+                              <p className="text-[10px] text-emerald-100/80">会籍价格 / Membership Price</p>
                               <p className="font-semibold text-emerald-200">{formatMoney(membershipPrice ?? undefined)}</p>
-                              <p className="mt-1 text-[10px] text-slate-500">激活费 / Activation Fee</p>
+                              <p className="mt-2 text-[10px] text-amber-100/80">激活费 / Activation Fee</p>
                               <p className="text-xs text-amber-200">{activationFeeText}</p>
                             </div>
 
@@ -1321,111 +1470,70 @@ export default function Home() {
                           </div>
                         </article>
                       );
-                    }
 
-                    const saveAmount =
-                      typeof row.memberPrice === "number" && typeof row.nonMemberPrice === "number"
-                        ? row.nonMemberPrice - row.memberPrice
-                        : null;
-                    const savePercent =
-                      saveAmount !== null && row.nonMemberPrice
-                        ? (saveAmount / row.nonMemberPrice) * 100
-                        : null;
-
-                    const groupClassDays = category === "group_class" ? getGroupClassDays(row.modeKey) : null;
-                    const memberPerDay =
-                      groupClassDays && typeof row.memberPrice === "number" ? row.memberPrice / groupClassDays : null;
-                    const nonMemberPerDay =
-                      groupClassDays && typeof row.nonMemberPrice === "number" ? row.nonMemberPrice / groupClassDays : null;
-
-                    if (category === "group_class") {
-                      return (
-                        <article key={row.key} className="py-2">
-                          <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-white/10 bg-[#0b1320]/60 text-xs md:grid-cols-6 md:text-sm">
-                            <div className="col-span-2 border-b border-white/10 px-3 py-2 md:col-span-2 md:border-b-0 md:border-r">
-                              <p className="font-semibold text-white">{index + 1}. {row.nameZh}</p>
-                              <p className="mt-0.5 text-[11px] text-slate-400">模式 / Mode: {row.mode ?? "-"}</p>
-                              <p className="text-[11px] text-slate-500">周期 / Duration: {groupClassDays ? `${groupClassDays} 天 / days` : "-"}</p>
-                            </div>
-
-                            <div className="border-b border-r border-white/10 px-3 py-2 md:border-b-0">
-                              <p className="text-[10px] text-slate-500">会员价 / Member</p>
-                              <p className="font-semibold text-emerald-200">{formatMoney(row.memberPrice)}</p>
-                            </div>
-
-                            <div className="border-b border-white/10 px-3 py-2 md:border-b-0 md:border-r">
-                              <p className="text-[10px] text-slate-500">非会员 / Non-member</p>
-                              <p className="font-semibold text-amber-200">{formatMoney(row.nonMemberPrice)}</p>
-                            </div>
-
-                            <div className="border-r border-white/10 px-3 py-2">
-                              <p className="text-[10px] text-slate-500">会员日均 / Member per day</p>
-                              <p className="text-cyan-200">{memberPerDay !== null ? `$${memberPerDay.toFixed(2)}` : "-"}</p>
-                            </div>
-
-                            <div className="px-3 py-2">
-                              <p className="text-[10px] text-slate-500">非会员日均 / Non-member per day</p>
-                              <p className="text-cyan-100">{nonMemberPerDay !== null ? `$${nonMemberPerDay.toFixed(2)}` : "-"}</p>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    }
-
-                    return (
-                      <article
-                        key={row.key}
-                        className="rounded-2xl border border-white/10 bg-[#090f1a] p-4 transition hover:-translate-y-0.5 hover:border-emerald-300/40"
-                      >
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-semibold text-white">{row.nameZh}</p>
-                            {category === "assessment" && row.nameEn && <p className="text-xs text-slate-400">{row.nameEn}</p>}
-                            {row.mode && <p className="text-xs text-slate-400">{row.mode}</p>}
-                          </div>
-                        </div>
-
-                        <div className={`grid gap-2 text-sm ${typeof row.nonMemberPrice === "number" && category !== "assessment" ? "grid-cols-2" : "grid-cols-1"}`}>
-                          <div>
-                            <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">{category === "assessment" ? "通用价" : "会员价"}</p>
-                            <p className="mt-1 text-xl font-semibold text-emerald-200">{formatMoney(category === "assessment" ? (row.generalPrice ?? row.memberPrice) : row.memberPrice)}</p>
-                          </div>
-                          {category !== "assessment" && typeof row.nonMemberPrice === "number" && (
-                            <div>
-                              <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">非会员</p>
-                              <p className="mt-1 text-xl font-semibold text-amber-200">{formatMoney(row.nonMemberPrice)}</p>
-                            </div>
-                          )}
-                        </div>
-
-                        {category !== "assessment" && typeof row.generalPrice === "number" && (
-                          <p className="mt-2 text-xs text-sky-200">通用价：{formatMoney(row.generalPrice)}</p>
-                        )}
-
-                        {saveAmount !== null && (
-                          <p className="mt-2 text-xs text-slate-300">
-                            节省 {formatMoney(saveAmount)} ({formatPercent(savePercent ?? undefined)})
-                          </p>
-                        )}
-
-                        {row.itemIds.flatMap((id) => benefitsByItemId.get(id) ?? []).length > 0 && (
-                          <div className="mt-2 rounded-lg border border-white/10 bg-white/5 p-2 text-xs text-slate-300">
-                            {Array.from(new Set(row.itemIds.flatMap((id) => benefitsByItemId.get(id) ?? []))).join(" / ")}
-                          </div>
-                        )}
-                      </article>
-                    );
                   })}
                 </div>
 
-                {category === "membership" && (
-                  <div className="mt-4 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-                    <h4 className="text-sm font-semibold text-cyan-100">New Signup / 新手福利</h4>
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                      {newSignupBenefits.map((benefit) => (
-                        <li key={benefit}>{benefit}</li>
-                      ))}
-                    </ul>
+                <div className="mt-5 rounded-2xl border border-cyan-300/30 bg-[linear-gradient(135deg,rgba(14,116,144,0.18),rgba(8,47,73,0.3))] p-4 md:p-5">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-cyan-100 md:text-base">New Signup / 新手福利</h4>
+                    <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] text-cyan-100">Included</span>
+                  </div>
+                  <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-slate-100">
+                    {newSignupBenefits.map((benefit) => (
+                      <li key={benefit}>{benefit}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                {groupedSections.groupClassRows && (
+                  <div className="mt-5 rounded-2xl border border-white/12 bg-[#0a1628]/70 p-3 md:p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h4 className="text-base font-semibold text-white">Group Classes · 团体课程</h4>
+                      <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] text-cyan-100">Hybrid Pricing</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {groupedSections.groupClassRows.map((row, index) => {
+                        const groupClassDays = getGroupClassDays(row.modeKey);
+                        const memberPerDay =
+                          groupClassDays && typeof row.memberPrice === "number" ? row.memberPrice / groupClassDays : null;
+                        const nonMemberPerDay =
+                          groupClassDays && typeof row.nonMemberPrice === "number" ? row.nonMemberPrice / groupClassDays : null;
+
+                        return (
+                          <article key={row.key} className="py-1.5">
+                            <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/12 bg-[linear-gradient(135deg,rgba(9,19,35,0.92),rgba(7,28,45,0.8))] text-xs md:grid-cols-6 md:text-sm">
+                              <div className="col-span-2 border-b border-white/10 px-3 py-2 md:col-span-2 md:border-b-0 md:border-r">
+                                <p className="font-semibold text-white">{index + 1}. {row.nameZh}</p>
+                                <p className="mt-0.5 text-[11px] text-slate-400">模式 / Mode: {row.mode ?? "-"}</p>
+                                <p className="text-[11px] text-slate-500">周期 / Duration: {groupClassDays ? `${groupClassDays} 天 / days` : "-"}</p>
+                              </div>
+
+                              <div className="border-b border-r border-white/10 px-3 py-2 md:border-b-0">
+                                <p className="text-[10px] text-slate-500">会员价 / Member</p>
+                                <p className="font-semibold text-emerald-200">{formatMoney(row.memberPrice)}</p>
+                              </div>
+
+                              <div className="border-b border-white/10 px-3 py-2 md:border-b-0 md:border-r">
+                                <p className="text-[10px] text-slate-500">非会员 / Non-member</p>
+                                <p className="font-semibold text-amber-200">{formatMoney(row.nonMemberPrice)}</p>
+                              </div>
+
+                              <div className="border-r border-white/10 px-3 py-2">
+                                <p className="text-[10px] text-slate-500">会员日均 / Member per day</p>
+                                <p className="text-cyan-200">{memberPerDay !== null ? `$${memberPerDay.toFixed(2)}` : "-"}</p>
+                              </div>
+
+                              <div className="px-3 py-2">
+                                <p className="text-[10px] text-slate-500">非会员日均 / Non-member per day</p>
+                                <p className="text-cyan-100">{nonMemberPerDay !== null ? `$${nonMemberPerDay.toFixed(2)}` : "-"}</p>
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </article>
@@ -1435,164 +1543,130 @@ export default function Home() {
               <article className={`${glass} relative overflow-hidden p-4 md:p-6`}>
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(16,185,129,0.2),transparent_35%),radial-gradient(circle_at_90%_85%,rgba(56,189,248,0.16),transparent_35%)]" />
 
-                <div className="relative mb-5 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-xl font-bold tracking-tight text-white">Store Credit / 储值计划</h3>
-                  </div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-100">
-                    <Sparkles size={14} />
-                    SMART VALUE TIERS
-                  </div>
-                </div>
+                <div className="relative overflow-hidden rounded-3xl border border-cyan-300/25 bg-[radial-gradient(circle_at_15%_15%,rgba(34,211,238,0.18),transparent_36%),radial-gradient(circle_at_85%_25%,rgba(16,185,129,0.2),transparent_36%),linear-gradient(140deg,#040a16_10%,#071225_42%,#051426_100%)] p-4 md:p-6">
+                  <div className="pointer-events-none absolute -left-24 -top-24 h-56 w-56 rounded-full bg-cyan-300/10 blur-3xl" />
+                  <div className="pointer-events-none absolute -bottom-24 right-8 h-56 w-56 rounded-full bg-emerald-300/10 blur-3xl" />
 
-                <div className="relative grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-                  <div className="overflow-hidden rounded-2xl border border-white/12 bg-[#070f1b]/90">
-                    <div className="grid grid-cols-4 border-b border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-medium uppercase tracking-[0.08em] text-slate-400">
-                      <p>Tier</p>
-                      <p>Recharge</p>
-                      <p>Membership Gift</p>
-                      <p>Bonus</p>
+                  <div className="relative mb-5 flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-500/15 px-3 py-1 text-[11px] font-semibold tracking-[0.08em] text-cyan-100">
+                        <Sparkles size={13} /> STORE CREDIT
+                      </p>
+                      <h3 className="text-2xl font-black tracking-tight text-white md:text-3xl">Store Credit / 储值计划</h3>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-right">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-100/80">Active Promotions</p>
+                      <p className="text-lg font-bold text-emerald-100">{promotionGroups.flatMap((g) => g.items).length} 项</p>
+                    </div>
+                  </div>
+
+                  <div className="relative grid gap-4 xl:grid-cols-[1.25fr_1fr]">
+                    <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-3">
+                      <div className="mb-3 flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-cyan-100">Additional Promotions & Benefits</h4>
+                        <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-100">Promo Rules</span>
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {promotionGroups.flatMap((group) => group.items).map((promo, index) => {
+                          const isRuleActive = pricingRules.some((r) => r.rule_code === promo.trigger.replace("Policy: ", ""));
+                          const isSelected = selectedPromoTrigger === promo.trigger;
+                          return (
+                            <button
+                              type="button"
+                              key={`${promo.trigger}-${index}`}
+                              onClick={() => setSelectedPromoTrigger(promo.trigger)}
+                              className={`group w-full rounded-xl border p-3 text-left transition-all duration-300 active:scale-[0.985] ${
+                                isSelected
+                                  ? "border-cyan-300/70 bg-gradient-to-br from-cyan-400/25 via-cyan-500/16 to-emerald-500/12 shadow-[0_0_0_1px_rgba(34,211,238,0.32),0_0_26px_rgba(34,211,238,0.22)]"
+                                  : isRuleActive
+                                    ? "border-emerald-300/40 bg-gradient-to-br from-emerald-500/14 to-cyan-500/8"
+                                    : "border-white/10 bg-[#0a1424]/70"
+                              }`}
+                            >
+                              <div className="flex items-start gap-2.5">
+                                <span
+                                  className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold transition-colors ${
+                                    isSelected
+                                      ? "bg-cyan-200 text-[#041320]"
+                                      : isRuleActive
+                                        ? "bg-emerald-300 text-slate-950"
+                                        : "bg-slate-700 text-slate-200"
+                                  }`}
+                                >
+                                  {index + 1}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold text-slate-100">{promo.title}</p>
+                                  <p className="mt-1 text-[11px] leading-5 text-slate-300">{promo.detail}</p>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    <div className="divide-y divide-white/10">
+                    <div className="grid gap-3">
                       {rechargePlans.map((plan, index) => {
+                        const isMidTier = index === 1;
                         const isTopTier = index === rechargePlans.length - 1;
+                        const isSelected = selectedRechargeIndex === index;
+
                         return (
-                          <div
-                            key={plan.amount}
-                            className={`grid grid-cols-4 items-center px-4 py-4 transition ${
-                              isTopTier
-                                ? "bg-gradient-to-r from-emerald-500/15 via-cyan-500/10 to-transparent"
-                                : "hover:bg-white/[0.03]"
+                          <button
+                            type="button"
+                            key={`${plan.amount}-gift`}
+                            onClick={() => setSelectedRechargeIndex(index)}
+                            className={`group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300 active:scale-[0.985] ${
+                              isSelected
+                                ? "border-cyan-300/65 bg-gradient-to-br from-cyan-500/16 via-sky-500/10 to-emerald-500/10 shadow-[0_0_0_1px_rgba(125,211,252,0.26),0_0_22px_rgba(34,211,238,0.14)]"
+                                : "border-white/12 bg-[#081120]/88"
                             }`}
                           >
-                            <div>
-                              <p className="text-xs text-slate-400">{`T0${index + 1}`}</p>
-                              <p className="text-sm font-semibold text-white">{plan.amountZh.replace("冲 ", "")}</p>
+                            <div className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"} bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.1),transparent)]`} />
+
+                            <div className="relative mb-2 flex items-center justify-between">
+                              <span className="text-base font-extrabold tracking-wide text-white md:text-lg">{plan.amount}</span>
+                              <Gift size={14} className={isSelected ? "text-cyan-100" : "text-emerald-200"} />
                             </div>
-                            <p className="text-lg font-bold text-emerald-200">{plan.amount}</p>
-                            <div>
-                              <p className="text-sm font-medium text-slate-100">{plan.membershipGift}</p>
-                              <p className="text-[10px] text-slate-400">{plan.membershipGiftZh}</p>
+
+                            <div className="relative flex items-end justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-white">{plan.membershipGift}</p>
+                                <p className="text-xs text-slate-300">{plan.membershipGiftZh}</p>
+                              </div>
+                              <ChevronRight size={16} className={`text-slate-300 transition-transform ${isSelected ? "translate-x-0.5" : "group-hover:translate-x-0.5"}`} />
                             </div>
-                            <p className="font-semibold text-cyan-200">{plan.bonusCredit}</p>
-                          </div>
+
+                            <p className="relative mt-2 text-xs text-cyan-100">
+                              Bonus Credit: <span className="font-bold">{plan.bonusCredit}</span>
+                            </p>
+
+                            <p className="relative mt-1 text-xs text-emerald-100/90">
+                              Gift Value / 赠送价值: <span className="font-semibold">{plan.totalValue}</span>
+                            </p>
+
+                            <div className="relative mt-3 flex items-center justify-end gap-2">
+                              {isMidTier && (
+                                <span className="inline-flex rounded-md border border-cyan-300/45 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-50">
+                                  Most Popular / 最受欢迎
+                                </span>
+                              )}
+
+                              {isTopTier && (
+                                <span className="inline-flex rounded-md border border-emerald-300/40 bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold text-emerald-50">
+                                  Best Value / 最划算
+                                </span>
+                              )}
+                            </div>
+                          </button>
                         );
                       })}
+
                     </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {rechargePlans.map((plan, index) => {
-                      const isMidTier = index === 1;
-                      const isTopTier = index === rechargePlans.length - 1;
-                      return (
-                        <div
-                          key={`${plan.amount}-gift`}
-                          className={`relative overflow-hidden rounded-2xl border p-4 ${
-                            isTopTier
-                              ? "border-emerald-300/45 bg-gradient-to-br from-emerald-500/18 via-cyan-500/12 to-[#0a1526]"
-                              : isMidTier
-                                ? "border-cyan-300/35 bg-gradient-to-br from-cyan-500/12 via-blue-500/8 to-[#0a1526]"
-                                : "border-white/12 bg-[#081120]/85"
-                          }`}
-                        >
-                          <div className="mb-2 flex items-center justify-between">
-                            <span className="text-xs text-slate-400">{plan.amount}</span>
-                            <Gift size={14} className={isTopTier ? "text-emerald-100" : isMidTier ? "text-cyan-100" : "text-emerald-200"} />
-                          </div>
-                          <p className="text-sm font-semibold text-white">{plan.membershipGift}</p>
-                          <p className="text-xs text-slate-400">{plan.membershipGiftZh}</p>
-
-                          <p className="mt-2 text-xs text-cyan-200/85">
-                            Bonus Credit: <span className="font-semibold text-cyan-100">{plan.bonusCredit}</span>
-                          </p>
-
-                          {isMidTier && (
-                            <div className="mt-3 inline-flex rounded-md border border-cyan-300/45 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-50">
-                              Most Popular / 最受欢迎
-                            </div>
-                          )}
-
-                          {isTopTier && (
-                            <div className="mt-3 inline-flex rounded-md border border-emerald-300/40 bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold text-emerald-50">
-                              Best Value / 最划算
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
                   </div>
                 </div>
-
-                <section className={`${glass} mt-4 p-4`}>
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-emerald-200">Promotion Highlights / 规则高亮</h2>
-            <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-100">
-              Additional Promotions & Benefits
-            </span>
-          </div>
-
-          <div className="mt-4">
-            <div className="mb-3 flex flex-wrap gap-2">
-              {promotionGroups.map((group) => (
-                <button
-                  key={group.key}
-                  onClick={() => setActivePromotionGroup(group.key)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                    activePromotionGroup === group.key
-                      ? "border-emerald-300/50 bg-emerald-500/15 text-emerald-100"
-                      : "border-white/12 bg-white/[0.03] text-slate-300 hover:border-emerald-300/30 hover:text-emerald-100"
-                  }`}
-                >
-                  {group.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {(promotionGroups.find((g) => g.key === activePromotionGroup)?.items ?? promotionGroups[0]?.items ?? []).map((promo, index) => {
-                const isActive = pricingRules.some((r) => r.rule_code === promo.trigger.replace("Policy: ", ""));
-                return (
-                  <div
-                    key={promo.trigger}
-                    className={`group relative overflow-hidden rounded-2xl border p-4 transition-all duration-200 ${
-                      isActive
-                        ? "border-emerald-300/45 bg-gradient-to-br from-emerald-400/15 via-emerald-500/10 to-transparent shadow-[0_0_0_1px_rgba(16,185,129,0.15)]"
-                        : "border-white/12 bg-white/[0.03] hover:border-emerald-300/25 hover:bg-emerald-500/[0.06]"
-                    }`}
-                  >
-                    <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-emerald-400/10 blur-2xl" />
-
-                    <div className="relative flex items-start gap-3">
-                      <div
-                        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-                          isActive ? "bg-emerald-300/90 text-slate-950" : "bg-slate-700 text-slate-200"
-                        }`}
-                      >
-                        {index + 1}
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold leading-5 text-slate-100">{promo.title}</p>
-                        <p className="mt-1.5 text-xs leading-5 text-slate-300">{promo.detail}</p>
-                        <p
-                          className={`mt-3 inline-flex rounded-md border px-2 py-1 text-[10px] tracking-wide ${
-                            isActive
-                              ? "border-emerald-300/40 bg-emerald-500/15 text-emerald-100"
-                              : "border-white/10 bg-slate-800/60 text-slate-400"
-                          }`}
-                        >
-                          {promo.trigger}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
               </article>
              
             )}
@@ -1601,47 +1675,89 @@ export default function Home() {
               <article className={`${glass} p-4`}>
                 <div className="mb-4 flex items-end justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Personal Training / 私教课程</h3>
-                    <p className="text-xs text-slate-400">分栏清单布局 / Split-list layout</p>
+                    <h3 className="text-lg font-semibold text-white">Personal Training</h3>
+                    <p className="text-sm font-medium text-emerald-200">私教课程</p>
+                    <p className="mt-1 text-xs text-slate-400">Split-list layout / 分栏清单布局</p>
                   </div>
+                </div>
+
+                <div className="mb-4 rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm text-slate-100">
+                  <p>*All programs are customized based on professional assessment and progress tracking. Designed for real results, not just workouts.</p>
+                  <p className="mt-1 text-emerald-100/90">*所有课程均基于专业评估与进度追踪进行定制。目标是实现真实效果，而不仅仅是完成训练。</p>
                 </div>
 
                 <div className="space-y-3">
                   {groupedSections.ptSection.rows.map((row, index) => {
                     const info = personalTrainingProgramInfo[row.nameZh];
+                    const isAssessmentItem = row.key.startsWith("assessment:");
+                    const isFirstAssessment =
+                      isAssessmentItem &&
+                      (index === 0 || !groupedSections.ptSection!.rows[index - 1].key.startsWith("assessment:"));
                     const ProgramIcon = info?.icon ?? Activity;
+                    const isSelected = ptPreviewRow?.key === row.key;
                     return (
+                      <div key={row.key}>
+                        {isFirstAssessment && (
+                          <div className="mb-2 mt-2 rounded-xl px-3 py-2">
+                            <p className="text-sm font-semibold text-white">Assessment</p>
+                            <p className="text-xs font-medium text-emerald-200">专项评估</p>
+          
+                          </div>
+                        )}
                       <article
-                        key={row.key}
-                        onClick={() => openPtCalculator(row)}
-                        className="group relative overflow-hidden rounded-xl border border-white/10 bg-black px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] transition-all duration-500 hover:border-emerald-300/40 hover:shadow-[0_0_30px_rgba(16,185,129,0.22)]"
+                        onClick={() => {
+                          if (isAssessmentItem) {
+                            setPtPreviewRow(row);
+                            return;
+                          }
+                          handlePtCardTap(row);
+                        }}
+                        className={`group relative overflow-hidden rounded-xl border bg-black px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] transition-all duration-500 ${
+                          isAssessmentItem ? "" : "active:scale-[0.992]"
+                        } ${
+                          isSelected
+                            ? "border-emerald-300/70 shadow-[0_0_0_1px_rgba(16,185,129,0.3),0_0_34px_rgba(16,185,129,0.28)]"
+                            : "border-white/10 hover:border-emerald-300/40 hover:shadow-[0_0_30px_rgba(16,185,129,0.22)]"
+                        } ${isAssessmentItem ? "cursor-default" : "cursor-pointer"}`}
                       >
-                        <div className="pointer-events-none absolute inset-0 rounded-xl border border-emerald-300/0 opacity-0 transition-all duration-500 group-hover:border-emerald-300/35 group-hover:opacity-100" />
-                        <div className="pointer-events-none absolute -inset-px rounded-xl bg-gradient-to-r from-emerald-400/0 via-emerald-300/20 to-cyan-300/0 opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-100 group-hover:animate-[pulse_2.8s_ease-in-out_infinite]" />
+                        <div className={`pointer-events-none absolute inset-0 rounded-xl border transition-all duration-500 ${isSelected ? "border-emerald-300/55 opacity-100" : "border-emerald-300/0 opacity-0 group-hover:border-emerald-300/35 group-hover:opacity-100"}`} />
+                        <div className={`pointer-events-none absolute -inset-px rounded-xl bg-gradient-to-r from-emerald-400/0 via-emerald-300/20 to-cyan-300/0 blur-md transition-opacity duration-500 ${isSelected ? "opacity-100 animate-[pulse_2.8s_ease-in-out_infinite]" : "opacity-0 group-hover:opacity-100 group-hover:animate-[pulse_2.8s_ease-in-out_infinite]"}`} />
 
                         <div className="mb-2 flex items-center justify-between gap-3">
                           <div className="flex items-start gap-2">
-                            <div className="mt-0.5 rounded-md border border-emerald-300/30 bg-emerald-500/10 p-1.5">
-                              <ProgramIcon size={14} className="text-emerald-200" />
+                            <div className="mt-0.5 flex items-center gap-2">
+                              {isSelected && (
+                                <span className="inline-flex h-5 w-5 items-center justify-center">
+                                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-200 shadow-[0_0_10px_rgba(167,243,208,0.95)] animate-[pulse_1.6s_ease-in-out_infinite]" />
+                                </span>
+                              )}
+                              <div className="rounded-md border border-emerald-300/30 bg-emerald-500/10 p-1.5">
+                                <ProgramIcon size={14} className="text-emerald-200" />
+                              </div>
                             </div>
                             <div>
-                              <p className="text-sm font-semibold text-white">{index + 1}. {row.nameZh}</p>
-                              {row.nameEn && <p className="text-xs text-slate-400">{row.nameEn}</p>}
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-white">{index + 1}. {row.nameZh}</p>
+                                {row.key.startsWith("assessment:") && (
+                                  <span className="rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2 py-0.5 text-[10px] text-cyan-100">
+                                    专项评估
+                                  </span>
+                                )}
+                              </div>
+                              {row.nameEn && <p className="text-xs text-slate-400">{row.nameEn}</p>
+                              }
                             </div>
                           </div>
-                          <span className="inline-flex items-center text-[11px] text-emerald-200/90">
-                            <span className="h-2 w-2 rounded-full bg-emerald-300/90 shadow-[0_0_8px_rgba(52,211,153,0.8)] opacity-0 transition-all duration-500 group-hover:opacity-100 group-hover:animate-[pulse_2.8s_ease-in-out_infinite]" />
-                          </span>
                         </div>
 
                         <div className="grid gap-3 md:grid-cols-2">
                           <div className="text-xs">
                             <p className="text-slate-500">训练重点 / Training Focus</p>
-                            <p className="mt-1 text-slate-300">{info?.focus ?? "-"}</p>
+                            <p className="mt-1 text-slate-300">{isAssessmentItem ? "专项评估与指标解读 / Assessment insights and metrics review" : (info?.focus ?? "-")}</p>
                           </div>
                           <div className="text-xs">
                             <p className="text-slate-500">适合人群 / Ideal For</p>
-                            <p className="mt-1 text-slate-300">{info?.idealFor ?? "-"}</p>
+                            <p className="mt-1 text-slate-300">{isAssessmentItem ? "首次建档、复测追踪客户 / First-time and follow-up clients" : (info?.idealFor ?? "-")}</p>
                           </div>
                         </div>
 
@@ -1658,6 +1774,7 @@ export default function Home() {
                           </div>
                         </div>
                       </article>
+                      </div>
                     );
                   })}
                 </div>
@@ -1666,136 +1783,91 @@ export default function Home() {
             )}
 
             {groupedSections.cyclePlanRows && (
-              <article className={`${glass} p-4`}>
-                <div className="mb-4 flex items-center justify-between gap-2">
+              <article className={`${glass} overflow-hidden p-4 md:p-5`}>
+                <div className="mb-5 flex items-center justify-between gap-2">
                   <h3 className="text-xl font-bold tracking-tight text-white">Cycle Plans / 周期计划</h3>
-                  <p className="text-xs font-medium text-cyan-200">Timeline Ledger</p>
+                  <p className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-100">Program Matrix</p>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {groupedSections.cyclePlanRows.map((row, idx) => (
-                    <section
+                    <button
+                      type="button"
                       key={row.program}
-                      onClick={() => openCyclePlanCalculator(row)}
-                      className="cursor-pointer border-l-2 border-cyan-300/55 bg-[#070f1b] px-4 py-3.5 transition hover:bg-[#091428]"
+                      onClick={() => handleCyclePlanCardTap(row)}
+                      className={`group relative w-full overflow-hidden rounded-2xl border bg-[linear-gradient(135deg,#080f1d_0%,#0b1630_56%,#10142a_100%)] p-4 text-left transition-all duration-300 active:scale-[0.995] ${
+                        cyclePreviewPlan?.program === row.program
+                          ? "border-violet-300/55 shadow-[0_0_28px_rgba(167,139,250,0.2)]"
+                          : "border-white/12 hover:border-violet-300/45 hover:shadow-[0_0_28px_rgba(167,139,250,0.18)]"
+                      }`}
                     >
-                      <div className="flex flex-col gap-3.5 xl:flex-row xl:items-center xl:justify-between">
-                        <div className="min-w-[240px] leading-snug tracking-[0.01em]">
-                          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/95">T{String(idx + 1).padStart(2, "0")}</p>
-                          <p className="mt-1.5 text-[17px] font-semibold leading-snug text-white/95">{row.program}</p>
-                        </div>
+                      <div className={`pointer-events-none absolute inset-0 transition-opacity duration-300 bg-[radial-gradient(circle_at_85%_18%,rgba(167,139,250,0.2),transparent_35%)] ${cyclePreviewPlan?.program === row.program ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
 
-                        <div className="grid flex-1 grid-cols-2 gap-x-7 gap-y-2.5 text-sm md:grid-cols-4">
-                          <div className="leading-snug tracking-[0.01em]">
-                            <p className="text-[11px] font-medium text-slate-400">每周次数 / Weekly</p>
-                            <p className="mt-0.5 text-[15px] font-semibold text-cyan-50">{row.weeklySessions}</p>
+                      <div className="relative grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-center">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            {cyclePreviewPlan?.program === row.program && (
+                              <span className="inline-flex h-5 w-5 items-center justify-center">
+                                <span className="h-2.5 w-2.5 rounded-full bg-violet-200 shadow-[0_0_12px_rgba(196,181,253,0.95)] animate-[pulse_1.5s_ease-in-out_infinite]" />
+                              </span>
+                            )}
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-300/35 bg-violet-500/15 text-sm font-bold text-violet-100">
+                              {idx + 1}
+                            </div>
                           </div>
-                          <div className="leading-snug tracking-[0.01em]">
-                            <p className="text-[11px] font-medium text-slate-400">最少课时 / Min Sessions</p>
-                            <p className="mt-0.5 text-[15px] font-semibold text-cyan-50">{row.minSessions}</p>
-                          </div>
-                          <div className="leading-snug tracking-[0.01em]">
-                            <p className="text-[11px] font-medium text-slate-400">跟进次数 / Followups</p>
-                            <p className="mt-0.5 text-[15px] font-semibold text-cyan-50">{row.wpdFollowups}</p>
-                          </div>
-                          <div className="leading-snug tracking-[0.01em]">
-                            <p className="text-[11px] font-medium text-slate-400">评估报告 / Assessments</p>
-                            <p className="mt-0.5 text-[15px] font-semibold text-cyan-50">{row.assessmentsReports}</p>
+                          <div>
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-violet-200/80">Cycle Program / 周期方案</p>
+                            <p className="mt-0.5 text-[17px] font-semibold text-white">{row.program}</p>
                           </div>
                         </div>
 
-                        <div className="min-w-[320px] space-y-1.5 text-sm leading-snug tracking-[0.01em]">
-                          <p className="font-medium text-emerald-100">赠送会籍 / Membership Gift：<span className="font-semibold text-emerald-50">{row.membershipGift}</span></p>
-                          <p className="font-medium text-cyan-100">额外权益 / Extra Benefits：<span className="font-semibold text-cyan-50">{row.extraBenefits}</span></p>
+                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+                            <p className="text-[10px] leading-tight text-slate-400">Weekly</p>
+                            <p className="text-[10px] leading-tight text-slate-500">每周次数</p>
+                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.weeklySessions}</p>
+                          </div>
+                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+                            <p className="text-[10px] leading-tight text-slate-400">Min Sessions</p>
+                            <p className="text-[10px] leading-tight text-slate-500">最少课时</p>
+                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.minSessions}</p>
+                          </div>
+                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+                            <p className="text-[10px] leading-tight text-slate-400">Followups</p>
+                            <p className="text-[10px] leading-tight text-slate-500">跟进次数</p>
+                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.wpdFollowups}</p>
+                          </div>
+                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+                            <p className="text-[10px] leading-tight text-slate-400">Assessments</p>
+                            <p className="text-[10px] leading-tight text-slate-500">评估报告</p>
+                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.assessmentsReports}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 lg:text-right">
+                          <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2">
+                            <p className="text-[10px] leading-tight text-emerald-100/80">Membership Gift</p>
+                            <p className="text-[10px] leading-tight text-emerald-100/70">赠送会籍</p>
+                            <p className="mt-1 text-sm font-semibold text-emerald-50">{row.membershipGift}</p>
+                          </div>
+                          <p className="text-xs text-violet-100/90">Extra Benefits / 额外权益：<span className="font-medium text-violet-50">{row.extraBenefits}</span></p>
                         </div>
                       </div>
-                    </section>
+                    </button>
                   ))}
                 </div>
-                <div className="mt-4 rounded-xl border border-cyan-300/25 bg-cyan-500/10 p-4">
-                    <h4 className="text-sm font-semibold text-cyan-100">Program Benefits / 课程福利</h4>
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                      {programBenefits.map((benefit) => (
-                        <li key={benefit}>{benefit}</li>
-                      ))}
-                    </ul>
-                  </div>
+
+                <div className="mt-4 rounded-xl border border-violet-300/25 bg-violet-500/10 p-4">
+                  <h4 className="text-sm font-semibold text-violet-100">Program Benefits / 课程福利</h4>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                    {programBenefits.map((benefit) => (
+                      <li key={benefit}>{benefit}</li>
+                    ))}
+                  </ul>
+                </div>
               </article>
             )}
           </section>
-        )}
-
-    
-
-        {!clientDemoMode && tab === "calculator" && (
-          <section className="mt-5 grid gap-4 lg:grid-cols-2">
-            <article className={`${glass} p-5`}>
-              <h2 className="text-lg font-semibold text-white">Recharge Calculator</h2>
-              <label className="mt-3 block text-sm">Amount ($)</label>
-              <input
-                type="number"
-                value={recharge}
-                onChange={(e) => setRecharge(Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-3 py-2"
-              />
-              <p className="mt-3 text-sm text-slate-300">Plan: <span className="text-emerald-200">{rechargeResult.plan}</span></p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
-                {rechargeResult.benefits.map((b) => <li key={b}>{b}</li>)}
-              </ul>
-              {!presentationMode && (
-                <button
-                  onClick={() => logQuery(`recharge:${recharge}`, "recharge", { recharge }, rechargeResult)}
-                  className={`${solidButtonBase} mt-4 py-2 text-sm bg-indigo-500/90 hover:bg-indigo-400/90`}
-                >
-                  Save log
-                </button>
-              )}
-            </article>
-
-            <article className={`${glass} p-5`}>
-              <h2 className="text-lg font-semibold text-white">Sessions Calculator</h2>
-              <label className="mt-3 block text-sm">Sessions</label>
-              <input
-                type="number"
-                value={sessions}
-                onChange={(e) => setSessions(Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-3 py-2"
-              />
-              <p className="mt-3 text-sm text-slate-300">Plan: <span className="text-indigo-200">{sessionResult.plan}</span></p>
-              <p className="mt-1 text-sm text-slate-300">{sessionResult.conditions}</p>
-              {!presentationMode && (
-                <button
-                  onClick={() => logQuery(`sessions:${sessions}`, "sessions", { sessions }, sessionResult)}
-                  className={`${solidButtonBase} mt-4 py-2 text-sm bg-indigo-500/90 hover:bg-indigo-400/90`}
-                >
-                  Save log
-                </button>
-              )}
-            </article>
-          </section>
-        )}
-
-        {!clientDemoMode && tab === "qa" && (
-          <section className={`${glass} mt-5 p-5`}>
-            <h2 className="text-lg font-semibold text-white">Q&A Assistant</h2>
-            <textarea
-              rows={3}
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              className="mt-3 w-full rounded-xl border border-white/15 bg-black/20 px-3 py-2"
-            />
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-200">{qaAnswer}</div>
-            {!presentationMode && (
-              <button
-                onClick={() => logQuery(question, "qa", { question }, { qaAnswer })}
-                className={`${solidButtonBase} mt-4 py-2 text-sm bg-indigo-500/90 hover:bg-indigo-400/90`}
-              >
-                Save log
-              </button>
-            )}
-          </section>
-        )}
-
 
       {selectedPtRow && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-xl">
@@ -2284,21 +2356,33 @@ export default function Home() {
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {[12, 24, 36, 48].map((q) => (
-                      <button
-                        key={q}
-                        onClick={() => {
-                          if (cyclePtPreset === "member_1v1") setCycleQtyMember1v1(q);
-                          else if (cyclePtPreset === "non_member_1v1") setCycleQtyNonMember1v1(q);
-                          else if (cyclePtPreset === "member_1v2") setCycleQtyMember1v2(q);
-                          else setCycleQtyNonMember1v2(q);
-                          setCycleQtyInputStr(String(q));
-                        }}
-                        className="rounded-lg border border-white/12 px-3 py-1 text-xs text-slate-300 hover:border-cyan-300/40"
-                      >
-                        {q} 课时
-                      </button>
-                    ))}
+                    {[12, 24, 36, 48].map((q) => {
+                      const isSelected =
+                        (cyclePtPreset === "member_1v1" && cycleQtyMember1v1 === q) ||
+                        (cyclePtPreset === "non_member_1v1" && cycleQtyNonMember1v1 === q) ||
+                        (cyclePtPreset === "member_1v2" && cycleQtyMember1v2 === q) ||
+                        (cyclePtPreset === "non_member_1v2" && cycleQtyNonMember1v2 === q);
+
+                      return (
+                        <button
+                          key={q}
+                          onClick={() => {
+                            if (cyclePtPreset === "member_1v1") setCycleQtyMember1v1(q);
+                            else if (cyclePtPreset === "non_member_1v1") setCycleQtyNonMember1v1(q);
+                            else if (cyclePtPreset === "member_1v2") setCycleQtyMember1v2(q);
+                            else setCycleQtyNonMember1v2(q);
+                            setCycleQtyInputStr(String(q));
+                          }}
+                          className={`rounded-lg border px-3 py-1 text-xs transition-colors ${
+                            isSelected
+                              ? "border-cyan-300/70 bg-cyan-500/20 text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,0.35)]"
+                              : "border-white/12 text-slate-300 hover:border-cyan-300/40"
+                          }`}
+                        >
+                          {q} 课时
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
