@@ -700,11 +700,6 @@ export default function Home() {
   }
 
   function handlePtCardTap(row: PtRow) {
-    if (presentationMode) {
-      openPtCalculator(row);
-      return;
-    }
-
     if (ptPreviewRow?.key === row.key) {
       openPtCalculator(row);
       return;
@@ -1033,11 +1028,6 @@ export default function Home() {
   }
 
   function handleCyclePlanCardTap(row: CyclePlanRow) {
-    if (presentationMode) {
-      openCyclePlanCalculator(row);
-      return;
-    }
-
     if (cyclePreviewPlan?.program === row.program) {
       openCyclePlanCalculator(row);
       return;
