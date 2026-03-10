@@ -1,50 +1,46 @@
-export type PricingItem = {
-
-  id: string;
-
-  category: "membership" | "group_class" | "personal_training" | "assessment" | "cycle_plan" | "stored_value";
-
-  name_zh: string;
-
-  name_en?: string;
-
-  member_type?: "member" | "non_member";
-
-  session_mode?: "1v1" | "1v2" | "single" | "weekly_pass" | "monthly_pass";
-
-  price?: number;
-
-  meta?: Record<string, unknown>;
-
-};
-
-
+import type { PricingItem } from "@/types/pricing";
 
 export const mockPricing: PricingItem[] = [
-
   { id: "m1", category: "membership", name_zh: "日卡", session_mode: "single", price: 35 },
-
   { id: "m2", category: "membership", name_zh: "周卡", session_mode: "weekly_pass", price: 99 },
-
   { id: "m3", category: "membership", name_zh: "月卡", session_mode: "monthly_pass", price: 175 },
-
   { id: "m4", category: "membership", name_zh: "年卡（按月付）", session_mode: "monthly_pass", price: 99, meta: { note: "年卡每个月支付99" } },
-
   { id: "g1", category: "group_class", name_zh: "单次课程", member_type: "member", session_mode: "single", price: 20 },
-
   { id: "g2", category: "group_class", name_zh: "单次课程", member_type: "non_member", session_mode: "single", price: 35 },
-
   { id: "s1", category: "stored_value", name_zh: "储值卡3000", price: 3000, meta: { gift_membership: "1个月", gift_amount: 300, gift_total_value: 595 } },
-
   { id: "s2", category: "stored_value", name_zh: "储值卡6000", price: 6000, meta: { gift_membership: "6个月", gift_amount: 600, gift_total_value: 1314 } },
-
   { id: "s3", category: "stored_value", name_zh: "储值卡9000", price: 9000, meta: { gift_membership: "1年", gift_amount: 1500, gift_total_value: 3161 } },
-
   { id: "c1", category: "cycle_plan", name_zh: "6周计划", meta: { min_sessions: 12, sessions_per_week: "2-4" } },
-
   { id: "c2", category: "cycle_plan", name_zh: "12周计划", meta: { min_sessions: 24, sessions_per_week: "2-4" } },
-
   { id: "c3", category: "cycle_plan", name_zh: "24周计划", meta: { min_sessions: 48, sessions_per_week: "2-4" } },
-
+  { id: "a1", category: "assessment", name_zh: "饮食评估和饮食计划设计", price: 120 },
+  { id: "a2", category: "assessment", name_zh: "专业身体评估与周期计划", price: 120 },
+  { id: "pt1", category: "personal_training", name_zh: "基础力量训练", member_type: "member", session_mode: "1v1", price: 100 },
+  { id: "pt2", category: "personal_training", name_zh: "基础力量训练", member_type: "member", session_mode: "1v2", price: 70 },
+  { id: "pt3", category: "personal_training", name_zh: "基础力量训练", member_type: "non_member", session_mode: "1v1", price: 115 },
+  { id: "pt4", category: "personal_training", name_zh: "基础力量训练", member_type: "non_member", session_mode: "1v2", price: 85 },
+  { id: "pt5", category: "personal_training", name_zh: "体型重塑", member_type: "member", session_mode: "1v1", price: 100 },
+  { id: "pt6", category: "personal_training", name_zh: "体型重塑", member_type: "member", session_mode: "1v2", price: 70 },
+  { id: "pt7", category: "personal_training", name_zh: "体型重塑", member_type: "non_member", session_mode: "1v1", price: 115 },
+  { id: "pt8", category: "personal_training", name_zh: "体型重塑", member_type: "non_member", session_mode: "1v2", price: 85 },
+  { id: "pt9", category: "personal_training", name_zh: "拳击体能", member_type: "member", session_mode: "1v1", price: 115 },
+  { id: "pt10", category: "personal_training", name_zh: "拳击体能", member_type: "member", session_mode: "1v2", price: 85 },
+  { id: "pt11", category: "personal_training", name_zh: "拳击体能", member_type: "non_member", session_mode: "1v1", price: 130 },
+  { id: "pt12", category: "personal_training", name_zh: "拳击体能", member_type: "non_member", session_mode: "1v2", price: 100 },
+  { id: "pt13", category: "personal_training", name_zh: "体态矫正", member_type: "member", session_mode: "1v1", price: 115 },
+  { id: "pt14", category: "personal_training", name_zh: "体态矫正", member_type: "member", session_mode: "1v2", price: 85 },
+  { id: "pt15", category: "personal_training", name_zh: "体态矫正", member_type: "non_member", session_mode: "1v1", price: 130 },
+  { id: "pt16", category: "personal_training", name_zh: "体态矫正", member_type: "non_member", session_mode: "1v2", price: 100 },
+  { id: "pt17", category: "personal_training", name_zh: "功能训练", member_type: "member", session_mode: "1v1", price: 115 },
+  { id: "pt18", category: "personal_training", name_zh: "功能训练", member_type: "member", session_mode: "1v2", price: 85 },
+  { id: "pt19", category: "personal_training", name_zh: "功能训练", member_type: "non_member", session_mode: "1v1", price: 130 },
+  { id: "pt20", category: "personal_training", name_zh: "功能训练", member_type: "non_member", session_mode: "1v2", price: 100 },
+  { id: "pt21", category: "personal_training", name_zh: "疼痛管理", member_type: "member", session_mode: "1v1", price: 135 },
+  { id: "pt22", category: "personal_training", name_zh: "疼痛管理", member_type: "member", session_mode: "1v2", price: 95 },
+  { id: "pt23", category: "personal_training", name_zh: "疼痛管理", member_type: "non_member", session_mode: "1v1", price: 150 },
+  { id: "pt24", category: "personal_training", name_zh: "疼痛管理", member_type: "non_member", session_mode: "1v2", price: 110 },
+  { id: "pt25", category: "personal_training", name_zh: "孕期产后", member_type: "member", session_mode: "1v1", price: 135 },
+  { id: "pt26", category: "personal_training", name_zh: "孕期产后", member_type: "member", session_mode: "1v2", price: 95 },
+  { id: "pt27", category: "personal_training", name_zh: "孕期产后", member_type: "non_member", session_mode: "1v1", price: 150 },
+  { id: "pt28", category: "personal_training", name_zh: "孕期产后", member_type: "non_member", session_mode: "1v2", price: 110 },
 ];
-

@@ -1,0 +1,205 @@
+{
+  "schemaVersion": "1.1",
+  "locale": {
+    "default": "zh",
+    "supported": ["zh", "en"]
+  },
+  "tabs": [
+    { "id": "all", "label": { "zh": "全部", "en": "All" } },
+    { "id": "membership", "label": { "zh": "会员&团课", "en": "Membership & Group Classes" } },
+    { "id": "personal_training", "label": { "zh": "私教课程", "en": "Personal Training" } },
+    { "id": "cycle_plan", "label": { "zh": "周期计划", "en": "Program Cycles" } },
+    { "id": "stored_value", "label": { "zh": "储值计划", "en": "Stored Value" } }
+  ],
+  "pages": {
+    "membership": {
+      "copy": {
+        "sectionTitle": { "zh": "会员&团课", "en": "Membership & Group Classes" },
+        "cycleLabels": {
+          "day": { "zh": "日卡", "en": "Day Pass" },
+          "week": { "zh": "周卡", "en": "Week Pass" },
+          "month": { "zh": "月卡", "en": "Month Pass" },
+          "year": { "zh": "年卡", "en": "Annual Pass" },
+          "membership": { "zh": "会籍", "en": "Membership" }
+        },
+        "coreAccessItems": [
+          { "zh": "全日入场", "en": "FULL DAY CLUB ENTRY" },
+          { "zh": "餐饮与餐厅区", "en": "OXYGEN BAR & CAFE" },
+          { "zh": "力量、有氧、训练、拉伸区、拳击区", "en": "STRENGTH AREA · CARDIO AREA · STRETCHING AREA · BOXING AREA" },
+          { "zh": "全面体脂测试与详细报告", "en": "BODY COMPOSITION SCAN + REPORT" },
+          { "zh": "电影、桌游、娱乐区", "en": "LOUNGE & RECREATION AREA" },
+          { "zh": "私人储物柜", "en": "PRIVATE KEYLESS LOCKERS" },
+          { "zh": "舒缓干桑拿", "en": "THERAPY DRY SAUNA" },
+          { "zh": "私人洗浴间", "en": "PRIVATE SHOWER" }
+        ],
+        "bonusItems": {
+          "monthly": [
+            { "zh": "饮品券", "en": "Drink Voucher", "qty": 1 },
+            { "zh": "餐券", "en": "Meal Voucher", "qty": 1 },
+            { "zh": "周卡券", "en": "Weekly Pass", "qty": 1 }
+          ],
+          "annual": [
+            { "zh": "饮品券", "en": "Drink Voucher", "qty": 3 },
+            { "zh": "餐券", "en": "Meal Voucher", "qty": 3 },
+            { "zh": "周卡券", "en": "Weekly Pass", "qty": 3 }
+          ],
+          "none": { "zh": "无", "en": "None" }
+        },
+        "activationFeeCopy": {
+          "annual": {
+            "zh": "$120（年卡一次性付清可免）",
+            "en": "$120 (Waived only with annual full payment)"
+          },
+          "monthly": {
+            "zh": "$120（需收取）",
+            "en": "$120 (Applied)"
+          },
+          "default": { "zh": "-", "en": "-" }
+        },
+        "newSignupTitle": { "zh": "新手福利", "en": "New Signup" },
+        "newSignupBadge": { "zh": "已包含", "en": "Included" },
+        "newSignupBenefits": [
+          {
+            "zh": "首月包括一次一对一专属身体评估",
+            "en": "1 Professional Personal Wellness Consultation by Program Director"
+          },
+          { "zh": "一份专属训练计划", "en": "1 Month Wellness Training Program by Program Director" },
+          { "zh": "一次营养评估及饮食计划设计", "en": "1 Personal Nutrition Assessment and Planning" },
+          { "zh": "一次团课体验", "en": "1 Group Training Session" }
+        ],
+        "groupClass": {
+          "title": { "zh": "团体课程", "en": "Group Classes" },
+          "badge": { "zh": "混合定价", "en": "Hybrid Pricing" },
+          "columns": {
+            "member": { "zh": "会员价", "en": "Member" },
+            "nonMember": { "zh": "非会员", "en": "Non-member" },
+            "memberPerDay": { "zh": "会员日均", "en": "Member per day" },
+            "nonMemberPerDay": { "zh": "非会员日均", "en": "Non-member per day" }
+          }
+        }
+      }
+    },
+    "storedValue": {
+      "copy": {
+        "title": { "zh": "储值计划", "en": "Store Credit" },
+        "promoTitle": { "zh": "更多优惠与福利", "en": "Additional Promotions & Benefits" },
+        "promoBadge": { "zh": "活动规则", "en": "Promo Rules" },
+        "activePromotions": { "zh": "当前活动", "en": "Active Promotions" },
+        "promotionHighlights": [
+          {
+            "group": { "zh": "新客优惠", "en": "New Client" },
+            "title": { "zh": "首次体验课后30天内", "en": "Within 30 days after first trial" },
+            "detail": {
+              "zh": "上课节数的20%可转为续费抵扣积分",
+              "en": "20% of completed sessions converted to Training Credit for renewal"
+            },
+            "trigger": "Policy: TRIAL_30D_20PCT_CREDIT"
+          },
+          {
+            "group": { "zh": "续费优惠", "en": "Renewal" },
+            "title": { "zh": "体验后30天内续课", "en": "Renew within 30 days after trial" },
+            "detail": {
+              "zh": "上课节数的40%可转为续费积分",
+              "en": "40% of completed sessions converted to Training Credit"
+            },
+            "trigger": "Policy: RENEW_30D_40PCT_CREDIT"
+          },
+          {
+            "group": { "zh": "推荐优惠", "en": "Referral" },
+            "title": { "zh": "推荐优惠", "en": "Referral Program" },
+            "detail": {
+              "zh": "带新客消费满$1,000，双方各赠送1个月会员",
+              "en": "After referee spends $1,000, both get 1-month membership"
+            },
+            "trigger": "Policy: REFERRAL_BOTH_GET_1MONTH"
+          },
+          {
+            "group": { "zh": "升级优惠", "en": "Upgrade" },
+            "title": { "zh": "月卡升年卡", "en": "Monthly to Annual Upgrade" },
+            "detail": {
+              "zh": "已付金额可抵扣年卡",
+              "en": "Paid monthly amount can be used as annual credit"
+            },
+            "trigger": "Policy: MONTHLY_TO_ANNUAL_CREDIT"
+          },
+          {
+            "group": { "zh": "升级优惠", "en": "Upgrade" },
+            "title": { "zh": "年卡一次性付清", "en": "Annual Prepayment" },
+            "detail": { "zh": "免激活费", "en": "Activation fee waived" },
+            "trigger": "Policy: ANNUAL_PREPAY_WAIVE_ACTIVATION"
+          }
+        ],
+        "rechargePlans": [
+          {
+            "amount": "$3,000",
+            "amountZh": "冲 3000 储值卡",
+            "membershipGift": { "zh": "一个月会员", "en": "1-Month Membership" },
+            "bonusCredit": "$300",
+            "totalValue": "$595"
+          },
+          {
+            "amount": "$6,000",
+            "amountZh": "冲 6000 储值卡",
+            "membershipGift": { "zh": "6 个月会员", "en": "6-Month Membership" },
+            "bonusCredit": "$600",
+            "totalValue": "$1,314"
+          },
+          {
+            "amount": "$9,000",
+            "amountZh": "冲 9000 储值卡",
+            "membershipGift": { "zh": "一年会员+专属礼物套餐", "en": "1-Year Membership + Gift Package" },
+            "bonusCredit": "$1,500",
+            "totalValue": "$3,161"
+          }
+        ],
+        "badges": {
+          "mostPopular": { "zh": "最受欢迎", "en": "Most Popular" },
+          "bestValue": { "zh": "最划算", "en": "Best Value" }
+        },
+        "labels": {
+          "bonusCredit": { "zh": "赠送积分", "en": "Bonus Credit" },
+          "giftValue": { "zh": "赠送价值", "en": "Gift Value" }
+        }
+      }
+    },
+    "personalTraining": {
+      "copy": {
+        "title": { "zh": "私教课程", "en": "Personal Training" },
+        "subtitle": { "zh": "分栏清单布局", "en": "Split-list layout" },
+        "notice": {
+          "en": "All programs are customized based on professional assessment and progress tracking. Designed for real results, not just workouts.",
+          "zh": "所有课程均基于专业评估与进度追踪进行定制。目标是实现真实效果，而不仅仅是完成训练。"
+        },
+        "assessment": { "zh": "专项评估", "en": "Assessment" },
+        "trainingFocus": { "zh": "训练重点", "en": "Training Focus" },
+        "idealFor": { "zh": "适合人群", "en": "Ideal For" },
+        "pricing": {
+          "label1v1": { "zh": "1v1 定价", "en": "1v1 Pricing" },
+          "label1v2": { "zh": "1v2 定价", "en": "1v2 Pricing" },
+          "member": { "zh": "会员", "en": "Member" },
+          "nonMember": { "zh": "非会员", "en": "Non-member" }
+        }
+      }
+    },
+    "cyclePlan": {
+      "copy": {
+        "title": { "zh": "周期计划", "en": "Cycle Plans" },
+        "badge": { "zh": "项目矩阵", "en": "Program Matrix" },
+        "programBenefits": [
+          {
+            "en": "Program validity includes 2 bonus weeks.",
+            "zh": "课程有效期包含额外2周赠送时间。"
+          },
+          {
+            "en": "If sessions are not completed within the validity period, 50% of remaining value can be used as renewal credit.",
+            "zh": "如在有效期内未完成课程，剩余价值的50%可用于续费抵扣。"
+          },
+          {
+            "en": "Professional assessment, progress tracking, and personalized adjustments included.",
+            "zh": "包含专业评估、进度跟踪及个性化训练调整。"
+          }
+        ]
+      }
+    }
+  }
+}

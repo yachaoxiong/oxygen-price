@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-import type { PricingItem } from "./mockData";
+import type { PricingItem } from "@/types/pricing";
 
 
 
@@ -20,41 +20,6 @@ export const supabase =
 
 
 
-export type PricingRule = {
-
-  id: string;
-
-  rule_code: string;
-
-  trigger_type: "recharge" | "buy_sessions" | "renew" | "upgrade" | "generic";
-
-  trigger_json: Record<string, unknown>;
-
-  result_json: Record<string, unknown>;
-
-  priority: number;
-
-  is_active: boolean;
-
-};
-
-
-
-export type PricingBenefit = {
-
-  id: string;
-
-  item_id: string;
-
-  benefit_type: string;
-
-  description: string;
-
-  value_json: Record<string, unknown>;
-
-  sort_order: number;
-
-};
 
 
 
@@ -68,83 +33,68 @@ export async function fetchPricingItems(): Promise<PricingItem[]> {
 
 
 
-  const { data, error } = await supabase
+  const [{ data: items, error: itemsError }, { data: variants, error: variantsError }] = await Promise.all([
+    supabase
+      .from("catalog_items")
+      .select("id, category, name_zh, name_en, meta, is_active")
+      .eq("is_active", true),
+    supabase
+      .from("catalog_variants")
+      .select("id, item_id, member_type, session_mode, price, meta, is_active")
+      .eq("is_active", true),
+  ]);
 
-    .from("pricing_items")
+  if (itemsError) {
 
-    .select("id, category, name_zh, name_en, member_type, session_mode, price, meta")
-
-    .eq("is_active", true)
-
-    .order("sort_order", { ascending: true });
-
-
-
-  if (error) {
-
-    throw new Error(error.message);
+    throw new Error(itemsError.message);
 
   }
 
+  if (variantsError) {
 
+    throw new Error(variantsError.message);
 
-  return (data ?? []) as PricingItem[];
+  }
 
-}
+  const parsedItems = (items ?? []).map((item) => ({
+    ...item,
+    meta: typeof item.meta === "string" ? JSON.parse(item.meta) : item.meta,
+  }));
 
+  const parsedVariants = (variants ?? []).map((variant) => ({
+    ...variant,
+    meta: typeof variant.meta === "string" ? JSON.parse(variant.meta) : variant.meta,
+  }));
 
+  const itemMap = new Map(parsedItems.map((item) => [item.id, item]));
+  const pricingItems: PricingItem[] = [];
 
-export async function fetchPricingRules(): Promise<PricingRule[]> {
+  parsedVariants.forEach((variant) => {
+    const item = itemMap.get(variant.item_id);
+    if (!item) return;
 
-  if (!supabase) return [];
+    pricingItems.push({
+      id: `${item.id}:${variant.id}`,
+      category: item.category,
+      name_zh: item.name_zh,
+      name_en: item.name_en,
+      member_type: variant.member_type ?? undefined,
+      session_mode: variant.session_mode ?? undefined,
+      price: variant.price ?? undefined,
+      meta: item.meta,
+    } as PricingItem);
+  });
 
+  if (pricingItems.length === 0) {
+    return parsedItems as PricingItem[];
+  }
 
-
-  const { data, error } = await supabase
-
-    .from("pricing_rules")
-
-    .select("id, rule_code, trigger_type, trigger_json, result_json, priority, is_active")
-
-    .eq("is_active", true)
-
-    .order("priority", { ascending: true });
-
-
-
-  if (error) throw new Error(error.message);
-
-
-
-  return (data ?? []) as PricingRule[];
-
-}
-
-
-
-export async function fetchPricingBenefits(): Promise<PricingBenefit[]> {
-
-  if (!supabase) return [];
-
-
-
-  const { data, error } = await supabase
-
-    .from("pricing_benefits")
-
-    .select("id, item_id, benefit_type, description, value_json, sort_order")
-
-    .order("sort_order", { ascending: true });
-
-
-
-  if (error) throw new Error(error.message);
-
-
-
-  return (data ?? []) as PricingBenefit[];
+  return pricingItems;
 
 }
+
+
+
 
 
 
