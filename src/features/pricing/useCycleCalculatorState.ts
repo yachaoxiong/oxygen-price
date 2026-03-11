@@ -37,12 +37,12 @@ export function useCycleCalculatorState() {
 
   const cycleActiveLabel =
     cyclePtPreset === "member_1v1"
-      ? "会员 1v1 / Member 1v1"
+      ? { zh: "会员 1v1", en: "Member 1v1" }
       : cyclePtPreset === "non_member_1v1"
-        ? "非会员 1v1 / Non-member 1v1"
+        ? { zh: "非会员 1v1", en: "Non-member 1v1" }
         : cyclePtPreset === "member_1v2"
-          ? "会员 1v2 / Member 1v2"
-          : "非会员 1v2 / Non-member 1v2";
+          ? { zh: "会员 1v2", en: "Member 1v2" }
+          : { zh: "非会员 1v2", en: "Non-member 1v2" };
 
   const cycleSubtotal =
     cyclePtPreset === "member_1v1"

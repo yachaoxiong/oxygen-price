@@ -434,7 +434,7 @@ export default function Home() {
       program: selectedCyclePlan.program,
       reportDate,
       clientName: cycleClientName,
-      activeLabel: cycleActiveLabel,
+      activeLabel: cycleActiveLabel[activeLocale],
       courseNameZh: cycleSelectedPtProgram.nameZh,
       courseNameEn: cycleSelectedPtProgram.nameEn,
       weeklySessions: selectedCyclePlan.weeklySessions,
