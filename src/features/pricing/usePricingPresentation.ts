@@ -48,7 +48,7 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
         grouped[category].forEach((item) => {
           if (category === "membership" && item.name_zh.includes("激活费")) return;
 
-          const rowKey = `${item.name_zh}|${item.session_mode ?? "general"}`;
+          const rowKey = `${item.name_zh}|${"session_mode" in item && item.session_mode ? item.session_mode : "general"}`;
           if (!rowsMap.has(rowKey)) {
             rowsMap.set(rowKey, {
               key: rowKey,
