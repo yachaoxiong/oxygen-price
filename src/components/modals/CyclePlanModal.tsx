@@ -27,7 +27,7 @@ type CyclePlanModalProps = {
   cycleQtyMember1v2: number;
   cycleQtyNonMember1v2: number;
   cycleCredit: number;
-  cycleActiveLabel: string;
+  cycleActiveLabel: { zh: string; en: string };
   cycleSubtotal: number;
   cycleAfterCredit: number;
   cycleTax: number;
@@ -264,9 +264,7 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
             <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-cyan-500/8 to-emerald-500/8 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-sm font-semibold text-cyan-100">
-                  {activeLocale === "zh"
-                    ? cycleActiveLabel.split(" / ")[0]
-                    : cycleActiveLabel.split(" / ")[1] ?? cycleActiveLabel}
+                  {cycleActiveLabel[activeLocale]}
                 </p>
                 <span className="rounded-full border border-white/15 bg-black/20 px-2 py-0.5 text-[11px] text-slate-300">
                   {copy.defaultSessions}
@@ -377,11 +375,7 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
             <div className="mt-4 grid gap-2 text-sm md:grid-cols-2">
               <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                 <p className="text-[11px] text-slate-400">{copy.activePlan}</p>
-                <p className="font-medium text-cyan-100">
-                  {activeLocale === "zh"
-                    ? cycleActiveLabel.split(" / ")[0]
-                    : cycleActiveLabel.split(" / ")[1] ?? cycleActiveLabel}
-                </p>
+                <p className="font-medium text-cyan-100">{cycleActiveLabel[activeLocale]}</p>
               </div>
               <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                 <p className="text-[11px] text-slate-400">{copy.credit}</p>
