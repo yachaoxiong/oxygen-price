@@ -48,23 +48,26 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
         grouped[category].forEach((item) => {
           if (category === "membership" && item.name_zh.includes("激活费")) return;
 
-          const rowKey = `${item.name_zh}|${"session_mode" in item && item.session_mode ? item.session_mode : "general"}`;
+          const sessionMode = "session_mode" in item ? item.session_mode : undefined;
+          const rowKey = `${item.name_zh}|${sessionMode ?? "general"}`;
           if (!rowsMap.has(rowKey)) {
             rowsMap.set(rowKey, {
               key: rowKey,
               itemIds: [item.id],
               nameZh: item.name_zh,
               nameEn: item.name_en,
-              mode: displayMode(item.session_mode),
-              modeKey: item.session_mode,
+              mode: displayMode(sessionMode),
+              modeKey: sessionMode,
             });
           }
 
           const row = rowsMap.get(rowKey)!;
           if (!row.itemIds.includes(item.id)) row.itemIds.push(item.id);
 
-          if (item.member_type === "member") row.memberPrice = item.price;
-          else if (item.member_type === "non_member") row.nonMemberPrice = item.price;
+          const memberType = "member_type" in item ? item.member_type : undefined;
+
+          if (memberType === "member") row.memberPrice = item.price;
+          else if (memberType === "non_member") row.nonMemberPrice = item.price;
           else row.generalPrice = item.price;
         });
 
@@ -87,7 +90,8 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
       (categoryFilter === "all" || categoryFilter === "group_class" || categoryFilter === "membership") && grouped.group_class.length > 0
         ? grouped.group_class
             .reduce<CompareRow[]>((acc, item) => {
-              const rowKey = `${item.name_zh}|${item.session_mode ?? "general"}`;
+              const sessionMode = "session_mode" in item ? item.session_mode : undefined;
+              const rowKey = `${item.name_zh}|${sessionMode ?? "general"}`;
               const existing = acc.find((row) => row.key === rowKey);
 
               if (!existing) {
@@ -96,19 +100,21 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
                   itemIds: [item.id],
                   nameZh: item.name_zh,
                   nameEn: item.name_en,
-                  mode: displayMode(item.session_mode),
-                  modeKey: item.session_mode,
+                  mode: displayMode(sessionMode),
+                  modeKey: sessionMode,
                 };
-                if (item.member_type === "member") next.memberPrice = item.price;
-                else if (item.member_type === "non_member") next.nonMemberPrice = item.price;
+                const memberType = "member_type" in item ? item.member_type : undefined;
+                if (memberType === "member") next.memberPrice = item.price;
+                else if (memberType === "non_member") next.nonMemberPrice = item.price;
                 else next.generalPrice = item.price;
                 acc.push(next);
                 return acc;
               }
 
               if (!existing.itemIds.includes(item.id)) existing.itemIds.push(item.id);
-              if (item.member_type === "member") existing.memberPrice = item.price;
-              else if (item.member_type === "non_member") existing.nonMemberPrice = item.price;
+              const memberType = "member_type" in item ? item.member_type : undefined;
+              if (memberType === "member") existing.memberPrice = item.price;
+              else if (memberType === "non_member") existing.nonMemberPrice = item.price;
               else existing.generalPrice = item.price;
               return acc;
             }, [])
@@ -131,15 +137,16 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
       grouped.personal_training.forEach((item) => {
         const key = item.name_zh;
         if (!ptMap.has(key)) {
+          const meta = (item.meta ?? {}) as Record<string, unknown>;
           ptMap.set(key, {
             key,
             itemIds: [item.id],
             nameZh: item.name_zh,
             nameEn: item.name_en,
-            focusZh: typeof item.meta?.focus === "string" ? item.meta.focus : undefined,
-            focusEn: typeof item.meta?.focus_en === "string" ? item.meta.focus_en : undefined,
-            idealForZh: typeof item.meta?.target === "string" ? item.meta.target : undefined,
-            idealForEn: typeof item.meta?.target_en === "string" ? item.meta.target_en : undefined,
+            focusZh: typeof meta.focus === "string" ? meta.focus : undefined,
+            focusEn: typeof meta.focus_en === "string" ? meta.focus_en : undefined,
+            idealForZh: typeof meta.target === "string" ? meta.target : undefined,
+            idealForEn: typeof meta.target_en === "string" ? meta.target_en : undefined,
           });
         }
 
@@ -147,24 +154,29 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
         if (!row.itemIds.includes(item.id)) row.itemIds.push(item.id);
         if (!row.nameEn && item.name_en) row.nameEn = item.name_en;
 
-        if (item.member_type === "member" && item.session_mode === "1v1") row.member1v1 = item.price;
-        if (item.member_type === "member" && item.session_mode === "1v2") row.member1v2 = item.price;
-        if (item.member_type === "non_member" && item.session_mode === "1v1") row.nonMember1v1 = item.price;
-        if (item.member_type === "non_member" && item.session_mode === "1v2") row.nonMember1v2 = item.price;
+        const memberType = "member_type" in item ? item.member_type : undefined;
+        const sessionMode = "session_mode" in item ? item.session_mode : undefined;
+
+        if (memberType === "member" && sessionMode === "1v1") row.member1v1 = item.price;
+        if (memberType === "member" && sessionMode === "1v2") row.member1v2 = item.price;
+        if (memberType === "non_member" && sessionMode === "1v1") row.nonMember1v1 = item.price;
+        if (memberType === "non_member" && sessionMode === "1v2") row.nonMember1v2 = item.price;
       });
 
       grouped.assessment.forEach((item) => {
         const key = `assessment:${item.name_zh}`;
         if (!ptMap.has(key)) {
+          const meta = (item.meta ?? {}) as Record<string, unknown>;
+
           ptMap.set(key, {
             key,
             itemIds: [item.id],
             nameZh: item.name_zh,
             nameEn: item.name_en,
-            focusZh: typeof item.meta?.focus === "string" ? item.meta.focus : undefined,
-            focusEn: typeof item.meta?.focus_en === "string" ? item.meta.focus_en : undefined,
-            idealForZh: typeof item.meta?.target === "string" ? item.meta.target : undefined,
-            idealForEn: typeof item.meta?.target_en === "string" ? item.meta.target_en : undefined,
+            focusZh: typeof meta.focus === "string" ? meta.focus : undefined,
+            focusEn: typeof meta.focus_en === "string" ? meta.focus_en : undefined,
+            idealForZh: typeof meta.target === "string" ? meta.target : undefined,
+            idealForEn: typeof meta.target_en === "string" ? meta.target_en : undefined,
             member1v1: item.price,
             nonMember1v1: item.price,
             member1v2: item.price,
@@ -191,9 +203,10 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
     if ((categoryFilter === "all" || categoryFilter === "cycle_plan") && grouped.cycle_plan.length > 0) {
       cyclePlanRows = grouped.cycle_plan
         .map((item) => {
-          const weeks = asNumber(item.meta?.weeks) ?? null;
-          const minSessions = asNumber(item.meta?.min_sessions) ?? null;
-          const sessionsPerWeek = String(item.meta?.sessions_per_week ?? "2-4");
+          const meta = (item.meta ?? {}) as Record<string, unknown>;
+          const weeks = asNumber(meta.weeks) ?? null;
+          const minSessions = asNumber(meta.min_sessions) ?? null;
+          const sessionsPerWeek = String(meta.sessions_per_week ?? "2-4");
 
           const wpdFollowups = weeks === 6 ? "3" : weeks === 12 ? "6" : weeks === 24 ? "12" : "-";
           const assessmentsReports = weeks === 6 ? "2" : weeks === 12 ? "3" : weeks === 24 ? "6" : "-";
@@ -246,10 +259,13 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
       const row = ptMap.get(key)!;
       if (!row.itemIds.includes(item.id)) row.itemIds.push(item.id);
 
-      if (item.member_type === "member" && item.session_mode === "1v1") row.member1v1 = item.price;
-      if (item.member_type === "member" && item.session_mode === "1v2") row.member1v2 = item.price;
-      if (item.member_type === "non_member" && item.session_mode === "1v1") row.nonMember1v1 = item.price;
-      if (item.member_type === "non_member" && item.session_mode === "1v2") row.nonMember1v2 = item.price;
+      const memberType = "member_type" in item ? item.member_type : undefined;
+      const sessionMode = "session_mode" in item ? item.session_mode : undefined;
+
+      if (memberType === "member" && sessionMode === "1v1") row.member1v1 = item.price;
+      if (memberType === "member" && sessionMode === "1v2") row.member1v2 = item.price;
+      if (memberType === "non_member" && sessionMode === "1v1") row.nonMember1v1 = item.price;
+      if (memberType === "non_member" && sessionMode === "1v2") row.nonMember1v2 = item.price;
     });
 
     return Array.from(ptMap.values()).sort((a, b) => (a.member1v1 ?? 0) - (b.member1v1 ?? 0));
