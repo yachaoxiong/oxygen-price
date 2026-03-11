@@ -42,6 +42,10 @@ export const cycleCopy = {
     step3: "生成完整报告",
     selectedProgram: "已选私教课程",
     planInputs: "方案与参数",
+    member1v1: "会员 1v1",
+    nonMember1v1: "非会员 1v1",
+    member1v2: "会员 1v2",
+    nonMember1v2: "非会员 1v2",
   },
   en: {
     cycleProgram: "Cycle Program",
@@ -86,5 +90,9 @@ export const cycleCopy = {
     step3: "Generate Report",
     selectedProgram: "Selected PT Program",
     planInputs: "Plan & Inputs",
+    member1v1: "Member 1v1",
+    nonMember1v1: "Non-member 1v1",
+    member1v2: "Member 1v2",
+    nonMember1v2: "Non-member 1v2",
   },
 };

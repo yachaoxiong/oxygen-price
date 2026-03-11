@@ -175,9 +175,6 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                         <p className="truncate text-[13px] font-semibold text-white/90">
                           {activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh}
                         </p>
-                        {activeLocale === "zh" && row.nameEn && (
-                          <p className="truncate text-[10px] text-slate-500">{row.nameEn}</p>
-                        )}
                       </div>
                     </div>
                     <p className="text-center text-[13px] font-semibold text-emerald-300">{formatMoney(row.member1v1)}</p>
@@ -211,22 +208,22 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                 {[
                   {
                     key: "member_1v1",
-                    label: `${copy.member} 1v1`,
+                    label: copy.member1v1 ?? `${copy.member} 1v1`,
                     icon: <User size={14} className="text-emerald-200" />,
                   },
                   {
                     key: "non_member_1v1",
-                    label: activeLocale === "zh" ? "非会员 1v1" : "Non-member 1v1",
+                    label: copy.nonMember1v1 ?? (activeLocale === "zh" ? "非会员 1v1" : "Non-member 1v1"),
                     icon: <User size={14} className="text-amber-200" />,
                   },
                   {
                     key: "member_1v2",
-                    label: activeLocale === "zh" ? "会员 1v2" : "Member 1v2",
+                    label: copy.member1v2 ?? (activeLocale === "zh" ? "会员 1v2" : "Member 1v2"),
                     icon: <Users size={14} className="text-emerald-200" />,
                   },
                   {
                     key: "non_member_1v2",
-                    label: activeLocale === "zh" ? "非会员 1v2" : "Non-member 1v2",
+                    label: copy.nonMember1v2 ?? (activeLocale === "zh" ? "非会员 1v2" : "Non-member 1v2"),
                     icon: <Users size={14} className="text-amber-200" />,
                   },
                 ].map(({ key, label, icon }) => (
@@ -266,27 +263,31 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
 
             <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-cyan-500/8 to-emerald-500/8 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-semibold text-cyan-100">{cycleActiveLabel}</p>
+                <p className="text-sm font-semibold text-cyan-100">
+                  {activeLocale === "zh"
+                    ? cycleActiveLabel.split(" / ")[0]
+                    : cycleActiveLabel.split(" / ")[1] ?? cycleActiveLabel}
+                </p>
                 <span className="rounded-full border border-white/15 bg-black/20 px-2 py-0.5 text-[11px] text-slate-300">
-                  {activeLocale === "zh" ? "默认 12 课时" : "Default 12 sessions"}
+                  {copy.defaultSessions}
                 </span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-[1.2fr_1fr_1fr]">
                 <div>
                   <label className="text-[11px] text-slate-400">
-                    {activeLocale === "zh" ? "客户姓名" : "Client Name"}
+                    {copy.clientName}
                   </label>
                   <input
                     value={cycleClientName}
                     onChange={(e) => onSetCycleClientName(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-white/15 bg-black/35 px-3 py-2 text-sm text-slate-100"
-                    placeholder={activeLocale === "zh" ? "请输入客户姓名" : "Enter client name"}
+                    placeholder={copy.clientPlaceholder}
                   />
                 </div>
                 <div>
                   <label className="text-[11px] text-slate-400">
-                    {activeLocale === "zh" ? "单价" : "Unit Price"}
+                    {copy.unitPrice}
                   </label>
                   <input
                     type="text"
@@ -314,7 +315,7 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-slate-400">数量 / Quantity</label>
+                  <label className="text-[11px] text-slate-400">{copy.quantity}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -366,7 +367,7 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                           : "border-white/12 text-slate-300 hover:border-cyan-300/40"
                       }`}
                     >
-                      {q} 课时
+                      {q} {copy.sessions}
                     </button>
                   );
                 })}
@@ -374,12 +375,50 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
             </div>
 
             <div className="mt-4 grid gap-2 text-sm md:grid-cols-2">
-              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">当前方案 / Active Plan</p><p className="font-medium text-cyan-100">{cycleActiveLabel}</p></div>
-              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">积分抵扣 / Credit</p><input type="text" inputMode="numeric" value={cycleCreditInputStr} onChange={(e) => { const raw = e.target.value; if (!/^\d*$/.test(raw)) return; onSetCycleCreditInputStr(raw); onSetCycleCredit(raw === "" ? 0 : parseInt(raw, 10)); }} onBlur={() => { const n = cycleCreditInputStr === "" ? 0 : parseInt(cycleCreditInputStr, 10); onSetCycleCreditInputStr(String(n)); onSetCycleCredit(n); }} className="mt-1 w-full rounded-md border border-white/15 bg-black/35 px-2 py-1 text-sm text-slate-100" /></div>
-              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">小计 / Subtotal</p><p className="font-semibold text-cyan-100">{formatMoney(cycleSubtotal)}</p></div>
-              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">抵扣后 / After Credit</p><p className="font-semibold text-cyan-100">{formatMoney(cycleAfterCredit)}</p></div>
-              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2"><p className="text-[11px] text-slate-400">税费 Tax (13%)</p><p className="font-semibold text-cyan-100">{formatMoney(cycleTax)}</p></div>
-              <div className="rounded-lg border border-emerald-300/35 bg-emerald-500/12 px-3 py-2"><p className="text-[11px] text-slate-300">总计 / Total</p><p className="text-xl font-bold text-emerald-100">{formatMoney(cycleTotal)}</p></div>
+              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-[11px] text-slate-400">{copy.activePlan}</p>
+                <p className="font-medium text-cyan-100">
+                  {activeLocale === "zh"
+                    ? cycleActiveLabel.split(" / ")[0]
+                    : cycleActiveLabel.split(" / ")[1] ?? cycleActiveLabel}
+                </p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-[11px] text-slate-400">{copy.credit}</p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={cycleCreditInputStr}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (!/^\d*$/.test(raw)) return;
+                    onSetCycleCreditInputStr(raw);
+                    onSetCycleCredit(raw === "" ? 0 : parseInt(raw, 10));
+                  }}
+                  onBlur={() => {
+                    const n = cycleCreditInputStr === "" ? 0 : parseInt(cycleCreditInputStr, 10);
+                    onSetCycleCreditInputStr(String(n));
+                    onSetCycleCredit(n);
+                  }}
+                  className="mt-1 w-full rounded-md border border-white/15 bg-black/35 px-2 py-1 text-sm text-slate-100"
+                />
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-[11px] text-slate-400">{copy.subtotal}</p>
+                <p className="font-semibold text-cyan-100">{formatMoney(cycleSubtotal)}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-[11px] text-slate-400">{copy.afterCredit}</p>
+                <p className="font-semibold text-cyan-100">{formatMoney(cycleAfterCredit)}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-[11px] text-slate-400">{copy.tax} (13%)</p>
+                <p className="font-semibold text-cyan-100">{formatMoney(cycleTax)}</p>
+              </div>
+              <div className="rounded-lg border border-emerald-300/35 bg-emerald-500/12 px-3 py-2">
+                <p className="text-[11px] text-slate-300">{copy.total}</p>
+                <p className="text-xl font-bold text-emerald-100">{formatMoney(cycleTotal)}</p>
+              </div>
             </div>
 
             <div className="mt-4 flex gap-2">
@@ -388,22 +427,23 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                 className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300 hover:bg-white/[0.08]"
               >
                 <ChevronRight size={14} className="rotate-180" />
-                返回 Back
+                {copy.back}
               </button>
               <button
                 onClick={() => onSetCycleStep(3)}
                 className="flex-1 rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
               >
-                下一步：生成完整报告
+                {activeLocale === "zh" ? "下一步：生成完整报告" : "Next: Generate Report"}
               </button>
             </div>
           </>
         )}
 
-        {cycleStep === 3 && cycleSelectedPtProgram && (
+        {cycleStep === 3 && cycleSelectedPtProgram && selectedCyclePlan && (
           <CycleReportStep
             selectedCyclePlan={selectedCyclePlan}
             cycleSelectedPtProgram={cycleSelectedPtProgram}
+            activeLocale={activeLocale}
             cycleActivePresetUnit={cycleActivePresetUnit}
             cycleActivePresetQty={cycleActivePresetQty}
             cycleSubtotal={cycleSubtotal}

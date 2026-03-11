@@ -37,6 +37,8 @@ export function CycleReportStep({
   onCopySummary,
   onDownloadPdf,
 }: CycleReportStepProps) {
+  if (!selectedCyclePlan) return null;
+
   const copy = cycleCopy[activeLocale];
   const ptProgramName = activeLocale === "zh" ? cycleSelectedPtProgram.nameZh : cycleSelectedPtProgram.nameEn ?? cycleSelectedPtProgram.nameZh;
 

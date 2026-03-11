@@ -18,6 +18,7 @@ import { usePricingData } from "@/features/pricing/usePricingData";
 import { usePtCalculatorState } from "@/features/pricing/usePtCalculatorState";
 import { useCycleCalculatorState } from "@/features/pricing/useCycleCalculatorState";
 import { usePricingPresentation } from "@/features/pricing/usePricingPresentation";
+import { cycleCopy } from "@/lib/copy/cycleCopy";
 import { usePwaInstallPrompt } from "@/features/app/usePwaInstallPrompt";
 import { formatMoney } from "@/lib/formatters/number";
 import { printHtml } from "@/lib/export/print";
@@ -286,6 +287,7 @@ export default function Home() {
       reportDate: ptReportDate,
       clientName: ptClientName,
       courseNameZh: selectedPtRow.nameZh,
+    
       courseNameEn: selectedPtRow.nameEn,
       activeLabel: ptActiveLabel,
       unit,
@@ -325,7 +327,7 @@ export default function Home() {
       courseNameEn: selectedPtRow.nameEn,
       reportDate: ptReportDate,
       clientName: ptClientName,
-      activeLabel: ptActiveLabel,
+      activeLabel: ptActiveLabel[activeLocale],
       unit,
       qty,
       subtotal: ptActiveSubtotal,
@@ -1093,25 +1095,25 @@ export default function Home() {
                         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                           <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
                             <p className="text-[10px] leading-tight text-slate-400">
-                              {activeLocale === "zh" ? "每周次数" : "Weekly"}
+                              {cycleCopy[activeLocale].weeklySessions}
                             </p>
                             <p className="mt-1 text-sm font-semibold text-cyan-100">{row.weeklySessions}</p>
                           </div>
                           <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
                             <p className="text-[10px] leading-tight text-slate-400">
-                              {activeLocale === "zh" ? "最少课时" : "Min Sessions"}
+                              {cycleCopy[activeLocale].minSessions}
                             </p>
                             <p className="mt-1 text-sm font-semibold text-cyan-100">{row.minSessions}</p>
                           </div>
                           <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
                             <p className="text-[10px] leading-tight text-slate-400">
-                              {activeLocale === "zh" ? "跟进次数" : "Followups"}
+                              {cycleCopy[activeLocale].followups}
                             </p>
                             <p className="mt-1 text-sm font-semibold text-cyan-100">{row.wpdFollowups}</p>
                           </div>
                           <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
                             <p className="text-[10px] leading-tight text-slate-400">
-                              {activeLocale === "zh" ? "评估报告" : "Assessments"}
+                              {cycleCopy[activeLocale].assessments}
                             </p>
                             <p className="mt-1 text-sm font-semibold text-cyan-100">{row.assessmentsReports}</p>
                           </div>
@@ -1120,14 +1122,14 @@ export default function Home() {
                         <div className="space-y-2 lg:text-right">
                           <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2">
                             <p className="text-[10px] leading-tight text-emerald-100/80">
-                              {activeLocale === "zh" ? "赠送会籍" : "Membership Gift"}
+                              {cycleCopy[activeLocale].membershipGift}
                             </p>
                             <p className="mt-1 text-sm font-semibold text-emerald-50">
                               {activeLocale === "zh" ? row.membershipGiftZh : row.membershipGiftEn}
                             </p>
                           </div>
                           <p className="text-xs text-violet-100/90">
-                            {activeLocale === "zh" ? "额外权益" : "Extra Benefits"}: 
+                            {cycleCopy[activeLocale].extraBenefits}: 
                             <span className="font-medium text-violet-50">
                               {activeLocale === "zh" ? row.extraBenefitsZh : row.extraBenefitsEn}
                             </span>
@@ -1194,6 +1196,7 @@ export default function Home() {
 
       <CyclePlanModal
         selectedCyclePlan={selectedCyclePlan}
+        activeLocale={activeLocale}
         cycleStep={cycleStep}
         cyclePtProgramOptions={cyclePtProgramOptions}
         cycleSelectedPtProgram={cycleSelectedPtProgram}
