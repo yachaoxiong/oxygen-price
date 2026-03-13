@@ -118,7 +118,7 @@ export function CartQuoteModal(props: {
 
                 {items.length === 0 ? (
                   <div className="glass-card rounded-2xl border border-white/10 bg-black/30 p-8 text-center text-sm text-slate-400">
-                    暂无项目，请从左侧添加到购物车
+                    暂无项目，请从左侧添加到购物车！
                   </div>
                 ) : (
                   <div className="space-y-3">
