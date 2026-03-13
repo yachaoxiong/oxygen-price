@@ -36,7 +36,7 @@ import { CyclePlanModal } from "@/components/modals/CyclePlanModal";
 import { PtCalculatorModal } from "@/components/modals/PtCalculatorModal";
 import { CartQuoteModal } from "@/components/modals/CartQuoteModal";
 import { useCartState } from "@/features/cart/useCartState";
-import type { CyclePlanRow, PricingCategory, PricingItem, PtRow } from "@/types/pricing";
+import type { CyclePlanRow, PricingCategory, PricingItem, PtPreset, PtRow } from "@/types/pricing";
 
 type CategoryFilter = "all" | PricingCategory;
 
@@ -1497,22 +1497,10 @@ export default function Home() {
         cyclePtProgramOptions={cyclePtProgramOptions}
         cycleSelectedPtProgram={cycleSelectedPtProgram}
         cycleSelectedCourses={cycleSelectedCourses}
-        cyclePtPreset={cyclePtPreset}
         cycleClientName={cycleClientName}
         onSetCycleSelectedCourses={setCycleSelectedCourses}
-        cycleUnitInputStr={cycleUnitInputStr}
-        cycleQtyInputStr={cycleQtyInputStr}
         cycleCreditInputStr={cycleCreditInputStr}
-        cycleUnitMember1v1={cycleUnitMember1v1}
-        cycleUnitNonMember1v1={cycleUnitNonMember1v1}
-        cycleUnitMember1v2={cycleUnitMember1v2}
-        cycleUnitNonMember1v2={cycleUnitNonMember1v2}
-        cycleQtyMember1v1={cycleQtyMember1v1}
-        cycleQtyNonMember1v1={cycleQtyNonMember1v1}
-        cycleQtyMember1v2={cycleQtyMember1v2}
-        cycleQtyNonMember1v2={cycleQtyNonMember1v2}
         cycleCredit={cycleCredit}
-        cycleActiveLabel={cycleActiveLabel}
         cycleSubtotal={cycleSubtotal}
         cycleAfterCredit={cycleAfterCredit}
         cycleTax={cycleTax}
@@ -1523,18 +1511,7 @@ export default function Home() {
         onClose={closeCyclePlanCalculator}
         onSetCycleStep={setCycleStep}
         onSelectProgramAndContinue={selectCyclePtProgramAndContinue}
-        onSetCyclePtPreset={setCyclePtPreset}
-        onSetCycleQtyMember1v1={setCycleQtyMember1v1}
-        onSetCycleQtyNonMember1v1={setCycleQtyNonMember1v1}
-        onSetCycleQtyMember1v2={setCycleQtyMember1v2}
-        onSetCycleQtyNonMember1v2={setCycleQtyNonMember1v2}
-        onSetCycleUnitInputStr={setCycleUnitInputStr}
-        onSetCycleQtyInputStr={setCycleQtyInputStr}
         onSetCycleClientName={setCycleClientName}
-        onSetCycleUnitMember1v1={setCycleUnitMember1v1}
-        onSetCycleUnitNonMember1v1={setCycleUnitNonMember1v1}
-        onSetCycleUnitMember1v2={setCycleUnitMember1v2}
-        onSetCycleUnitNonMember1v2={setCycleUnitNonMember1v2}
         onSetCycleCreditInputStr={setCycleCreditInputStr}
         onSetCycleCredit={setCycleCredit}
         onCopySummary={handleCopyCycleSummary}
