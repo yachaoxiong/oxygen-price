@@ -126,9 +126,10 @@ export function CartQuoteModal(props: {
                       const isNew = lastAddedId === item.id;
                       const meta = categoryMeta[item.category];
                       const CategoryIcon = meta.icon;
-                      const isDiscounted = item.originalPrice && item.originalPrice > item.unitPrice;
+                      const originalPrice = item.originalPrice ?? 0;
+                      const isDiscounted = originalPrice > item.unitPrice;
                       const discountPct = isDiscounted
-                        ? Math.round(((item.originalPrice - item.unitPrice) / item.originalPrice) * 100)
+                        ? Math.round(((originalPrice - item.unitPrice) / originalPrice) * 100)
                         : 0;
 
                       return (
