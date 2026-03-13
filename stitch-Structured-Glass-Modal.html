@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>客户报价单 - 智盛健身</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --gym-dark: #0a0f18;
+            --gym-card: rgba(17, 25, 40, 0.4);
+            --gym-accent: #00d1ff;
+            --gym-border: rgba(255, 255, 255, 0.06);
+            --input-bg: rgba(0, 0, 0, 0.3);
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft YaHei", sans-serif;
+            letter-spacing: 0.03em;
+        }
+        .glass-panel {
+            background: rgba(10, 15, 24, 0.98);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--gym-border);
+        }
+        .glass-card {
+            background: var(--gym-card);
+            border: 1px solid var(--gym-border);
+        }
+        .input-subdued {
+            background: var(--input-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+        .input-subdued:focus {
+            border-color: rgba(0, 209, 255, 0.3);
+            background: rgba(0, 0, 0, 0.5);
+            outline: none;
+            box-shadow: 0 0 0 1px rgba(0, 209, 255, 0.1);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-[#04070b] text-slate-400 min-h-screen flex items-center justify-center p-4">
+<div class="glass-panel w-full max-w-6xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" data-purpose="quote-modal">
+<div class="px-10 py-7 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+<div class="flex gap-6 items-center">
+<div class="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+<span class="material-symbols-outlined text-cyan-400 text-2xl">description</span>
+</div>
+<div>
+<div class="flex items-center gap-3">
+<span class="text-[9px] tracking-[0.3em] text-cyan-500 font-bold uppercase">Sales Quote</span>
+<div class="h-px w-6 bg-cyan-500/20"></div>
+</div>
+<h2 class="text-xl font-bold text-white mt-0.5 tracking-tight">客户报价单</h2>
+</div>
+</div>
+<button class="w-10 h-10 flex items-center justify-center hover:bg-white/5 rounded-full transition-all text-slate-500 hover:text-white">
+<span class="material-symbols-outlined text-2xl">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-hidden flex">
+<div class="flex-1 overflow-y-auto p-10 custom-scrollbar">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+<div class="lg:col-span-8 space-y-6">
+<div class="flex items-center justify-between sticky top-0 bg-[#0a0f18]/90 backdrop-blur-md py-2 z-10">
+<h3 class="text-[11px] font-bold text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
+<span class="w-1 h-1 rounded-full bg-cyan-500"></span>
+                                项目明细
+                            </h3>
+<span class="text-[10px] text-slate-600 font-medium">CAD 货币单位</span>
+</div>
+<div class="space-y-3">
+<div class="glass-card rounded-2xl p-5 hover:bg-white/[0.03] transition-colors group">
+<div class="flex items-center justify-between mb-4">
+<div class="flex gap-3 items-center">
+<div class="w-8 h-8 rounded-lg bg-slate-800/50 flex items-center justify-center border border-white/5">
+<span class="material-symbols-outlined text-slate-500 text-lg">person</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-bold text-white text-sm">日卡</span>
+<span class="text-[9px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-slate-500 font-medium">会籍</span>
+</div>
+<p class="text-[9px] text-slate-600 font-mono mt-0.5 tracking-tighter">#001</p>
+</div>
+</div>
+<button class="text-[9px] text-slate-600 hover:text-red-400/80 transition-colors uppercase font-bold tracking-wider">移除项目</button>
+</div>
+<div class="grid grid-cols-12 gap-4 items-end">
+<div class="col-span-3 space-y-1.5">
+<label class="text-[10px] text-slate-500 font-semibold pl-1">数量</label>
+<input class="w-full input-subdued rounded-xl text-xs text-white px-3 py-2 text-center font-semibold" oninput="this.value = this.value.replace(/^0+/, '') || ''" type="number" value="1"/>
+</div>
+<div class="col-span-4 space-y-1.5">
+<label class="text-[10px] text-slate-500 font-semibold pl-1">单价 (CAD)</label>
+<input class="w-full input-subdued rounded-xl text-xs text-white px-3 py-2 text-right font-mono" type="text" value="35.00"/>
+</div>
+<div class="col-span-5 text-right pb-1">
+<span class="text-[10px] text-slate-600 block mb-0.5">项目小计</span>
+<span class="text-lg font-bold text-cyan-400 tracking-tight">$35.00</span>
+</div>
+</div>
+</div>
+<div class="glass-card rounded-2xl border-cyan-500/10 bg-cyan-500/[0.01] p-5">
+<div class="flex items-center justify-between mb-5">
+<div class="flex gap-3 items-center">
+<div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+<span class="material-symbols-outlined text-cyan-400 text-lg">layers</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-bold text-white text-sm">12周计划 · 混合课程</span>
+<span class="text-[9px] bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.5 rounded text-cyan-400 font-medium">周期方案</span>
+</div>
+<p class="text-[9px] text-slate-600 font-mono mt-0.5 tracking-tighter">#002</p>
+</div>
+</div>
+<button class="text-[9px] text-red-400/60 hover:text-red-400 transition-colors uppercase font-bold tracking-wider">移除方案</button>
+</div>
+<div class="space-y-4">
+<div class="pl-4 border-l border-white/10 grid grid-cols-12 gap-4 items-end py-1">
+<div class="col-span-5">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-slate-500 text-xs">fitness_center</span>
+<span class="text-xs font-bold text-slate-200">基础力量训练</span>
+<span class="text-[9px] text-slate-600 bg-white/5 px-1 rounded">1v2</span>
+</div>
+</div>
+<div class="col-span-3 space-y-1">
+<label class="text-[9px] text-slate-600 block pl-1">数量</label>
+<input class="w-full input-subdued rounded-lg text-[11px] text-slate-300 px-2 py-1.5 text-center font-medium" oninput="this.value = this.value.replace(/^0+/, '') || ''" type="number" value="12"/>
+</div>
+<div class="col-span-4 space-y-1">
+<label class="text-[9px] text-slate-600 block pl-1">单价</label>
+<input class="w-full input-subdued rounded-lg text-[11px] text-slate-300 px-2 py-1.5 text-right font-mono" type="text" value="70.00"/>
+</div>
+</div>
+<div class="pl-4 border-l border-white/10 grid grid-cols-12 gap-4 items-end py-1">
+<div class="col-span-5">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-slate-500 text-xs">accessibility_new</span>
+<span class="text-xs font-bold text-slate-200">体态矫正</span>
+<span class="text-[9px] text-slate-600 bg-white/5 px-1 rounded">1v1</span>
+</div>
+</div>
+<div class="col-span-3 space-y-1">
+<label class="text-[9px] text-slate-600 block pl-1">数量</label>
+<input class="w-full input-subdued rounded-lg text-[11px] text-slate-300 px-2 py-1.5 text-center font-medium" oninput="this.value = this.value.replace(/^0+/, '') || ''" type="number" value="6"/>
+</div>
+<div class="col-span-4 space-y-1">
+<label class="text-[9px] text-slate-600 block pl-1">单价</label>
+<input class="w-full input-subdued rounded-lg text-[11px] text-slate-300 px-2 py-1.5 text-right font-mono" type="text" value="115.00"/>
+</div>
+</div>
+<div class="flex justify-end items-center gap-3 pt-3 border-t border-white/5 mt-2">
+<span class="text-[10px] text-slate-600 font-medium">方案总额</span>
+<span class="text-base font-bold text-white tracking-tight">$1,530.00</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 flex flex-col gap-6">
+<section>
+<h3 class="text-[11px] font-bold text-white/40 uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
+<span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                                客户信息
+                            </h3>
+<div class="glass-card rounded-2xl p-6 space-y-5">
+<div class="grid grid-cols-1 gap-4">
+<div class="space-y-2">
+<label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest pl-1">客户姓名</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-base group-focus-within:text-cyan-500/50 transition-colors">person</span>
+<input class="w-full input-subdued rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-800 font-medium" placeholder="请输入姓名" type="text"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest pl-1">联系电话</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 text-base group-focus-within:text-cyan-500/50 transition-colors">call</span>
+<input class="w-full input-subdued rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-slate-800 font-mono" placeholder="请输入电话" type="tel"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section class="flex-1">
+<div class="glass-card bg-white/[0.01] rounded-[28px] p-8 border-cyan-500/10 h-full flex flex-col relative overflow-hidden">
+<div class="absolute -top-16 -right-16 w-40 h-40 bg-cyan-500/5 blur-[60px] rounded-full"></div>
+<div class="flex justify-between items-center mb-8 relative">
+<h2 class="text-lg font-bold text-white tracking-tight">报价汇总</h2>
+<span class="text-[9px] bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded text-cyan-400 font-black">CAD</span>
+</div>
+<div class="space-y-4 mb-auto">
+<div class="flex justify-between text-[13px] items-center">
+<span class="text-slate-500 font-medium">项目总数</span>
+<span class="text-white font-mono font-semibold">19 Units</span>
+</div>
+<div class="flex justify-between text-[13px] items-center">
+<span class="text-slate-500 font-medium">小计金额</span>
+<span class="text-white font-mono font-semibold">$1,565.00</span>
+</div>
+<div class="flex justify-between text-[13px] items-center">
+<span class="text-slate-500 font-medium">HST (13%)</span>
+<span class="text-cyan-500 font-mono font-bold">$203.45</span>
+</div>
+<div class="pt-5 border-t border-white/5 mt-2">
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em]">Grand Total</span>
+<span class="text-4xl font-black text-white tracking-tighter">$1,768.45</span>
+</div>
+</div>
+</div>
+<div class="space-y-3 mt-10">
+<button class="w-full bg-cyan-500 hover:bg-cyan-400 text-[#04070b] font-black py-4 rounded-2xl transition-all shadow-xl shadow-cyan-500/10 active:scale-[0.99] text-sm tracking-widest uppercase">
+                                        复制方案
+                                    </button>
+<button class="w-full bg-white/5 border border-white/5 hover:bg-white/10 text-slate-200 font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm">
+<span class="material-symbols-outlined text-lg">picture_as_pdf</span>
+                                        导出 PDF 报价
+                                    </button>
+<div class="grid grid-cols-2 gap-3 pt-3">
+<button class="text-[10px] text-slate-600 hover:text-white py-2 bg-white/5 rounded-xl transition-colors font-bold uppercase tracking-wider">清空</button>
+<button class="text-[10px] text-slate-600 hover:text-white py-2 bg-white/5 rounded-xl transition-colors font-bold uppercase tracking-wider">关闭</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+</div>
+<div class="px-10 py-5 bg-black/40 border-t border-white/5 text-[9px] text-slate-700 flex justify-between font-medium tracking-wider">
+<p>© 2024 智盛健身管理系统 · 报价单模块 v2.4.0</p>
+<p>最后更新: 2024-05-20 14:32</p>
+</div>
+</div>
+
+</body></html>

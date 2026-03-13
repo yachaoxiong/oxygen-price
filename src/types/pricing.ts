@@ -112,6 +112,13 @@ export type PtRow = {
   nonMember1v2?: number;
 };
 
+export type CycleCourseSelection = {
+  program: PtRow;
+  preset: PtPreset;
+  unitPrice: number;
+  qty: number;
+};
+
 export type CyclePlanRow = {
   key: string;
   program: string;

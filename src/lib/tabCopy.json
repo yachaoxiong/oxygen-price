@@ -129,29 +129,6 @@
             "trigger": "Policy: ANNUAL_PREPAY_WAIVE_ACTIVATION"
           }
         ],
-        "rechargePlans": [
-          {
-            "amount": "$3,000",
-            "amountZh": "冲 3000 储值卡",
-            "membershipGift": { "zh": "一个月会员", "en": "1-Month Membership" },
-            "bonusCredit": "$300",
-            "totalValue": "$595"
-          },
-          {
-            "amount": "$6,000",
-            "amountZh": "冲 6000 储值卡",
-            "membershipGift": { "zh": "6 个月会员", "en": "6-Month Membership" },
-            "bonusCredit": "$600",
-            "totalValue": "$1,314"
-          },
-          {
-            "amount": "$9,000",
-            "amountZh": "冲 9000 储值卡",
-            "membershipGift": { "zh": "一年会员+专属礼物套餐", "en": "1-Year Membership + Gift Package" },
-            "bonusCredit": "$1,500",
-            "totalValue": "$3,161"
-          }
-        ],
         "badges": {
           "mostPopular": { "zh": "最受欢迎", "en": "Most Popular" },
           "bestValue": { "zh": "最划算", "en": "Best Value" }

@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@keyframes cart-flash {
+  0% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.12); filter: brightness(1.2); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
 :root {
   --background: #03050b;
   --foreground: #e7edf7;
@@ -26,6 +32,54 @@ body {
   background: radial-gradient(circle at 20% 0%, #0b1626 0%, #03050b 35%, #020308 100%);
   color: var(--foreground);
   font-family: Inter, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+.glass-panel {
+  background: rgba(10, 15, 24, 0.98);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-card {
+  background: rgba(17, 25, 40, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.input-subdued {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.input-subdued:focus {
+  border-color: rgba(0, 209, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0, 209, 255, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
 }
 
 @keyframes icon-breathe {

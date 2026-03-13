@@ -7,13 +7,14 @@ import {
   calcTax,
   calcTotalWithTax,
 } from "@/lib/pricing/calculate";
-import type { CyclePlanRow, PtPreset, PtRow } from "@/types/pricing";
+import type { CycleCourseSelection, CyclePlanRow, PtPreset, PtRow } from "@/types/pricing";
 
 export function useCycleCalculatorState() {
   const [selectedCyclePlan, setSelectedCyclePlan] = useState<CyclePlanRow | null>(null);
   const [cyclePreviewPlan, setCyclePreviewPlan] = useState<CyclePlanRow | null>(null);
   const [cycleStep, setCycleStep] = useState<1 | 2 | 3>(1);
   const [cycleSelectedPtProgram, setCycleSelectedPtProgram] = useState<PtRow | null>(null);
+  const [cycleSelectedCourses, setCycleSelectedCourses] = useState<CycleCourseSelection[]>([]);
   const [cycleClientName, setCycleClientName] = useState("");
   const [cycleCopied, setCycleCopied] = useState(false);
   const [cyclePtPreset, setCyclePtPreset] = useState<PtPreset>("member_1v1");
@@ -35,6 +36,11 @@ export function useCycleCalculatorState() {
   const cycleCalcMember1v2 = calcSubtotal(cycleUnitMember1v2, cycleQtyMember1v2);
   const cycleCalcNonMember1v2 = calcSubtotal(cycleUnitNonMember1v2, cycleQtyNonMember1v2);
 
+  const cycleCourseSubtotal = cycleSelectedCourses.reduce(
+    (sum, course) => sum + calcSubtotal(course.unitPrice, course.qty),
+    0,
+  );
+
   const cycleActiveLabel =
     cyclePtPreset === "member_1v1"
       ? { zh: "会员 1v1", en: "Member 1v1" }
@@ -44,8 +50,9 @@ export function useCycleCalculatorState() {
           ? { zh: "会员 1v2", en: "Member 1v2" }
           : { zh: "非会员 1v2", en: "Non-member 1v2" };
 
-  const cycleSubtotal =
-    cyclePtPreset === "member_1v1"
+  const cycleSubtotal = cycleSelectedCourses.length > 0
+    ? cycleCourseSubtotal
+    : cyclePtPreset === "member_1v1"
       ? cycleCalcMember1v1
       : cyclePtPreset === "non_member_1v1"
         ? cycleCalcNonMember1v1
@@ -66,6 +73,8 @@ export function useCycleCalculatorState() {
     setCycleStep,
     cycleSelectedPtProgram,
     setCycleSelectedPtProgram,
+    cycleSelectedCourses,
+    setCycleSelectedCourses,
     cycleClientName,
     setCycleClientName,
     cycleCopied,

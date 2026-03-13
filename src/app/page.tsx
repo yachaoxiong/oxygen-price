@@ -10,6 +10,8 @@ import {
   Gift,
   ChevronRight,
   Sparkles,
+  ShoppingCart,
+  Plus,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/useAuth";
 import { AuthLoadingScreen } from "@/features/auth/AuthLoadingScreen";
@@ -20,43 +22,56 @@ import { useCycleCalculatorState } from "@/features/pricing/useCycleCalculatorSt
 import { usePricingPresentation } from "@/features/pricing/usePricingPresentation";
 import { cycleCopy } from "@/lib/copy/cycleCopy";
 import { usePwaInstallPrompt } from "@/features/app/usePwaInstallPrompt";
-import { formatMoney } from "@/lib/formatters/number";
+import { asNumber, formatMoney } from "@/lib/formatters/number";
 import { printHtml } from "@/lib/export/print";
 import { getPresetUnitAndQty } from "@/lib/pricing/calculate";
-import { ptCalculatorCopy } from "@/lib/copy/modalCopy";
 import { glass, solidButtonBase } from "@/lib/pricing/constants";
 import tabCopy from "@/lib/tabCopy.json";
 import { buildCycleSummaryText, buildPtSummaryText } from "@/lib/export/quoteBuilders";
 import { buildCyclePdfHtml, buildPtPdfHtml } from "@/lib/export/pdfBuilders";
+import { buildCartSummaryText } from "@/lib/cart/cartTextBuilder";
+import { buildCartPdfHtml } from "@/lib/export/cartPdfBuilder";
 import { PwaInstallHint } from "@/components/PwaInstallHint";
 import { CyclePlanModal } from "@/components/modals/CyclePlanModal";
 import { PtCalculatorModal } from "@/components/modals/PtCalculatorModal";
-import { PtReportModal } from "@/components/modals/PtReportModal";
+import { CartQuoteModal } from "@/components/modals/CartQuoteModal";
+import { useCartState } from "@/features/cart/useCartState";
 import type { CyclePlanRow, PricingCategory, PricingItem, PtRow } from "@/types/pricing";
 
 type CategoryFilter = "all" | PricingCategory;
 
 export default function Home() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
-  const [presentationMode, setPresentationMode] = useState(false);
   const [selectedRechargeIndex, setSelectedRechargeIndex] = useState(1);
   const [selectedPromoTrigger, setSelectedPromoTrigger] = useState(
     tabCopy.pages.storedValue.copy.promotionHighlights[0]?.trigger ?? "",
   );
-  const [activeLocale, setActiveLocale] = useState<"zh" | "en">("zh");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const [activeLocale, setActiveLocale] = useState<"zh" | "en">(() => {
+    if (typeof window === "undefined") return "zh";
     const saved = window.localStorage.getItem("oxygen-pricing-locale");
-    if (saved === "zh" || saved === "en") {
-      setActiveLocale(saved);
-    }
-  }, []);
+    return saved === "zh" || saved === "en" ? saved : "zh";
+  });
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [addingItemKey, setAddingItemKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem("oxygen-pricing-locale", activeLocale);
   }, [activeLocale]);
+
+  useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest("[data-avatar-menu]")) return;
+      setAvatarMenuOpen(false);
+    }
+
+    if (avatarMenuOpen) {
+      document.addEventListener("mousedown", handleDocumentClick);
+    }
+    return () => document.removeEventListener("mousedown", handleDocumentClick);
+  }, [avatarMenuOpen]);
 
   const categoryMeta = {
     membership: tabCopy.pages.membership.copy.sectionTitle,
@@ -88,20 +103,6 @@ export default function Home() {
     }));
   })();
 
-  const rechargePlans = tabCopy.pages.storedValue.copy.rechargePlans.map((plan) => ({
-    amount: plan.amount,
-    membershipGift: plan.membershipGift.en,
-    membershipGiftZh: plan.membershipGift.zh,
-    bonusCredit: plan.bonusCredit,
-    totalValue: plan.totalValue,
-  }));
-
-
-  const newSignupBenefits = tabCopy.pages.membership.copy.newSignupBenefits.map(
-    (benefit) => `${benefit.zh} / ${benefit.en}`,
-  );
-
-
   const getCopy = (value?: { zh: string; en: string }) => (value ? value[activeLocale] : "");
 
   const {
@@ -129,8 +130,6 @@ export default function Home() {
     setPtPreset,
     ptCredit,
     setPtCredit,
-    ptReportOpen,
-    setPtReportOpen,
     ptCopySuccess,
     setPtCopySuccess,
     ptUnitInputEmpty,
@@ -141,10 +140,6 @@ export default function Home() {
     setPtCreditInputEmpty,
     ptClientName,
     setPtClientName,
-    ptCalcMember1v1,
-    ptCalcNonMember1v1,
-    ptCalcMember1v2,
-    ptCalcNonMember1v2,
     ptActiveLabel,
     ptActiveSubtotal,
     ptAfterCredit,
@@ -162,6 +157,8 @@ export default function Home() {
     setCycleStep,
     cycleSelectedPtProgram,
     setCycleSelectedPtProgram,
+    cycleSelectedCourses,
+    setCycleSelectedCourses,
     cycleClientName,
     setCycleClientName,
     cycleCopied,
@@ -206,12 +203,53 @@ export default function Home() {
     password,
     setPassword,
     authError,
+    profile,
     handleSignIn,
     handleSignOut,
   } = useAuth();
 
+  const {
+    items: cartItems,
+    totals: cartTotals,
+    customer: cartCustomer,
+    isOpen: cartOpen,
+    setIsOpen: setCartOpen,
+    addItem: addCartItem,
+    updateItem: updateCartItem,
+    removeItem: removeCartItem,
+    clearCart,
+    updateCustomer: updateCartCustomer,
+    lastAddedId,
+    clearLastAdded,
+  } = useCartState();
 
   const { pricingItems } = usePricingData(authState);
+
+  const storedValuePlans = pricingItems
+    .filter((item) => item.category === "stored_value")
+    .map((item) => {
+      const meta = (item.meta ?? {}) as Record<string, unknown>;
+      const giftAmount = asNumber(meta.gift_amount) ?? 0;
+      const giftTotalValue = asNumber(meta.gift_total_value) ?? 0;
+      const giftMembershipZh = typeof meta.gift_membership === "string" ? meta.gift_membership : "-";
+      const giftMembershipEn = typeof meta.gift_membership_en === "string" ? meta.gift_membership_en : "-";
+      const amount = item.price ?? 0;
+      const amountLabel = activeLocale === "zh"
+        ? `储值卡 ${formatMoney(amount)}`
+        : `Stored Value ${formatMoney(amount)}`;
+
+      return {
+        id: item.id,
+        amount,
+        amountLabel,
+        membershipGift: { zh: giftMembershipZh, en: giftMembershipEn },
+        bonusCredit: giftAmount,
+        totalValue: giftTotalValue,
+      };
+    })
+    .sort((a, b) => a.amount - b.amount);
+
+  const rechargePlans = storedValuePlans;
 
   const { groupedSections, cyclePtProgramOptions, getGroupClassDays } = usePricingPresentation(
     pricingItems,
@@ -263,9 +301,31 @@ export default function Home() {
     setPtPreviewRow(row);
   }
 
+  function handleAddPtToCart() {
+    if (!selectedPtRow) return;
+    const { unit, qty } = getPresetUnitAndQty(ptPreset, {
+      member1v1Unit: ptUnitMember1v1,
+      nonMember1v1Unit: ptUnitNonMember1v1,
+      member1v2Unit: ptUnitMember1v2,
+      nonMember1v2Unit: ptUnitNonMember1v2,
+      member1v1Qty: ptQtyMember1v1,
+      nonMember1v1Qty: ptQtyNonMember1v1,
+      member1v2Qty: ptQtyMember1v2,
+      nonMember1v2Qty: ptQtyNonMember1v2,
+    });
+
+    addCartItem({
+      name: `${selectedPtRow.nameZh} · ${ptActiveLabel.zh}`,
+      category: selectedPtRow.key.startsWith("assessment:") ? "assessment" : "personal_training",
+      unitPrice: unit,
+      quantity: qty,
+      note: ptCredit > 0 ? `抵扣 ${formatMoney(ptCredit)}` : undefined,
+    });
+    setSelectedPtRow(null);
+  }
+
   function closePtCalculator() {
     setSelectedPtRow(null);
-    setPtReportOpen(false);
   }
 
 
@@ -380,6 +440,46 @@ export default function Home() {
     setSelectedCyclePlan(null);
     setCycleStep(1);
     setCycleSelectedPtProgram(null);
+    setCycleSelectedCourses([]);
+  }
+
+  function handleAddCycleToCart() {
+    if (!selectedCyclePlan || !cycleSelectedPtProgram) return;
+    const { unit, qty } = getPresetUnitAndQty(cyclePtPreset, {
+      member1v1Unit: cycleUnitMember1v1,
+      nonMember1v1Unit: cycleUnitNonMember1v1,
+      member1v2Unit: cycleUnitMember1v2,
+      nonMember1v2Unit: cycleUnitNonMember1v2,
+      member1v1Qty: cycleQtyMember1v1,
+      nonMember1v1Qty: cycleQtyNonMember1v1,
+      member1v2Qty: cycleQtyMember1v2,
+      nonMember1v2Qty: cycleQtyNonMember1v2,
+    });
+
+    const presetLabel = (preset: PtPreset) =>
+      preset === "member_1v1"
+        ? "会员1v1"
+        : preset === "non_member_1v1"
+          ? "非会员1v1"
+          : preset === "member_1v2"
+            ? "会员1v2"
+            : "非会员1v2";
+
+    addCartItem({
+      name: `${selectedCyclePlan.programZh} · 混合课程 ${cycleSelectedCourses.length || 1} 项`,
+      category: "cycle_plan",
+      unitPrice: cycleSubtotal,
+      quantity: 1,
+      details:
+        cycleSelectedCourses.length > 0
+          ? cycleSelectedCourses.map(
+              (course) => `${course.program.nameZh} · ${presetLabel(course.preset)} · ${course.qty}次 · ${formatMoney(course.unitPrice)}`,
+            )
+          : [`${cycleSelectedPtProgram.nameZh} · ${cycleActiveLabel.zh} · ${qty}次 · ${formatMoney(unit)}`],
+    });
+    setSelectedCyclePlan(null);
+    setCycleStep(1);
+    setCycleSelectedPtProgram(null);
   }
 
   async function handleCopyCycleSummary() {
@@ -409,6 +509,7 @@ export default function Home() {
       afterCredit: cycleAfterCredit,
       tax: cycleTax,
       total: cycleTotal,
+      courses: cycleSelectedCourses,
     });
 
     await navigator.clipboard.writeText(summary);
@@ -450,9 +551,76 @@ export default function Home() {
       afterCredit: cycleAfterCredit,
       tax: cycleTax,
       total: cycleTotal,
+      courses: cycleSelectedCourses,
     });
 
     printHtml(html, { width: 900, height: 700 });
+  }
+
+  type StandardRow = (typeof groupedSections.standardSections)[number]["rows"][number];
+  type GroupClassRow = NonNullable<typeof groupedSections.groupClassRows>[number];
+  type StoredValuePlan = (typeof storedValuePlans)[number];
+
+  function runAddAnimation(key: string) {
+    setAddingItemKey(key);
+    window.setTimeout(() => setAddingItemKey((prev) => (prev === key ? null : prev)), 850);
+  }
+
+  function addCartMembership(row: StandardRow) {
+    const price = row.generalPrice ?? row.memberPrice ?? row.nonMemberPrice ?? 0;
+    addCartItem({
+      name: row.nameZh,
+      category: "membership",
+      unitPrice: price,
+    });
+    runAddAnimation(`membership-${row.key}`);
+  }
+
+  function addCartGroupClass(row: GroupClassRow) {
+    const price = row.generalPrice ?? row.memberPrice ?? row.nonMemberPrice ?? 0;
+    addCartItem({
+      name: row.nameZh,
+      category: "group_class",
+      unitPrice: price,
+    });
+    runAddAnimation(`group-${row.key}`);
+  }
+
+  function addCartStoredValue(plan: StoredValuePlan) {
+    addCartItem({
+      name: plan.amountLabel,
+      category: "stored_value",
+      unitPrice: plan.amount,
+      note: plan.membershipGift.zh,
+    });
+    runAddAnimation(`stored-${plan.id}`);
+  }
+
+  async function handleCopyCartSummary() {
+    const reportDate = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
+    const summary = buildCartSummaryText({
+      reportDate,
+      customer: cartCustomer,
+      items: cartItems,
+      totals: cartTotals,
+    });
+
+    try {
+      await navigator.clipboard.writeText(summary);
+    } catch {
+      // ignore copy failures
+    }
+  }
+
+  function handleDownloadCartPdf() {
+    const reportDate = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
+    const html = buildCartPdfHtml({
+      reportDate,
+      customer: cartCustomer,
+      items: cartItems,
+      totals: cartTotals,
+    });
+    printHtml(html, { width: 980, height: 760, delayMs: 250 });
   }
 
   function applyPtPreset(preset: "member_1v1" | "non_member_1v1" | "member_1v2" | "non_member_1v2") {
@@ -486,8 +654,8 @@ export default function Home() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,255,163,0.18),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(59,130,246,0.14),transparent_28%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-size:3px_3px] [background-image:radial-gradient(rgba(255,255,255,0.4)_0.4px,transparent_0.4px)]" />
 
-      <div className={`relative mx-auto px-4 py-16 md:px-6 ${presentationMode ? "max-w-[92rem] md:py-16" : "max-w-7xl md:py-24"}`}>
-        <header className={`${glass} p-4 md:p-6 ${presentationMode ? "sticky top-3 z-40 border border-cyan-300/20 bg-[#060d18]/88 backdrop-blur-xl" : ""}`}>
+      <div className="relative mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
+        <header className={`${glass} p-4 md:p-6`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white md:text-3xl">
@@ -496,24 +664,66 @@ export default function Home() {
               <p className="mt-1 text-xs text-slate-400">Sales Console · 深色科技风重构版</p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setActiveLocale((prev) => (prev === "zh" ? "en" : "zh"))}
-                  className={`${solidButtonBase} text-xs ${activeLocale === "en" ? "bg-cyan-500 text-slate-950 hover:bg-cyan-400" : ""}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-cyan-300/40 hover:text-cyan-100"
                 >
-                  {activeLocale === "zh" ? "中文" : "English"}
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Lang</span>
+                  <span>{activeLocale === "zh" ? "中文" : "English"}</span>
                 </button>
                 <button
-                  onClick={() => setPresentationMode((v) => !v)}
-                  className={`${solidButtonBase} text-xs ${presentationMode ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400" : ""}`}
+                  onClick={() => setCartOpen(true)}
+                  className={`group relative inline-flex h-8 w-8 items-center justify-center rounded-full border text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-500/25 ${
+                    addingItemKey ? "border-cyan-200/70 bg-cyan-500/20" : "border-cyan-300/50 bg-cyan-500/15"
+                  }`}
+                  aria-label={`购物车，当前 ${cartTotals.itemsCount} 项`}
+                  title="购物车"
                 >
-                  {presentationMode ? "Presentation: ON" : "Presentation: OFF"}
+                  <ShoppingCart size={14} />
+                  {cartTotals.itemsCount > 0 && (
+                    <span className={`absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-cyan-400 px-1 text-[10px] font-bold text-slate-950 ${
+                      addingItemKey ? "animate-[cart-flash_650ms_ease-in-out]" : ""
+                    }`}>
+                      {cartTotals.itemsCount}
+                    </span>
+                  )}
                 </button>
-                {!presentationMode && (
-                  <button onClick={handleSignOut} className={`${solidButtonBase} text-xs bg-rose-500/90 hover:bg-rose-400/90`}>
-                    Sign out / 退出
+                <div className="relative" data-avatar-menu>
+                  <button
+                    onClick={() => setAvatarMenuOpen((prev) => !prev)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-xs font-semibold text-cyan-100 transition hover:border-cyan-300/40"
+                    aria-label={activeLocale === "zh" ? "用户菜单" : "User menu"}
+                  >
+                    {(profile?.full_name || profile?.email || email || "U")[0]?.toUpperCase()}
                   </button>
-                )}
+                  {avatarMenuOpen && (
+                    <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#0b1424]/98 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+                      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/15 text-sm font-semibold text-cyan-100">
+                          {(profile?.full_name || profile?.email || email || "U")[0]?.toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">
+                            {profile?.full_name || profile?.email || email || "-"}
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            {profile?.role ?? (email?.toLowerCase() === "admin" ? "admin" : "sales")}
+                          </p>
+                        </div>
+                      </div>
+                
+                      <div className="border-t border-white/10 px-4 py-3">
+                        <button
+                          onClick={handleSignOut}
+                          className="w-full rounded-lg border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20"
+                        >
+                          {activeLocale === "zh" ? "退出登录" : "Sign out"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -526,36 +736,34 @@ export default function Home() {
           onDismiss={handleDismissInstallHint}
         />
 
-          <section className={`mt-5 space-y-5 ${presentationMode ? "pb-20" : ""}`}>
-            {!presentationMode && (
-              <div className="flex flex-wrap gap-2">
+          <section className="mt-5 space-y-5">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setCategoryFilter("all")}
+                className={`${solidButtonBase} text-sm ${
+                  categoryFilter === "all"
+                    ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+                    : "bg-slate-700/90 text-slate-100 hover:bg-slate-600/90"
+                }`}
+              >
+                全部
+              </button>
+              {(Object.keys(categoryMeta) as PricingItem["category"][])
+                .filter((cat) => cat !== "assessment" && cat !== "group_class")
+                .map((cat) => (
                 <button
-                  onClick={() => setCategoryFilter("all")}
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
                   className={`${solidButtonBase} text-sm ${
-                    categoryFilter === "all"
+                    categoryFilter === cat
                       ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
                       : "bg-slate-700/90 text-slate-100 hover:bg-slate-600/90"
                   }`}
                 >
-                  全部
+                  {getCopy(categoryMeta[cat])}
                 </button>
-                {(Object.keys(categoryMeta) as PricingItem["category"][])
-                  .filter((cat) => cat !== "assessment" && cat !== "group_class")
-                  .map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setCategoryFilter(cat)}
-                    className={`${solidButtonBase} text-sm ${
-                      categoryFilter === cat
-                        ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
-                        : "bg-slate-700/90 text-slate-100 hover:bg-slate-600/90"
-                    }`}
-                  >
-                    {getCopy(categoryMeta[cat])}
-                  </button>
-                ))}
-              </div>
-            )}
+              ))}
+            </div>
 
             {groupedSections.standardSections.map(({ category, rows }) => (
               <article key={category} className={`${glass} p-4`}>
@@ -703,6 +911,23 @@ export default function Home() {
                               </div>
                             </div>
                           </div>
+
+                          <div className="mt-4 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => addCartMembership(row)}
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                                addingItemKey === `membership-${row.key}`
+                                  ? "border-emerald-200/70 bg-emerald-500/30 text-emerald-50 shadow-[0_0_16px_rgba(16,185,129,0.45)]"
+                                  : "border-emerald-300/40 bg-emerald-500/15 text-emerald-100 hover:border-emerald-200/70 hover:bg-emerald-500/25"
+                              }`}
+                              aria-label="加入报价"
+                              title="加入报价"
+                            >
+                              <Plus size={12} />
+                              <span>{activeLocale === "zh" ? "加入报价" : "Add"}</span>
+                            </button>
+                          </div>
                         </article>
                       );
 
@@ -728,8 +953,10 @@ export default function Home() {
                 {groupedSections.groupClassRows && (
                   <div className="mt-5 rounded-2xl border border-white/12 bg-[#0a1628]/70 p-3 md:p-4">
                     <div className="mb-3 flex items-center justify-between">
-                      <h4 className="text-base font-semibold text-white">Group Classes · 团体课程</h4>
-                      <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] text-cyan-100">Hybrid Pricing</span>
+                      <h4 className="text-base font-semibold text-white">{getCopy(tabCopy.pages.membership.copy.groupClass.title)}</h4>
+                      <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] text-cyan-100">
+                        {getCopy(tabCopy.pages.membership.copy.groupClass.badge)}
+                      </span>
                     </div>
 
                     <div className="space-y-2">
@@ -739,35 +966,68 @@ export default function Home() {
                           groupClassDays && typeof row.memberPrice === "number" ? row.memberPrice / groupClassDays : null;
                         const nonMemberPerDay =
                           groupClassDays && typeof row.nonMemberPrice === "number" ? row.nonMemberPrice / groupClassDays : null;
+                        const displayName = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
+                        const modeLabel = row.modeKey === "weekly_pass"
+                          ? activeLocale === "zh" ? "周通" : "Weekly"
+                          : row.modeKey === "monthly_pass"
+                            ? activeLocale === "zh" ? "月通" : "Monthly"
+                            : row.modeKey === "single"
+                              ? activeLocale === "zh" ? "单次" : "Single"
+                              : row.modeKey ?? "-";
+                        const durationLabel = groupClassDays
+                          ? activeLocale === "zh"
+                            ? `${groupClassDays} 天`
+                            : `${groupClassDays} days`
+                          : "-";
 
                         return (
                           <article key={row.key} className="py-1.5">
                             <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/12 bg-[linear-gradient(135deg,rgba(9,19,35,0.92),rgba(7,28,45,0.8))] text-xs md:grid-cols-6 md:text-sm">
                               <div className="col-span-2 border-b border-white/10 px-3 py-2 md:col-span-2 md:border-b-0 md:border-r">
-                                <p className="font-semibold text-white">{index + 1}. {row.nameZh}</p>
-                                <p className="mt-0.5 text-[11px] text-slate-400">模式 / Mode: {row.mode ?? "-"}</p>
-                                <p className="text-[11px] text-slate-500">周期 / Duration: {groupClassDays ? `${groupClassDays} 天 / days` : "-"}</p>
+                                <p className="font-semibold text-white">{index + 1}. {displayName}</p>
+                                <p className="mt-0.5 text-[11px] text-slate-400">
+                                  {activeLocale === "zh" ? "模式" : "Mode"}: {modeLabel}
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                  {activeLocale === "zh" ? "周期" : "Duration"}: {durationLabel}
+                                </p>
                               </div>
 
                               <div className="border-b border-r border-white/10 px-3 py-2 md:border-b-0">
-                                <p className="text-[10px] text-slate-500">会员价 / Member</p>
+                                <p className="text-[10px] text-slate-500">{getCopy(tabCopy.pages.membership.copy.groupClass.columns.member)}</p>
                                 <p className="font-semibold text-emerald-200">{formatMoney(row.memberPrice)}</p>
                               </div>
 
                               <div className="border-b border-white/10 px-3 py-2 md:border-b-0 md:border-r">
-                                <p className="text-[10px] text-slate-500">非会员 / Non-member</p>
+                                <p className="text-[10px] text-slate-500">{getCopy(tabCopy.pages.membership.copy.groupClass.columns.nonMember)}</p>
                                 <p className="font-semibold text-amber-200">{formatMoney(row.nonMemberPrice)}</p>
                               </div>
 
                               <div className="border-r border-white/10 px-3 py-2">
-                                <p className="text-[10px] text-slate-500">会员日均 / Member per day</p>
+                                <p className="text-[10px] text-slate-500">{getCopy(tabCopy.pages.membership.copy.groupClass.columns.memberPerDay)}</p>
                                 <p className="text-cyan-200">{memberPerDay !== null ? `$${memberPerDay.toFixed(2)}` : "-"}</p>
                               </div>
 
                               <div className="px-3 py-2">
-                                <p className="text-[10px] text-slate-500">非会员日均 / Non-member per day</p>
+                                <p className="text-[10px] text-slate-500">{getCopy(tabCopy.pages.membership.copy.groupClass.columns.nonMemberPerDay)}</p>
                                 <p className="text-cyan-100">{nonMemberPerDay !== null ? `$${nonMemberPerDay.toFixed(2)}` : "-"}</p>
                               </div>
+                            </div>
+                            <div className="mt-2 flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => addCartGroupClass(row)}
+                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                                  addingItemKey === `group-${row.key}`
+                                    ? "border-emerald-200/70 bg-emerald-500/30 text-emerald-50 shadow-[0_0_16px_rgba(16,185,129,0.45)]"
+                                    : "border-emerald-300/40 bg-emerald-500/15 text-emerald-100 hover:border-emerald-200/70 hover:bg-emerald-500/25"
+                                }`}
+                                aria-label="加入报价"
+                                title="加入报价"
+                              >
+                                <Plus size={12} />
+                                <span>{activeLocale === "zh" ? "加入报价" : "Add"}</span>
+                              </button>
                             </div>
                           </article>
                         );
@@ -789,7 +1049,7 @@ export default function Home() {
                   <div className="relative mb-5 flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-500/15 px-3 py-1 text-[11px] font-semibold tracking-[0.08em] text-cyan-100">
-                        <Sparkles size={13} /> {tabCopy.pages.storedValue.copy.title.en.toUpperCase()}
+                        <Sparkles size={13} /> {getCopy(tabCopy.pages.storedValue.copy.title).toUpperCase()}
                       </p>
                       <h3 className="text-2xl font-black tracking-tight text-white md:text-3xl">
                         {getCopy(tabCopy.pages.storedValue.copy.title)}
@@ -797,18 +1057,20 @@ export default function Home() {
                     </div>
                     <div className="rounded-2xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-right">
                       <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-100/80">
-                        {tabCopy.pages.storedValue.copy.activePromotions.en}
+                        {getCopy(tabCopy.pages.storedValue.copy.activePromotions)}
                       </p>
-                      <p className="text-lg font-bold text-emerald-100">{promotionGroups.flatMap((g) => g.items).length} 项</p>
+                      <p className="text-lg font-bold text-emerald-100">
+                        {promotionGroups.flatMap((g) => g.items).length} {activeLocale === "zh" ? "项" : "items"}
+                      </p>
                     </div>
                   </div>
 
                   <div className="relative grid gap-4 xl:grid-cols-[1.25fr_1fr]">
                     <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-3">
                       <div className="mb-3 flex items-center justify-between">
-                        <h4 className="text-sm font-semibold text-cyan-100">{tabCopy.pages.storedValue.copy.promoTitle.en}</h4>
+                        <h4 className="text-sm font-semibold text-cyan-100">{getCopy(tabCopy.pages.storedValue.copy.promoTitle)}</h4>
                         <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-100">
-                          {tabCopy.pages.storedValue.copy.promoBadge.en}
+                          {getCopy(tabCopy.pages.storedValue.copy.promoBadge)}
                         </span>
                       </div>
 
@@ -836,10 +1098,10 @@ export default function Home() {
                                 </span>
                                 <div className="min-w-0">
                                   <p className="text-xs font-semibold text-slate-100">
-                                    {promo.title.en} / {promo.title.zh}
+                                    {getCopy(promo.title)}
                                   </p>
                                   <p className="mt-1 text-[11px] leading-5 text-slate-300">
-                                    {promo.detail.en} / {promo.detail.zh}
+                                    {getCopy(promo.detail)}
                                   </p>
                                 </div>
                               </div>
@@ -856,11 +1118,18 @@ export default function Home() {
                         const isSelected = selectedRechargeIndex === index;
 
                         return (
-                          <button
-                            type="button"
-                            key={`${plan.amount}-gift`}
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            key={`${plan.id}-gift`}
                             onClick={() => setSelectedRechargeIndex(index)}
-                            className={`group relative w-full overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300 active:scale-[0.985] ${
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setSelectedRechargeIndex(index);
+                              }
+                            }}
+                            className={`group relative w-full cursor-pointer overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300 active:scale-[0.985] ${
                               isSelected
                                 ? "border-cyan-300/65 bg-gradient-to-br from-cyan-500/16 via-sky-500/10 to-emerald-500/10 shadow-[0_0_0_1px_rgba(125,211,252,0.26),0_0_22px_rgba(34,211,238,0.14)]"
                                 : "border-white/12 bg-[#081120]/88"
@@ -869,40 +1138,59 @@ export default function Home() {
                             <div className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"} bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.1),transparent)]`} />
 
                             <div className="relative mb-2 flex items-center justify-between">
-                              <span className="text-base font-extrabold tracking-wide text-white md:text-lg">{plan.amount}</span>
+                              <span className="text-base font-extrabold tracking-wide text-white md:text-lg">
+                                {plan.amountLabel}
+                              </span>
                               <Gift size={14} className={isSelected ? "text-cyan-100" : "text-emerald-200"} />
                             </div>
 
                             <div className="relative flex items-end justify-between gap-3">
                               <div>
-                                <p className="text-sm font-semibold text-white">{plan.membershipGift}</p>
-                                <p className="text-xs text-slate-300">{plan.membershipGiftZh}</p>
+                                <p className="text-sm font-semibold text-white">{getCopy(plan.membershipGift)}</p>
                               </div>
                               <ChevronRight size={16} className={`text-slate-300 transition-transform ${isSelected ? "translate-x-0.5" : "group-hover:translate-x-0.5"}`} />
                             </div>
 
                             <p className="relative mt-2 text-xs text-cyan-100">
-                              {tabCopy.pages.storedValue.copy.labels.bonusCredit.en}: <span className="font-bold">{plan.bonusCredit}</span>
+                              {getCopy(tabCopy.pages.storedValue.copy.labels.bonusCredit)}: <span className="font-bold">{formatMoney(plan.bonusCredit)}</span>
                             </p>
 
                             <p className="relative mt-1 text-xs text-emerald-100/90">
-                              {tabCopy.pages.storedValue.copy.labels.giftValue.en} / {tabCopy.pages.storedValue.copy.labels.giftValue.zh}: <span className="font-semibold">{plan.totalValue}</span>
+                              {getCopy(tabCopy.pages.storedValue.copy.labels.giftValue)}: <span className="font-semibold">{formatMoney(plan.totalValue)}</span>
                             </p>
 
-                            <div className="relative mt-3 flex items-center justify-end gap-2">
+                            <div className="relative mt-3 flex flex-wrap items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  addCartStoredValue(plan);
+                                }}
+                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                                  addingItemKey === `stored-${plan.id}`
+                                    ? "border-emerald-200/70 bg-emerald-500/30 text-emerald-50 shadow-[0_0_16px_rgba(16,185,129,0.45)]"
+                                    : "border-emerald-300/40 bg-emerald-500/15 text-emerald-100 hover:border-emerald-200/70 hover:bg-emerald-500/25"
+                                }`}
+                                aria-label="加入报价"
+                                title="加入报价"
+                              >
+                                <Plus size={12} />
+                                <span>{activeLocale === "zh" ? "加入报价" : "Add"}</span>
+                              </button>
+
                               {isMidTier && (
                                 <span className="inline-flex rounded-md border border-cyan-300/45 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-50">
-                                  {tabCopy.pages.storedValue.copy.badges.mostPopular.en} / {tabCopy.pages.storedValue.copy.badges.mostPopular.zh}
+                                  {getCopy(tabCopy.pages.storedValue.copy.badges.mostPopular)}
                                 </span>
                               )}
 
                               {isTopTier && (
                                 <span className="inline-flex rounded-md border border-emerald-300/40 bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold text-emerald-50">
-                                  {tabCopy.pages.storedValue.copy.badges.bestValue.en} / {tabCopy.pages.storedValue.copy.badges.bestValue.zh}
+                                  {getCopy(tabCopy.pages.storedValue.copy.badges.bestValue)}
                                 </span>
                               )}
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
 
@@ -1037,6 +1325,7 @@ export default function Home() {
                               </p>
                             </div>
                           </div>
+
                         </article>
                       </div>
                     );
@@ -1058,85 +1347,86 @@ export default function Home() {
 
                 <div className="space-y-3">
                   {groupedSections.cyclePlanRows.map((row, idx) => (
-                    <button
-                      type="button"
-                      key={row.program}
-                      onClick={() => handleCyclePlanCardTap(row)}
-                      className={`group relative w-full overflow-hidden rounded-2xl border bg-[linear-gradient(135deg,#080f1d_0%,#0b1630_56%,#10142a_100%)] p-4 text-left transition-all duration-300 active:scale-[0.995] ${
-                        cyclePreviewPlan?.program === row.program
-                          ? "border-violet-300/55 shadow-[0_0_28px_rgba(167,139,250,0.2)]"
-                          : "border-white/12 hover:border-violet-300/45 hover:shadow-[0_0_28px_rgba(167,139,250,0.18)]"
-                      }`}
-                    >
-                      <div className={`pointer-events-none absolute inset-0 transition-opacity duration-300 bg-[radial-gradient(circle_at_85%_18%,rgba(167,139,250,0.2),transparent_35%)] ${cyclePreviewPlan?.program === row.program ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                    <div key={row.program} className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCyclePlanCardTap(row)}
+                        className={`group relative w-full overflow-hidden rounded-2xl border bg-[linear-gradient(135deg,#080f1d_0%,#0b1630_56%,#10142a_100%)] p-4 text-left transition-all duration-300 active:scale-[0.995] ${
+                          cyclePreviewPlan?.program === row.program
+                            ? "border-violet-300/55 shadow-[0_0_28px_rgba(167,139,250,0.2)]"
+                            : "border-white/12 hover:border-violet-300/45 hover:shadow-[0_0_28px_rgba(167,139,250,0.18)]"
+                        }`}
+                      >
+                        <div className={`pointer-events-none absolute inset-0 transition-opacity duration-300 bg-[radial-gradient(circle_at_85%_18%,rgba(167,139,250,0.2),transparent_35%)] ${cyclePreviewPlan?.program === row.program ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
 
-                      <div className="relative grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-center">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            {cyclePreviewPlan?.program === row.program && (
-                              <span className="inline-flex h-5 w-5 items-center justify-center">
-                                <span className="h-2.5 w-2.5 rounded-full bg-violet-200 shadow-[0_0_12px_rgba(196,181,253,0.95)] animate-[pulse_1.5s_ease-in-out_infinite]" />
-                              </span>
-                            )}
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-300/35 bg-violet-500/15 text-sm font-bold text-violet-100">
-                              {idx + 1}
+                        <div className="relative grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-center">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                              {cyclePreviewPlan?.program === row.program && (
+                                <span className="inline-flex h-5 w-5 items-center justify-center">
+                                  <span className="h-2.5 w-2.5 rounded-full bg-violet-200 shadow-[0_0_12px_rgba(196,181,253,0.95)] animate-[pulse_1.5s_ease-in-out_infinite]" />
+                                </span>
+                              )}
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-300/35 bg-violet-500/15 text-sm font-bold text-violet-100">
+                                {idx + 1}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.12em] text-violet-200/80">
+                                {activeLocale === "zh" ? "周期方案" : "Cycle Program"}
+                              </p>
+                              <p className="mt-0.5 text-[17px] font-semibold text-white">
+                                {activeLocale === "zh" ? row.programZh : row.programEn ?? row.programZh}
+                              </p>
                             </div>
                           </div>
-                          <div>
-                            <p className="text-[11px] uppercase tracking-[0.12em] text-violet-200/80">
-                              {activeLocale === "zh" ? "周期方案" : "Cycle Program"}
-                            </p>
-                            <p className="mt-0.5 text-[17px] font-semibold text-white">
-                              {activeLocale === "zh" ? row.programZh : row.programEn ?? row.programZh}
-                            </p>
-                          </div>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-                            <p className="text-[10px] leading-tight text-slate-400">
-                              {cycleCopy[activeLocale].weeklySessions}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.weeklySessions}</p>
+                          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                            <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+                              <p className="text-[10px] leading-tight text-slate-400">
+                                {cycleCopy[activeLocale].weeklySessions}
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-cyan-100">{row.weeklySessions}</p>
+                            </div>
+                            <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+                              <p className="text-[10px] leading-tight text-slate-400">
+                                {cycleCopy[activeLocale].minSessions}
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-cyan-100">{row.minSessions}</p>
+                            </div>
+                            <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+                              <p className="text-[10px] leading-tight text-slate-400">
+                                {cycleCopy[activeLocale].followups}
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-cyan-100">{row.wpdFollowups}</p>
+                            </div>
+                            <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+                              <p className="text-[10px] leading-tight text-slate-400">
+                                {cycleCopy[activeLocale].assessments}
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-cyan-100">{row.assessmentsReports}</p>
+                            </div>
                           </div>
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-                            <p className="text-[10px] leading-tight text-slate-400">
-                              {cycleCopy[activeLocale].minSessions}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.minSessions}</p>
-                          </div>
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-                            <p className="text-[10px] leading-tight text-slate-400">
-                              {cycleCopy[activeLocale].followups}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.wpdFollowups}</p>
-                          </div>
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-                            <p className="text-[10px] leading-tight text-slate-400">
-                              {cycleCopy[activeLocale].assessments}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.assessmentsReports}</p>
-                          </div>
-                        </div>
 
-                        <div className="space-y-2 lg:text-right">
-                          <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2">
-                            <p className="text-[10px] leading-tight text-emerald-100/80">
-                              {cycleCopy[activeLocale].membershipGift}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-emerald-50">
-                              {activeLocale === "zh" ? row.membershipGiftZh : row.membershipGiftEn}
+                          <div className="space-y-2 lg:text-right">
+                            <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2">
+                              <p className="text-[10px] leading-tight text-emerald-100/80">
+                                {cycleCopy[activeLocale].membershipGift}
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-emerald-50">
+                                {activeLocale === "zh" ? row.membershipGiftZh : row.membershipGiftEn}
+                              </p>
+                            </div>
+                            <p className="text-xs text-violet-100/90">
+                              {cycleCopy[activeLocale].extraBenefits}: 
+                              <span className="font-medium text-violet-50">
+                                {activeLocale === "zh" ? row.extraBenefitsZh : row.extraBenefitsEn}
+                              </span>
                             </p>
                           </div>
-                          <p className="text-xs text-violet-100/90">
-                            {cycleCopy[activeLocale].extraBenefits}: 
-                            <span className="font-medium text-violet-50">
-                              {activeLocale === "zh" ? row.extraBenefitsZh : row.extraBenefitsEn}
-                            </span>
-                          </p>
                         </div>
-                      </div>
-                    </button>
+                      </button>
+                    </div>
                   ))}
                 </div>
 
@@ -1177,6 +1467,10 @@ export default function Home() {
         ptAfterCredit={ptAfterCredit}
         ptTaxAfterAdjust={ptTaxAfterAdjust}
         ptFinalTotal={ptFinalTotal}
+        ptReportDate={ptReportDate}
+        ptClientName={ptClientName}
+        onSetPtClientName={setPtClientName}
+        ptCopySuccess={ptCopySuccess}
         onClose={closePtCalculator}
         onApplyPreset={applyPtPreset}
         onSetPtUnitInputEmpty={setPtUnitInputEmpty}
@@ -1191,7 +1485,9 @@ export default function Home() {
         onSetPtQtyMember1v2={setPtQtyMember1v2}
         onSetPtQtyNonMember1v2={setPtQtyNonMember1v2}
         onSetPtCredit={setPtCredit}
-        onOpenReport={() => setPtReportOpen(true)}
+        onCopySummary={handleCopyQuoteSummary}
+        onDownloadPdf={handleDownloadQuotePdf}
+        onAddToCart={handleAddPtToCart}
       />
 
       <CyclePlanModal
@@ -1200,8 +1496,10 @@ export default function Home() {
         cycleStep={cycleStep}
         cyclePtProgramOptions={cyclePtProgramOptions}
         cycleSelectedPtProgram={cycleSelectedPtProgram}
+        cycleSelectedCourses={cycleSelectedCourses}
         cyclePtPreset={cyclePtPreset}
         cycleClientName={cycleClientName}
+        onSetCycleSelectedCourses={setCycleSelectedCourses}
         cycleUnitInputStr={cycleUnitInputStr}
         cycleQtyInputStr={cycleQtyInputStr}
         cycleCreditInputStr={cycleCreditInputStr}
@@ -1241,37 +1539,23 @@ export default function Home() {
         onSetCycleCredit={setCycleCredit}
         onCopySummary={handleCopyCycleSummary}
         onDownloadPdf={handleDownloadCyclePdf}
+        onAddToCart={handleAddCycleToCart}
       />
 
-      <PtReportModal
-        open={ptReportOpen}
-        selectedPtRow={selectedPtRow}
-        activeLocale={activeLocale}
-        ptReportDate={ptReportDate}
-        ptClientName={ptClientName}
-        setPtClientName={setPtClientName}
-        ptPreset={ptPreset}
-        ptUnitMember1v1={ptUnitMember1v1}
-        ptQtyMember1v1={ptQtyMember1v1}
-        ptCalcMember1v1={ptCalcMember1v1}
-        ptUnitNonMember1v1={ptUnitNonMember1v1}
-        ptQtyNonMember1v1={ptQtyNonMember1v1}
-        ptCalcNonMember1v1={ptCalcNonMember1v1}
-        ptUnitMember1v2={ptUnitMember1v2}
-        ptQtyMember1v2={ptQtyMember1v2}
-        ptCalcMember1v2={ptCalcMember1v2}
-        ptUnitNonMember1v2={ptUnitNonMember1v2}
-        ptQtyNonMember1v2={ptQtyNonMember1v2}
-        ptCalcNonMember1v2={ptCalcNonMember1v2}
-        ptActiveLabel={ptActiveLabel}
-        ptCredit={ptCredit}
-        ptAfterCredit={ptAfterCredit}
-        ptTaxAfterAdjust={ptTaxAfterAdjust}
-        ptFinalTotal={ptFinalTotal}
-        ptCopySuccess={ptCopySuccess}
-        onClose={() => setPtReportOpen(false)}
-        onCopySummary={handleCopyQuoteSummary}
-        onDownloadPdf={handleDownloadQuotePdf}
+      <CartQuoteModal
+        open={cartOpen}
+        items={cartItems}
+        totals={cartTotals}
+        customer={cartCustomer}
+        onClose={() => setCartOpen(false)}
+        onRemoveItem={removeCartItem}
+        onUpdateItem={updateCartItem}
+        onUpdateCustomer={updateCartCustomer}
+        onClearCart={clearCart}
+        onCopySummary={handleCopyCartSummary}
+        onDownloadPdf={handleDownloadCartPdf}
+        lastAddedId={lastAddedId}
+        onAnimationComplete={clearLastAdded}
       />
       </div>
     </div>

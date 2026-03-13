@@ -27,7 +27,6 @@ export function usePtCalculatorState() {
   const [ptQtyNonMember1v2, setPtQtyNonMember1v2] = useState<number>(12);
   const [ptPreset, setPtPreset] = useState<PtPreset>("member_1v1");
   const [ptCredit, setPtCredit] = useState<number>(0);
-  const [ptReportOpen, setPtReportOpen] = useState(false);
   const [ptCopySuccess, setPtCopySuccess] = useState(false);
   const [ptUnitInputEmpty, setPtUnitInputEmpty] = useState(false);
   const [ptQtyInputEmpty, setPtQtyInputEmpty] = useState(false);
@@ -93,8 +92,6 @@ export function usePtCalculatorState() {
     setPtPreset,
     ptCredit,
     setPtCredit,
-    ptReportOpen,
-    setPtReportOpen,
     ptCopySuccess,
     setPtCopySuccess,
     ptUnitInputEmpty,

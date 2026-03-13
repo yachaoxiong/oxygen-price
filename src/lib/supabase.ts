@@ -108,6 +108,30 @@ export async function getCurrentUser() {
 
 }
 
+export type UserProfile = {
+  id: string;
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  role: string | null;
+  phone: string | null;
+  status: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, user_id, email, full_name, role, phone, status, metadata")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data ?? null;
+}
+
 
 
 export async function signInWithPassword(email: string, password: string) {
