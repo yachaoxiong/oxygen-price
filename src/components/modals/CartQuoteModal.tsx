@@ -80,7 +80,7 @@ export function CartQuoteModal(props: {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#04070b]/80 px-4 py-6 backdrop-blur">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--modal-backdrop)] px-4 py-6 backdrop-blur">
       <div className="glass-panel flex w-full max-w-6xl flex-col overflow-hidden rounded-[40px] shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.01] px-10 py-7">
           <div className="flex items-center gap-6">

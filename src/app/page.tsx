@@ -13,7 +13,6 @@ import {
   Plus,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/useAuth";
-import { AuthLoadingScreen } from "@/features/auth/AuthLoadingScreen";
 import { AuthLoginScreen } from "@/features/auth/AuthLoginScreen";
 import { usePricingData } from "@/features/pricing/usePricingData";
 import { usePtCalculatorState } from "@/features/pricing/usePtCalculatorState";
@@ -35,6 +34,7 @@ import { Navbar } from "@/components/navigation/Navbar";
 import { CyclePlanModal } from "@/components/modals/CyclePlanModal";
 import { PtCalculatorModal } from "@/components/modals/PtCalculatorModal";
 import { CartQuoteModal } from "@/components/modals/CartQuoteModal";
+import { LoadingCircuit } from "@/components/ui/LoadingCircuit";
 import { useCartState } from "@/features/cart/useCartState";
 import type { CyclePlanRow, PricingCategory, PricingItem, PtPreset, PtRow } from "@/types/pricing";
 
@@ -53,6 +53,18 @@ export default function Home() {
   });
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [addingItemKey, setAddingItemKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const body = document.body;
+    if (categoryFilter === "stored_value") {
+      body.classList.add("stored-value-mode");
+    } else {
+      body.classList.remove("stored-value-mode");
+    }
+
+    return () => body.classList.remove("stored-value-mode");
+  }, [categoryFilter]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -250,6 +262,30 @@ export default function Home() {
     .sort((a, b) => a.amount - b.amount);
 
   const rechargePlans = storedValuePlans;
+  const orderedRechargePlans = [...rechargePlans].sort((a, b) => a.amount - b.amount);
+  const storedValueTierMeta = [
+    {
+      key: "foundation",
+      title: { zh: "基础选择", en: "Foundation" },
+      tone: "glow-blue",
+      cardClass: "glass-ink",
+      accentText: "text-[#4D7CFF]",
+    },
+    {
+      key: "signature",
+      title: { zh: "核心推荐", en: "Signature" },
+      tone: "glow-purple",
+      cardClass: "glass-purple",
+      accentText: "text-[#A855F7]",
+    },
+    {
+      key: "prestige",
+      title: { zh: "极致尊享", en: "Prestige" },
+      tone: "glow-magenta",
+      cardClass: "glass-magenta",
+      accentText: "text-[#EC4899]",
+    },
+  ];
 
   const { groupedSections, cyclePtProgramOptions, getGroupClassDays } = usePricingPresentation(
     pricingItems,
@@ -633,7 +669,7 @@ export default function Home() {
 
 
   if (authState === "loading") {
-    return <AuthLoadingScreen />;
+    return <LoadingCircuit />;
   }
 
   if (authState === "guest") {
@@ -953,42 +989,42 @@ export default function Home() {
             ))}
 
             {categoryFilter === "stored_value" && (
-              <article className={`${glass} relative overflow-hidden p-4 md:p-6`}>
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(16,185,129,0.2),transparent_35%),radial-gradient(circle_at_90%_85%,rgba(56,189,248,0.16),transparent_35%)]" />
-
-                <div className="relative overflow-hidden rounded-3xl border border-cyan-300/25 bg-[radial-gradient(circle_at_15%_15%,rgba(34,211,238,0.18),transparent_36%),radial-gradient(circle_at_85%_25%,rgba(16,185,129,0.2),transparent_36%),linear-gradient(140deg,#040a16_10%,#071225_42%,#051426_100%)] p-4 md:p-6">
-                  <div className="pointer-events-none absolute -left-24 -top-24 h-56 w-56 rounded-full bg-cyan-300/10 blur-3xl" />
-                  <div className="pointer-events-none absolute -bottom-24 right-8 h-56 w-56 rounded-full bg-emerald-300/10 blur-3xl" />
-
-                  <div className="relative mb-5 flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-500/15 px-3 py-1 text-[11px] font-semibold tracking-[0.08em] text-cyan-100">
-                        <Sparkles size={13} /> {getCopy(tabCopy.pages.storedValue.copy.title).toUpperCase()}
-                      </p>
-                      <h3 className="text-2xl font-black tracking-tight text-white md:text-3xl">
+              <article className={`${glass} relative p-6 lg:p-12`}>
+                <div className="w-full max-w-[1400px] mx-auto flex flex-col gap-12">
+                  <header className="flex flex-col md:flex-row justify-between items-end border-b border-white/5 pb-10">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-3">
+                        <span className="w-12 h-px bg-gradient-to-r from-[#4D7CFF] to-[#EC4899]" />
+                        <span className="text-[10px] font-bold tracking-[0.6em] uppercase text-slate-500">
+                          {activeLocale === "zh" ? "会员计划" : "Membership Programs"}
+                        </span>
+                      </div>
+                      <h3 className="text-6xl font-black text-white tracking-tighter">
                         {getCopy(tabCopy.pages.storedValue.copy.title)}
                       </h3>
                     </div>
-                    <div className="rounded-2xl border border-emerald-300/35 bg-emerald-500/15 px-3 py-2 text-right">
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-100/80">
-                        {getCopy(tabCopy.pages.storedValue.copy.activePromotions)}
+                    <div className="mt-6 md:mt-0 bg-white/5 px-8 py-5 border border-white/10 backdrop-blur-md">
+                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                        {activeLocale === "zh" ? "当前活动" : "Active Tiers"}
                       </p>
-                      <p className="text-lg font-bold text-emerald-100">
-                        {promotionGroups.flatMap((g) => g.items).length} {activeLocale === "zh" ? "项" : "items"}
+                      <p className="text-5xl font-futuristic font-bold text-white leading-none">
+                        {rechargePlans.length.toString().padStart(2, "0")}
+                        <span className="text-xs font-sans text-slate-400 align-middle ml-2">
+                          {activeLocale === "zh" ? "项活动" : "items"}
+                        </span>
                       </p>
                     </div>
-                  </div>
+                  </header>
 
-                  <div className="relative grid gap-4 xl:grid-cols-[1.25fr_1fr]">
-                    <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-3">
-                      <div className="mb-3 flex items-center justify-between">
-                        <h4 className="text-sm font-semibold text-cyan-100">{getCopy(tabCopy.pages.storedValue.copy.promoTitle)}</h4>
-                        <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-100">
-                          {getCopy(tabCopy.pages.storedValue.copy.promoBadge)}
-                        </span>
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
+                    <aside className="lg:col-span-4 sticky top-12 text-left">
+                      <div className="mb-10">
+                        <h4 className="text-2xl font-bold text-white mb-1">
+                          {getCopy(tabCopy.pages.storedValue.copy.promoTitle)}
+                        </h4>
                       </div>
 
-                      <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="space-y-1">
                         {promotionGroups.flatMap((group) => group.items).map((promo, index) => {
                           const isSelected = selectedPromoTrigger === promo.trigger;
                           return (
@@ -996,123 +1032,165 @@ export default function Home() {
                               type="button"
                               key={`${promo.trigger}-${index}`}
                               onClick={() => setSelectedPromoTrigger(promo.trigger)}
-                              className={`group w-full rounded-xl border p-3 text-left transition-all duration-300 active:scale-[0.985] ${
-                                isSelected
-                                  ? "border-cyan-300/70 bg-gradient-to-br from-cyan-400/25 via-cyan-500/16 to-emerald-500/12 shadow-[0_0_0_1px_rgba(34,211,238,0.32),0_0_26px_rgba(34,211,238,0.22)]"
-                                  : "border-white/10 bg-[#0a1424]/70"
+                              className={`benefit-item group flex w-full items-center text-left justify-between p-5 border-b border-white/5 transition-colors hover:bg-white/[0.05] hover:pl-7 ${
+                                isSelected ? "bg-white/[0.04]" : ""
                               }`}
                             >
-                              <div className="flex items-start gap-2.5">
-                                <span
-                                  className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold transition-colors ${
-                                    isSelected ? "bg-cyan-200 text-[#041320]" : "bg-slate-700 text-slate-200"
-                                  }`}
-                                >
-                                  {index + 1}
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-semibold text-slate-100">
+                              <div className="flex items-center gap-4">
+                                <span className={`material-symbols-outlined text-slate-500 transition-colors ${
+                                  isSelected ? "text-[#4D7CFF]" : "group-hover:text-[#A855F7]"
+                                }`}>verified</span>
+                                <div>
+                                  <h3 className="text-[13px] font-bold text-slate-200">
                                     {getCopy(promo.title)}
-                                  </p>
-                                  <p className="mt-1 text-[11px] leading-5 text-slate-300">
+                                  </h3>
+                                  <p className="text-[11px] text-slate-500 mt-0.5">
                                     {getCopy(promo.detail)}
                                   </p>
                                 </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <div className="indicator-square bg-[#4D7CFF] shadow-[0_0_10px_rgba(77,124,255,0.5)]" />
+                                <div className="indicator-square bg-[#A855F7] shadow-[0_0_10px_rgba(168,85,247,0.5)]" />
+                                <div className="indicator-square bg-[#EC4899] shadow-[0_0_10px_rgba(236,72,153,0.5)]" />
                               </div>
                             </button>
                           );
                         })}
                       </div>
-                    </div>
+                    </aside>
 
-                    <div className="grid gap-3">
-                      {rechargePlans.map((plan, index) => {
-                        const isMidTier = index === 1;
-                        const isTopTier = index === rechargePlans.length - 1;
-                        const isSelected = selectedRechargeIndex === index;
+                    <main className="lg:col-span-8 relative flex flex-col items-center">
+                      <div className="architectural-glow"></div>
+                      {(() => {
+                        const orderedRechargePlans = [...rechargePlans].sort((a, b) => a.amount - b.amount);
 
-                        return (
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            key={`${plan.id}-gift`}
-                            onClick={() => setSelectedRechargeIndex(index)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                setSelectedRechargeIndex(index);
-                              }
-                            }}
-                            className={`group relative w-full cursor-pointer overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300 active:scale-[0.985] ${
-                              isSelected
-                                ? "border-cyan-300/65 bg-gradient-to-br from-cyan-500/16 via-sky-500/10 to-emerald-500/10 shadow-[0_0_0_1px_rgba(125,211,252,0.26),0_0_22px_rgba(34,211,238,0.14)]"
-                                : "border-white/12 bg-[#081120]/88"
-                            }`}
-                          >
-                            <div className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"} bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.1),transparent)]`} />
+                        return orderedRechargePlans.map((plan, index) => {
+                          const meta = storedValueTierMeta[index] ?? storedValueTierMeta[0];
+                          const midPlan = orderedRechargePlans[1];
+                          const topPlan = orderedRechargePlans[orderedRechargePlans.length - 1];
+                          const isFirst = index === 0;
+                          const isMidTier = midPlan ? plan.id === midPlan.id : false;
+                          const isTopTier = topPlan ? plan.id === topPlan.id : false;
+                          const showBadge = index > 0 && (isMidTier || isTopTier);
+                          const amountDisplay = formatMoney(plan.amount);
+                          const cardWidth = isFirst ? "w-[80%]" : isMidTier ? "w-[90%]" : "w-full";
+                          const paddingSize = isFirst ? "p-8" : isMidTier ? "p-10" : "p-12";
+                          const titleSize = isFirst ? "text-lg" : isMidTier ? "text-xl" : "text-2xl";
+                          const amountSize = isFirst ? "text-6xl" : isMidTier ? "text-7xl" : "text-8xl";
+                          const gridGap = isFirst ? "gap-6" : isMidTier ? "gap-8" : "gap-10";
+                          const gridPadding = isFirst ? "pt-6" : isMidTier ? "pt-8" : "pt-10";
+                          const pointsSize = isFirst ? "text-2xl" : isMidTier ? "text-3xl" : "text-4xl";
+                          const buttonPadding = isTopTier ? "px-10 py-3 text-base" : "px-6 py-2 text-sm";
+                          const buttonShadow = isTopTier
+                            ? "shadow-[0_0_20px_rgba(236,72,153,0.4)]"
+                            : isMidTier
+                              ? "shadow-[0_0_20px_rgba(168,85,247,0.4)]"
+                              : "shadow-[0_0_20px_rgba(77,124,255,0.4)]";
+                          const buttonTint = isTopTier
+                            ? "border-[#EC4899]/40 text-[#EC4899]"
+                            : isMidTier
+                              ? "border-[#A855F7]/40 text-[#A855F7]"
+                              : "border-[#4D7CFF]/40 text-[#4D7CFF]";
+                          const perkList = activeLocale === "zh"
+                            ? ["专属会员卡面", "包含全场通用权限"]
+                            : ["Exclusive card", "All-access"];
 
-                            <div className="relative mb-2 flex items-center justify-between">
-                              <span className="text-base font-extrabold tracking-wide text-white md:text-lg">
-                                {plan.amountLabel}
-                              </span>
-                              <Gift size={14} className={isSelected ? "text-cyan-100" : "text-emerald-200"} />
-                            </div>
+                          return (
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              key={`${plan.id}-tier`}
+                              onClick={() => setSelectedRechargeIndex(index)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  setSelectedRechargeIndex(index);
+                                }
+                              }}
+                              className={`relative tier-card ${cardWidth} ${paddingSize} mb-[-2px] ${meta.cardClass} border-l-2 transition-all duration-500 ease-out hover:scale-[1.02] hover:-translate-y-1 hover:shadow-2xl ${
+                                isTopTier ? "shadow-[0_20px_60px_-15px_rgba(236,72,153,0.15)]" : ""
+                              }`}
+                            >
+                              {showBadge && (
+                                <div className={`absolute top-0 right-10 z-30 -translate-y-1/2 px-4 py-1 text-[10px] font-black uppercase tracking-widest text-white opacity-100 pointer-events-none ${
+                                  isTopTier ? "bg-[#EC4899]" : "bg-[#A855F7]"
+                                }`}>
+                                  {isMidTier
+                                    ? getCopy(tabCopy.pages.storedValue.copy.badges.mostPopular)
+                                    : getCopy(tabCopy.pages.storedValue.copy.badges.bestValue)}
+                                </div>
+                              )}
 
-                            <div className="relative flex items-end justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-semibold text-white">{getCopy(plan.membershipGift)}</p>
+                              <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                                <div className="flex-1">
+                                  <p className={`font-futuristic ${titleSize} tracking-[0.3em] ${meta.accentText} mb-1`}>
+                                    {activeLocale === "zh" ? meta.title.zh : meta.title.en.toUpperCase()}
+                                  </p>
+                                  <h4 className={`font-futuristic font-bold text-white tracking-wide ${amountSize}`}>
+                                    {amountDisplay}
+                                  </h4>
+                                  <div className={`mt-6 grid grid-cols-2 md:grid-cols-3 ${gridGap} border-t border-white/10 ${gridPadding}`}>
+                                    <div>
+                                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">
+                                        {activeLocale === "zh" ? "赠送会员" : "Membership"}
+                                      </p>
+                                      <p className="text-xs font-semibold text-slate-300">
+                                        {getCopy(plan.membershipGift)}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">
+                                        {activeLocale === "zh" ? "赠送积分" : "Bonus Credit"}
+                                      </p>
+                                      <p className={`font-futuristic text-white leading-none ${pointsSize}`}>
+                                        {formatMoney(plan.bonusCredit)}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">
+                                        {activeLocale === "zh" ? "赠送价值" : "Gift Value"}
+                                      </p>
+                                      <p className={`font-futuristic leading-none ${pointsSize} ${meta.accentText}`}>
+                                        {formatMoney(plan.totalValue)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-col items-end justify-between self-stretch">
+                                  <div className={`${isTopTier ? "space-y-4 text-base" : isMidTier ? "space-y-3 text-sm" : "space-y-2 text-[11px]"} text-right text-slate-100`}>
+                                    {perkList.map((perk) => (
+                                      <div key={perk} className={`flex items-center justify-end gap-2 ${isTopTier ? "font-bold tracking-tight" : ""}`}>
+                                        <span className={isTopTier ? "italic" : ""}>{perk}</span>
+                                        <span className={`material-symbols-outlined ${meta.accentText} ${isTopTier ? "fill-[1]" : ""}`}>
+                                          {isTopTier ? "stars" : "check_circle"}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      addCartStoredValue(plan);
+                                    }}
+                                    className={`btn-join ${buttonPadding} font-bold tracking-widest uppercase transition-all duration-300 border-2 bg-black/40 backdrop-blur-sm ${buttonTint} ${buttonShadow} hover:brightness-110 active:scale-95`}
+                                    aria-label="加入报价"
+                                    title="加入报价"
+                                  >
+                                    {activeLocale === "zh" ? "加入报价" : "Add"}
+                                  </button>
+                                </div>
                               </div>
-                              <ChevronRight size={16} className={`text-slate-300 transition-transform ${isSelected ? "translate-x-0.5" : "group-hover:translate-x-0.5"}`} />
                             </div>
-
-                            <p className="relative mt-2 text-xs text-cyan-100">
-                              {getCopy(tabCopy.pages.storedValue.copy.labels.bonusCredit)}: <span className="font-bold">{formatMoney(plan.bonusCredit)}</span>
-                            </p>
-
-                            <p className="relative mt-1 text-xs text-emerald-100/90">
-                              {getCopy(tabCopy.pages.storedValue.copy.labels.giftValue)}: <span className="font-semibold">{formatMoney(plan.totalValue)}</span>
-                            </p>
-
-                            <div className="relative mt-3 flex flex-wrap items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  addCartStoredValue(plan);
-                                }}
-                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
-                                  addingItemKey === `stored-${plan.id}`
-                                    ? "border-emerald-200/70 bg-emerald-500/30 text-emerald-50 shadow-[0_0_16px_rgba(16,185,129,0.45)]"
-                                    : "border-emerald-300/40 bg-emerald-500/15 text-emerald-100 hover:border-emerald-200/70 hover:bg-emerald-500/25"
-                                }`}
-                                aria-label="加入报价"
-                                title="加入报价"
-                              >
-                                <Plus size={12} />
-                                <span>{activeLocale === "zh" ? "加入报价" : "Add"}</span>
-                              </button>
-
-                              {isMidTier && (
-                                <span className="inline-flex rounded-md border border-cyan-300/45 bg-cyan-500/20 px-2 py-1 text-[11px] font-semibold text-cyan-50">
-                                  {getCopy(tabCopy.pages.storedValue.copy.badges.mostPopular)}
-                                </span>
-                              )}
-
-                              {isTopTier && (
-                                <span className="inline-flex rounded-md border border-emerald-300/40 bg-emerald-500/20 px-2 py-1 text-[11px] font-semibold text-emerald-50">
-                                  {getCopy(tabCopy.pages.storedValue.copy.badges.bestValue)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                    </div>
+                          );
+                        });
+                      })()}
+                    </main>
                   </div>
                 </div>
               </article>
-             
             )}
 
             {groupedSections.ptSection && (
