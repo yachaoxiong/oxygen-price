@@ -10,7 +10,6 @@ import {
   Gift,
   ChevronRight,
   Sparkles,
-  ShoppingCart,
   Plus,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/useAuth";
@@ -25,23 +24,24 @@ import { usePwaInstallPrompt } from "@/features/app/usePwaInstallPrompt";
 import { asNumber, formatMoney } from "@/lib/formatters/number";
 import { printHtml } from "@/lib/export/print";
 import { getPresetUnitAndQty } from "@/lib/pricing/calculate";
-import { glass, solidButtonBase } from "@/lib/pricing/constants";
+import { glass } from "@/lib/pricing/constants";
 import tabCopy from "@/lib/tabCopy.json";
 import { buildCycleSummaryText, buildPtSummaryText } from "@/lib/export/quoteBuilders";
 import { buildCyclePdfHtml, buildPtPdfHtml } from "@/lib/export/pdfBuilders";
 import { buildCartSummaryText } from "@/lib/cart/cartTextBuilder";
 import { buildCartPdfHtml } from "@/lib/export/cartPdfBuilder";
 import { PwaInstallHint } from "@/components/PwaInstallHint";
+import { Navbar } from "@/components/navigation/Navbar";
 import { CyclePlanModal } from "@/components/modals/CyclePlanModal";
 import { PtCalculatorModal } from "@/components/modals/PtCalculatorModal";
 import { CartQuoteModal } from "@/components/modals/CartQuoteModal";
 import { useCartState } from "@/features/cart/useCartState";
 import type { CyclePlanRow, PricingCategory, PricingItem, PtPreset, PtRow } from "@/types/pricing";
 
-type CategoryFilter = "all" | PricingCategory;
+type CategoryFilter = PricingCategory;
 
 export default function Home() {
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("membership");
   const [selectedRechargeIndex, setSelectedRechargeIndex] = useState(1);
   const [selectedPromoTrigger, setSelectedPromoTrigger] = useState(
     tabCopy.pages.storedValue.copy.promotionHighlights[0]?.trigger ?? "",
@@ -650,85 +650,27 @@ export default function Home() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#03050b] text-slate-100">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#03050b] text-slate-100">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,255,163,0.18),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(59,130,246,0.14),transparent_28%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-size:3px_3px] [background-image:radial-gradient(rgba(255,255,255,0.4)_0.4px,transparent_0.4px)]" />
 
-      <div className="relative mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-24">
-        <header className={`${glass} p-4 md:p-6`}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white md:text-3xl">
-                Oxygen<span className="text-emerald-300">Pricing</span>
-              </h1>
-              <p className="mt-1 text-xs text-slate-400">Sales Console · 深色科技风重构版</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => setActiveLocale((prev) => (prev === "zh" ? "en" : "zh"))}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-cyan-300/40 hover:text-cyan-100"
-                >
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Lang</span>
-                  <span>{activeLocale === "zh" ? "中文" : "English"}</span>
-                </button>
-                <button
-                  onClick={() => setCartOpen(true)}
-                  className={`group relative inline-flex h-8 w-8 items-center justify-center rounded-full border text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-500/25 ${
-                    addingItemKey ? "border-cyan-200/70 bg-cyan-500/20" : "border-cyan-300/50 bg-cyan-500/15"
-                  }`}
-                  aria-label={`购物车，当前 ${cartTotals.itemsCount} 项`}
-                  title="购物车"
-                >
-                  <ShoppingCart size={14} />
-                  {cartTotals.itemsCount > 0 && (
-                    <span className={`absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-cyan-400 px-1 text-[10px] font-bold text-slate-950 ${
-                      addingItemKey ? "animate-[cart-flash_650ms_ease-in-out]" : ""
-                    }`}>
-                      {cartTotals.itemsCount}
-                    </span>
-                  )}
-                </button>
-                <div className="relative" data-avatar-menu>
-                  <button
-                    onClick={() => setAvatarMenuOpen((prev) => !prev)}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-xs font-semibold text-cyan-100 transition hover:border-cyan-300/40"
-                    aria-label={activeLocale === "zh" ? "用户菜单" : "User menu"}
-                  >
-                    {(profile?.full_name || profile?.email || email || "U")[0]?.toUpperCase()}
-                  </button>
-                  {avatarMenuOpen && (
-                    <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#0b1424]/98 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
-                      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/15 text-sm font-semibold text-cyan-100">
-                          {(profile?.full_name || profile?.email || email || "U")[0]?.toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-white">
-                            {profile?.full_name || profile?.email || email || "-"}
-                          </p>
-                          <p className="text-[11px] text-slate-400">
-                            {profile?.role ?? (email?.toLowerCase() === "admin" ? "admin" : "sales")}
-                          </p>
-                        </div>
-                      </div>
-                
-                      <div className="border-t border-white/10 px-4 py-3">
-                        <button
-                          onClick={handleSignOut}
-                          className="w-full rounded-lg border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20"
-                        >
-                          {activeLocale === "zh" ? "退出登录" : "Sign out"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+      <Navbar
+        activeLocale={activeLocale}
+        activeCategory={categoryFilter}
+        onSelectCategory={(category) => setCategoryFilter(category)}
+        onToggleLocale={() => setActiveLocale((prev) => (prev === "zh" ? "en" : "zh"))}
+        cartCount={cartTotals.itemsCount}
+        onOpenCart={() => setCartOpen(true)}
+        addingItemKey={addingItemKey}
+        avatarInitial={(profile?.full_name || profile?.email || email || "U")[0]?.toUpperCase()}
+        avatarName={profile?.full_name || profile?.email || email || "-"}
+        avatarRole={profile?.role ?? (email?.toLowerCase() === "admin" ? "admin" : "sales")}
+        avatarMenuOpen={avatarMenuOpen}
+        onToggleAvatarMenu={() => setAvatarMenuOpen((prev) => !prev)}
+        onSignOut={handleSignOut}
+      />
 
-        </header>
+      <div className="relative mx-auto max-w-7xl px-4 py-12 md:px-6 md:py-16">
 
         <PwaInstallHint
           visible={showInstallHint && Boolean(deferredInstallPrompt)}
@@ -737,34 +679,6 @@ export default function Home() {
         />
 
           <section className="mt-5 space-y-5">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setCategoryFilter("all")}
-                className={`${solidButtonBase} text-sm ${
-                  categoryFilter === "all"
-                    ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
-                    : "bg-slate-700/90 text-slate-100 hover:bg-slate-600/90"
-                }`}
-              >
-                全部
-              </button>
-              {(Object.keys(categoryMeta) as PricingItem["category"][])
-                .filter((cat) => cat !== "assessment" && cat !== "group_class")
-                .map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`${solidButtonBase} text-sm ${
-                    categoryFilter === cat
-                      ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400"
-                      : "bg-slate-700/90 text-slate-100 hover:bg-slate-600/90"
-                  }`}
-                >
-                  {getCopy(categoryMeta[cat])}
-                </button>
-              ))}
-            </div>
-
             {groupedSections.standardSections.map(({ category, rows }) => (
               <article key={category} className={`${glass} p-4`}>
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1038,7 +952,7 @@ export default function Home() {
               </article>
             ))}
 
-            {(categoryFilter === "all" || categoryFilter === "stored_value") && (
+            {categoryFilter === "stored_value" && (
               <article className={`${glass} relative overflow-hidden p-4 md:p-6`}>
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(16,185,129,0.2),transparent_35%),radial-gradient(circle_at_90%_85%,rgba(56,189,248,0.16),transparent_35%)]" />
 

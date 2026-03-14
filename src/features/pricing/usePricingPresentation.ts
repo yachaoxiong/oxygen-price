@@ -11,7 +11,7 @@ import {
 } from "@/lib/pricing/helpers";
 import type { CompareRow, CyclePlanRow, PricingCategory, PtRow } from "@/types/pricing";
 
-type CategoryFilter = "all" | PricingCategory;
+type CategoryFilter = PricingCategory;
 
 export function usePricingPresentation(pricingItems: PricingItem[], categoryFilter: CategoryFilter) {
 
@@ -41,7 +41,7 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
           category !== "cycle_plan",
       )
       .filter((category) => grouped[category].length > 0)
-      .filter((category) => categoryFilter === "all" || category === categoryFilter)
+      .filter((category) => category === categoryFilter)
       .map((category) => {
         const rowsMap = new Map<string, CompareRow>();
 
@@ -87,7 +87,7 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
       });
 
     const groupClassRows =
-      (categoryFilter === "all" || categoryFilter === "group_class" || categoryFilter === "membership") && grouped.group_class.length > 0
+      (categoryFilter === "group_class" || categoryFilter === "membership") && grouped.group_class.length > 0
         ? grouped.group_class
             .reduce<CompareRow[]>((acc, item) => {
               const sessionMode = "session_mode" in item ? item.session_mode : undefined;
@@ -129,7 +129,7 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
     let cyclePlanRows: CyclePlanRow[] | null = null;
 
     if (
-      (categoryFilter === "all" || categoryFilter === "personal_training" || categoryFilter === "assessment") &&
+      (categoryFilter === "personal_training" || categoryFilter === "assessment") &&
       (grouped.personal_training.length > 0 || grouped.assessment.length > 0)
     ) {
       const ptMap = new Map<string, PtRow>();
@@ -200,7 +200,7 @@ export function usePricingPresentation(pricingItems: PricingItem[], categoryFilt
       };
     }
 
-    if ((categoryFilter === "all" || categoryFilter === "cycle_plan") && grouped.cycle_plan.length > 0) {
+    if (categoryFilter === "cycle_plan" && grouped.cycle_plan.length > 0) {
       cyclePlanRows = grouped.cycle_plan
         .map((item) => {
           const meta = (item.meta ?? {}) as Record<string, unknown>;

@@ -95,6 +95,88 @@ input[type=number] {
   }
 }
 
+@keyframes line-draw {
+  0% {
+    width: 0;
+    left: 50%;
+  }
+  100% {
+    width: 100%;
+    left: 0;
+  }
+}
+
+.nav-item-hover::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00f296, transparent);
+  transition: all 0.3s ease-out;
+}
+
+.nav-item-hover:hover::after {
+  width: 100%;
+  left: 0;
+  box-shadow: 0 0 8px #00f296;
+}
+
+.active-frame {
+  position: relative;
+  background: rgba(0, 242, 150, 0.1);
+  box-shadow: inset 0 0 10px rgba(0, 242, 150, 0.2);
+  animation: line-draw 0.6s ease-out;
+}
+
+.nav-item-hover,
+.active-frame {
+  min-height: 32px;
+  box-sizing: border-box;
+}
+
+.btn-border-animate {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-border-animate svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+}
+
+.btn-border-animate rect {
+  stroke: #00f296;
+  stroke-width: 2;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  transition: 0.6s;
+}
+
+.btn-border-animate:hover rect {
+  stroke-dashoffset: 0;
+}
+
+@keyframes text-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 4px rgba(0, 242, 150, 0.2), 0 0 10px rgba(0, 242, 150, 0.1);
+  }
+  50% {
+    text-shadow: 0 0 8px rgba(0, 242, 150, 0.45), 0 0 16px rgba(0, 242, 150, 0.25);
+  }
+}
+
+.lang-glow-text {
+  display: inline-block;
+  animation: text-glow 1.8s ease-in-out infinite;
+}
+
 .pt-card:hover .pt-icon,
 .pt-card:focus-within .pt-icon {
   animation: icon-breathe 1.8s ease-in-out infinite;
