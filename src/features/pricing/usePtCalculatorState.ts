@@ -62,9 +62,10 @@ export function usePtCalculatorState() {
           ? ptCalcMember1v2
           : ptCalcNonMember1v2;
 
-  const ptAfterCredit = calcAfterCredit(ptActiveSubtotal, ptCredit);
-  const ptTaxAfterAdjust = calcTax(ptAfterCredit);
-  const ptFinalTotal = calcTotalWithTax(ptAfterCredit);
+  const ptTotalWithTax = calcTotalWithTax(ptActiveSubtotal);
+  const ptTaxAfterAdjust = calcTax(ptActiveSubtotal);
+  const ptAfterCredit = calcAfterCredit(ptTotalWithTax, ptCredit);
+  const ptFinalTotal = ptAfterCredit;
   const ptReportDate = new Date().toLocaleDateString("en-CA");
 
   return {

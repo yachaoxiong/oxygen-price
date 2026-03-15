@@ -42,7 +42,7 @@ export function Navbar({
 }: NavbarProps) {
 
   return (
-    <header className="relative z-[100] p-4 w-full overflow-visible border-b border-slate-800/70 bg-[#020b0d]/80 backdrop-blur-md">
+    <header className="relative z-[40] p-4 w-full overflow-visible border-b border-slate-800/70 bg-[#020b0d]/80 backdrop-blur-md">
       <div className="pointer-events-none absolute inset-0 opacity-30 [background-size:30px_30px] [background-image:linear-gradient(rgba(0,242,150,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(0,242,150,0.08)_1px,transparent_1px)]" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-400/15 via-transparent to-transparent" />
       <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-6 px-4 py-5 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:px-6">

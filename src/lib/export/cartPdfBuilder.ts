@@ -54,6 +54,7 @@ export function buildCartPdfHtml(params: {
                 </div>
               </div>
               ${note}
+              ${item.isNewCustomer && item.activationFee ? `<div class="note">新顾客激活费 +${formatMoney(item.activationFee)}</div>` : ""}
               ${details}
             </div>
           `;
@@ -332,8 +333,12 @@ export function buildCartPdfHtml(params: {
             <div class="summary">
               <div class="summary-card"><span>项目数量</span><strong>${totals.itemsCount}</strong></div>
               <div class="summary-card"><span>小计金额</span><strong>${formatMoney(totals.subtotal)}</strong></div>
+              ${totals.nonTaxableSubtotal > 0 ? `<div class="summary-card"><span>储值卡金额 (免税)</span><strong>${formatMoney(totals.nonTaxableSubtotal)}</strong></div>` : ""}
+              <div class="summary-card"><span>应税小计</span><strong>${formatMoney(totals.taxableSubtotal)}</strong></div>
               <div class="summary-card"><span>税费 (13%)</span><strong>${formatMoney(totals.tax)}</strong></div>
-              <div class="summary-card summary-highlight"><span>含税合计</span><strong>${formatMoney(totals.total)}</strong></div>
+              <div class="summary-card"><span>含税合计</span><strong>${formatMoney(totals.totalBeforeCredit)}</strong></div>
+              <div class="summary-card"><span>储值卡抵扣</span><strong>${formatMoney(totals.creditUsed)}</strong></div>
+              <div class="summary-card summary-highlight"><span>应付总额</span><strong>${formatMoney(totals.total)}</strong></div>
             </div>
           </div>
 

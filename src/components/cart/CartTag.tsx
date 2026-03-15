@@ -2,14 +2,16 @@
 
 type CartTagProps = {
   label: string;
-  tone?: "cyan" | "slate";
+  tone?: "cyan" | "slate" | "amber";
 };
 
 export function CartTag({ label, tone = "slate" }: CartTagProps) {
   const toneClass =
     tone === "cyan"
       ? "border-cyan-500/20 bg-cyan-500/10 text-cyan-400"
-      : "border-white/10 bg-white/5 text-slate-500";
+      : tone === "amber"
+        ? "border-amber-300/30 bg-amber-500/15 text-amber-200"
+        : "border-white/10 bg-white/5 text-slate-500";
 
   return (
     <span

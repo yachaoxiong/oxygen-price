@@ -29,11 +29,14 @@ export function useCartState() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<CartCustomerInfo>(defaultCustomer);
   const [isOpen, setIsOpen] = useState(false);
+  const [creditApplied, setCreditApplied] = useState(0);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
 
   const totals = useMemo<CartTotals>(() => {
-    const { subtotal, itemsCount } = items.reduce(
+    const { subtotal, itemsCount, taxableSubtotal, nonTaxableSubtotal } = items.reduce(
       (acc, item) => {
+        const isStoredValue = item.category === "stored_value";
+
         if (item.category === "cycle_plan" && item.details && item.details.length > 0) {
           const courseSubtotal = item.details.reduce((detailSum, line) => {
             const parsed = parseCycleDetail(line);
@@ -45,28 +48,47 @@ export function useCartState() {
             if (!parsed) return detailSum;
             return detailSum + parsed.qty;
           }, 0);
+          const activationFee = item.isNewCustomer ? item.activationFee ?? 0 : 0;
           return {
-            subtotal: acc.subtotal + courseSubtotal,
+            subtotal: acc.subtotal + courseSubtotal + activationFee,
             itemsCount: acc.itemsCount + courseCount,
+            taxableSubtotal: acc.taxableSubtotal + courseSubtotal + activationFee,
+            nonTaxableSubtotal: acc.nonTaxableSubtotal,
           };
         }
+
+        const lineSubtotal = item.unitPrice * item.quantity;
+        const activationFee = item.isNewCustomer ? item.activationFee ?? 0 : 0;
+
         return {
-          subtotal: acc.subtotal + item.unitPrice * item.quantity,
+          subtotal: acc.subtotal + lineSubtotal + activationFee,
           itemsCount: acc.itemsCount + item.quantity,
+          taxableSubtotal: acc.taxableSubtotal + (isStoredValue ? 0 : lineSubtotal + activationFee),
+          nonTaxableSubtotal: acc.nonTaxableSubtotal + (isStoredValue ? lineSubtotal : 0),
         };
       },
-      { subtotal: 0, itemsCount: 0 },
+      { subtotal: 0, itemsCount: 0, taxableSubtotal: 0, nonTaxableSubtotal: 0 },
     );
 
-    const tax = subtotal * 0.13;
-    const total = subtotal + tax;
+    const tax = taxableSubtotal * 0.13;
+    const totalBeforeCredit = subtotal + tax;
+    const credit = Math.max(0, Math.min(creditApplied, totalBeforeCredit));
+    const total = totalBeforeCredit - credit;
+    const creditOverflow = Math.max(0, creditApplied - totalBeforeCredit);
+
     return {
       subtotal,
+      taxableSubtotal,
+      nonTaxableSubtotal,
       tax,
       total,
       itemsCount,
+      creditApplied,
+      creditUsed: credit,
+      totalBeforeCredit,
+      creditOverflow,
     };
-  }, [items]);
+  }, [items, creditApplied]);
 
   const addItem = (payload: {
     name: string;
@@ -75,6 +97,8 @@ export function useCartState() {
     quantity?: number;
     note?: string;
     details?: string[];
+    isNewCustomer?: boolean;
+    activationFee?: number;
   }) => {
     setItems((prev) => {
       const next: CartItem = {
@@ -86,6 +110,8 @@ export function useCartState() {
         originalPrice: payload.unitPrice,
         note: payload.note,
         details: payload.details,
+        isNewCustomer: payload.isNewCustomer,
+        activationFee: payload.activationFee,
       };
       setLastAddedId(next.id);
       return [...prev, next];
@@ -118,6 +144,8 @@ export function useCartState() {
     customer,
     isOpen,
     setIsOpen,
+    creditApplied,
+    setCreditApplied,
     addItem,
     updateItem,
     removeItem,

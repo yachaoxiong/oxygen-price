@@ -1,8 +1,8 @@
 "use client";
 
-import type { ChangeEvent } from "react";
 import { Dumbbell } from "lucide-react";
 
+import { NumberInput } from "@/components/ui/NumberInput";
 type CycleDetailRowProps = {
   name: string;
   preset?: string;
@@ -31,20 +31,22 @@ export function CycleDetailRow({
       </div>
       <div className="col-span-3 space-y-1">
         <label className="text-[9px] text-slate-600 block pl-1">数量</label>
-        <input
+        <NumberInput
           className="input-subdued w-full rounded-lg text-[11px] text-slate-300 px-2 py-1.5 text-center font-medium"
-          type="number"
           value={qty}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onQtyChange(Number(event.target.value) || 1)}
+          min={1}
+          allowDecimal={false}
+          onChange={onQtyChange}
         />
       </div>
       <div className="col-span-4 space-y-1">
         <label className="text-[9px] text-slate-600 block pl-1">单价</label>
-        <input
+        <NumberInput
           className="input-subdued w-full rounded-lg text-[11px] text-slate-300 px-2 py-1.5 text-right font-mono"
-          type="number"
           value={unitPrice}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onUnitPriceChange(Number(event.target.value) || 0)}
+          min={0}
+          allowDecimal={true}
+          onChange={onUnitPriceChange}
         />
       </div>
     </div>

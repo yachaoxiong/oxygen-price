@@ -2,16 +2,7 @@
 /* cSpell:words supabase fullpay */
 
 import { useState, useEffect } from "react";
-import {
-  Activity,
-  CupSoda,
-  UtensilsCrossed,
-  CalendarDays,
-  Gift,
-  ChevronRight,
-  Sparkles,
-  Plus,
-} from "lucide-react";
+import { Activity, CalendarDays, CupSoda, Gift, UtensilsCrossed } from "lucide-react";
 import { useAuth } from "@/features/auth/useAuth";
 import { AuthLoginScreen } from "@/features/auth/AuthLoginScreen";
 import { usePricingData } from "@/features/pricing/usePricingData";
@@ -35,14 +26,14 @@ import { CyclePlanModal } from "@/components/modals/CyclePlanModal";
 import { PtCalculatorModal } from "@/components/modals/PtCalculatorModal";
 import { CartQuoteModal } from "@/components/modals/CartQuoteModal";
 import { LoadingCircuit } from "@/components/ui/LoadingCircuit";
+import { MessageToast } from "@/components/ui/MessageToast";
 import { useCartState } from "@/features/cart/useCartState";
-import type { CyclePlanRow, PricingCategory, PricingItem, PtPreset, PtRow } from "@/types/pricing";
+import type { CyclePlanRow, PricingCategory, PtPreset, PtRow } from "@/types/pricing";
 
 type CategoryFilter = PricingCategory;
 
 export default function Home() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("membership");
-  const [selectedRechargeIndex, setSelectedRechargeIndex] = useState(1);
   const [selectedPromoTrigger, setSelectedPromoTrigger] = useState(
     tabCopy.pages.storedValue.copy.promotionHighlights[0]?.trigger ?? "",
   );
@@ -53,6 +44,7 @@ export default function Home() {
   });
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [addingItemKey, setAddingItemKey] = useState<string | null>(null);
+  const [messageToast, setMessageToast] = useState<{ title: string; subtitle?: string } | null>(null);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -226,6 +218,8 @@ export default function Home() {
     customer: cartCustomer,
     isOpen: cartOpen,
     setIsOpen: setCartOpen,
+    creditApplied: cartCreditApplied,
+    setCreditApplied: setCartCreditApplied,
     addItem: addCartItem,
     updateItem: updateCartItem,
     removeItem: removeCartItem,
@@ -234,6 +228,19 @@ export default function Home() {
     lastAddedId,
     clearLastAdded,
   } = useCartState();
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const body = document.body;
+    if (cartOpen) {
+      const previousOverflow = body.style.overflow;
+      body.style.overflow = "hidden";
+      return () => {
+        body.style.overflow = previousOverflow;
+      };
+    }
+    body.style.overflow = "";
+  }, [cartOpen]);
 
   const { pricingItems } = usePricingData(authState);
 
@@ -506,6 +513,7 @@ export default function Home() {
       category: "cycle_plan",
       unitPrice: cycleSubtotal,
       quantity: 1,
+      note: activeLocale === "zh" ? selectedCyclePlan.membershipGiftZh : selectedCyclePlan.membershipGiftEn,
       details:
         cycleSelectedCourses.length > 0
           ? cycleSelectedCourses.map(
@@ -602,24 +610,47 @@ export default function Home() {
     window.setTimeout(() => setAddingItemKey((prev) => (prev === key ? null : prev)), 850);
   }
 
-  function addCartMembership(row: StandardRow) {
-    const price = row.generalPrice ?? row.memberPrice ?? row.nonMemberPrice ?? 0;
-    addCartItem({
-      name: row.nameZh,
-      category: "membership",
-      unitPrice: price,
-    });
-    runAddAnimation(`membership-${row.key}`);
+  function showMessageToast(title: string, subtitle?: string) {
+    setMessageToast({ title, subtitle });
+    window.setTimeout(() => setMessageToast(null), 2000);
   }
 
-  function addCartGroupClass(row: GroupClassRow) {
+  function addCartMembership(row: StandardRow) {
     const price = row.generalPrice ?? row.memberPrice ?? row.nonMemberPrice ?? 0;
+    const name = row.nameZh;
+    const lowerName = name.toLowerCase();
+    const isMonthly = lowerName.includes("月") || lowerName.includes("month") || lowerName.includes("monthly");
+    const isAnnual = lowerName.includes("年") || lowerName.includes("year") || lowerName.includes("annual");
+    const activationFee = isMonthly || isAnnual ? 120 : 0;
+    addCartItem({
+      name,
+      category: "membership",
+      unitPrice: price,
+      isNewCustomer: false,
+      activationFee,
+    });
+    runAddAnimation(`membership-${row.key}`);
+    showMessageToast(
+      activeLocale === "zh" ? "已加入报价" : "Added to Quote",
+      activeLocale === "zh" ? "会籍已添加" : "Membership Added",
+    );
+  }
+
+  function addCartGroupClass(row: GroupClassRow, priceType: "member" | "non_member") {
+    const price =
+      priceType === "member"
+        ? row.memberPrice ?? row.generalPrice ?? row.nonMemberPrice ?? 0
+        : row.nonMemberPrice ?? row.generalPrice ?? row.memberPrice ?? 0;
     addCartItem({
       name: row.nameZh,
       category: "group_class",
       unitPrice: price,
     });
-    runAddAnimation(`group-${row.key}`);
+    runAddAnimation(`group-${priceType}-${row.key}`);
+    showMessageToast(
+      activeLocale === "zh" ? "已加入报价" : "Added to Quote",
+      activeLocale === "zh" ? "团课已添加" : "Class Added",
+    );
   }
 
   function addCartStoredValue(plan: StoredValuePlan) {
@@ -630,6 +661,10 @@ export default function Home() {
       note: plan.membershipGift.zh,
     });
     runAddAnimation(`stored-${plan.id}`);
+    showMessageToast(
+      activeLocale === "zh" ? "已加入报价" : "Added to Quote",
+      activeLocale === "zh" ? "储值已添加" : "Stored Value Added",
+    );
   }
 
   async function handleCopyCartSummary() {
@@ -643,8 +678,9 @@ export default function Home() {
 
     try {
       await navigator.clipboard.writeText(summary);
+      showMessageToast("内容已复制", "Cart Summary Copied");
     } catch {
-      // ignore copy failures
+      showMessageToast("复制失败", "Copy Failed");
     }
   }
 
@@ -690,6 +726,13 @@ export default function Home() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,255,163,0.18),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(59,130,246,0.14),transparent_28%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-size:3px_3px] [background-image:radial-gradient(rgba(255,255,255,0.4)_0.4px,transparent_0.4px)]" />
 
+      <MessageToast
+        visible={Boolean(messageToast)}
+        title={messageToast?.title ?? ""}
+        subtitle={messageToast?.subtitle}
+        onClose={() => setMessageToast(null)}
+      />
+
       <Navbar
         activeLocale={activeLocale}
         activeCategory={categoryFilter}
@@ -715,278 +758,339 @@ export default function Home() {
         />
 
           <section className="mt-5 space-y-5">
-            {groupedSections.standardSections.map(({ category, rows }) => (
-              <article key={category} className={`${glass} p-4`}>
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-lg font-semibold text-white md:text-xl">
-                    {getCopy(categoryMeta[category])}
-                  </h3>
-                  <span className="inline-flex items-center rounded-full border border-emerald-300/35 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold tracking-[0.08em] text-emerald-100">
-                    PREMIUM ACCESS
-                  </span>
-                </div>
+            {groupedSections.standardSections.map(({ category, rows }) => {
+              const membershipRows = (() => {
+                const pickByType = new Map<number, (typeof rows)[number]>();
+                const getType = (nameZh: string) => {
+                  const n = nameZh.toLowerCase();
+                  if (n.includes("vip") || n.includes("plus")) return -1;
+                  if (n.includes("日") || n.includes("day")) return 0;
+                  if (n.includes("周") || n.includes("week")) return 1;
+                  if (n.includes("月") || n.includes("month") || n.includes("monthly")) return 2;
+                  if (n.includes("年") || n.includes("year") || n.includes("annual")) return 3;
+                  return -1;
+                };
 
-                <div className="space-y-2">
-                  {(() => {
-                    const pickByType = new Map<number, (typeof rows)[number]>();
-                    const getType = (nameZh: string) => {
-                      const n = nameZh.toLowerCase();
-                      if (n.includes("vip") || n.includes("plus")) return -1;
-                      if (n.includes("日") || n.includes("day")) return 0;
-                      if (n.includes("周") || n.includes("week")) return 1;
-                      if (n.includes("年") || n.includes("year") || n.includes("annual")) return 3;
-                      if (n.includes("月") || n.includes("month") || n.includes("monthly")) return 2;
-                      return -1;
-                    };
+                rows.forEach((row) => {
+                  const t = getType(row.nameZh);
+                  if (t >= 0 && !pickByType.has(t)) pickByType.set(t, row);
+                });
 
-                    rows.forEach((row) => {
-                      const t = getType(row.nameZh);
-                      if (t >= 0 && !pickByType.has(t)) pickByType.set(t, row);
-                    });
+                return [0, 1, 2, 3].map((t) => pickByType.get(t)).filter(Boolean) as typeof rows;
+              })();
 
-                    return [0, 1, 2, 3].map((t) => pickByType.get(t)).filter(Boolean) as typeof rows;
-                  })().map((row, index) => {
-                      const membershipPrice = row.generalPrice ?? row.nonMemberPrice ?? row.memberPrice;
-                      const activeName = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
-                      const name = activeName.toLowerCase();
+              const coreAccessItems = tabCopy.pages.membership.copy.coreAccessItems.map((item) => getCopy(item));
 
-                      const cycleLabel =
-                        name.includes("日") || name.includes("day")
-                          ? getCopy(tabCopy.pages.membership.copy.cycleLabels.day)
-                          : name.includes("周") || name.includes("week")
-                            ? getCopy(tabCopy.pages.membership.copy.cycleLabels.week)
-                            : name.includes("年") || name.includes("year") || name.includes("annual")
-                              ? getCopy(tabCopy.pages.membership.copy.cycleLabels.year)
-                              : name.includes("月") || name.includes("month") || name.includes("monthly")
-                                ? getCopy(tabCopy.pages.membership.copy.cycleLabels.month)
-                                : getCopy(tabCopy.pages.membership.copy.cycleLabels.membership);
+              return (
+                <article key={category} className={`${glass} px-4 py-6 md:px-6 md:py-8 lg:px-10`}>
+                  <header className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-6">
+                    <div>
+                      <h3 className="text-2xl font-black tracking-tight text-white md:text-3xl">
+                        {getCopy(categoryMeta[category])}
+                      </h3>
+                      <p className="mt-2 text-[10px] uppercase tracking-[0.6em] text-slate-500">
+                        {activeLocale === "zh" ? "ONYX TEAL DIGITAL INTERFACE" : "ONYX TEAL DIGITAL INTERFACE"}
+                      </p>
+                    </div>
+                    <span className="membership-pill">PREMIUM ACCESS</span>
+                  </header>
 
-                      const isMonthly = name.includes("月") || name.includes("month") || name.includes("monthly");
-                      const isAnnual = name.includes("年") || name.includes("year") || name.includes("annual");
+                  <section className="mt-8 overflow-hidden rounded-xl border border-white/10">
+                    <div className="overflow-x-auto">
+                      <table className="membership-matrix w-full">
+                        <thead>
+                          <tr>
+                            <th className="membership-label" />
+                            {membershipRows.map((row, index) => {
+                              const activeName = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
+                              const name = activeName.toLowerCase();
+                              const cycleLabel =
+                                name.includes("日") || name.includes("day")
+                                  ? getCopy(tabCopy.pages.membership.copy.cycleLabels.day)
+                                  : name.includes("周") || name.includes("week")
+                                    ? getCopy(tabCopy.pages.membership.copy.cycleLabels.week)
+                                    : name.includes("年") || name.includes("year") || name.includes("annual")
+                                      ? getCopy(tabCopy.pages.membership.copy.cycleLabels.year)
+                                      : name.includes("月") || name.includes("month") || name.includes("monthly")
+                                        ? getCopy(tabCopy.pages.membership.copy.cycleLabels.month)
+                                        : getCopy(tabCopy.pages.membership.copy.cycleLabels.membership);
+                              const highlight = name.includes("年") || name.includes("year") || name.includes("annual");
 
-                      const coreAccessItems = tabCopy.pages.membership.copy.coreAccessItems.map((item) => getCopy(item));
+                              return (
+                                <th
+                                  key={row.key}
+                                  className={`membership-header ${highlight ? "membership-header-highlight" : ""}`}
+                                >
+                                  <span className={`block text-[9px] uppercase tracking-wider ${highlight ? "text-[#39FF14]" : "text-slate-500"}`}>
+                                    {activeLocale === "zh" ? `方案 ${index + 1}` : `Plan ${index + 1}`}
+                                  </span>
+                                  <h4 className="mt-1 text-lg font-bold text-white">
+                                    {index + 1}. {activeName}
+                                  </h4>
+                                  <p className="mt-1 text-[9px] uppercase tracking-wide text-zinc-500">
+                                    {activeLocale === "zh" ? "周期" : "Cycle"}: {cycleLabel}
+                                  </p>
+                                </th>
+                              );
+                            })}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="membership-row">
+                            <td className="membership-label">{activeLocale === "zh" ? "会籍价格" : "Membership Price"}</td>
+                            {membershipRows.map((row) => {
+                              const membershipPrice = row.generalPrice ?? row.nonMemberPrice ?? row.memberPrice;
+                              const activeName = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
+                              const name = activeName.toLowerCase();
+                              const highlight = name.includes("年") || name.includes("year") || name.includes("annual");
+                              const isAnnual = highlight;
+                              const displayPrice = isAnnual && typeof membershipPrice === "number"
+                                ? membershipPrice / 12
+                                : membershipPrice;
+                              return (
+                                <td key={`${row.key}-price`} className={`membership-cell ${highlight ? "membership-cell-highlight" : ""}`}>
+                                  <span className="membership-price">{formatMoney(displayPrice ?? undefined)}</span>
+                                  {isAnnual && (
+                                    <span className="ml-2 text-[10px] uppercase tracking-wide text-zinc-400">
+                                      {activeLocale === "zh" ? "每月" : "Per month"}
+                                    </span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          <tr className="membership-row">
+                            <td className="membership-label">{activeLocale === "zh" ? "激活费" : "Activation Fee"}</td>
+                            {membershipRows.map((row) => {
+                              const activeName = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
+                              const name = activeName.toLowerCase();
+                              const isMonthly = name.includes("月") || name.includes("month") || name.includes("monthly");
+                              const isAnnual = name.includes("年") || name.includes("year") || name.includes("annual");
+                              const activationFeeText = isAnnual
+                                ? getCopy(tabCopy.pages.membership.copy.activationFeeCopy.annual)
+                                : isMonthly
+                                  ? getCopy(tabCopy.pages.membership.copy.activationFeeCopy.monthly)
+                                  : getCopy(tabCopy.pages.membership.copy.activationFeeCopy.default);
+                              const highlight = isAnnual;
 
-                      const bonusItems = isAnnual
-                        ? tabCopy.pages.membership.copy.bonusItems.annual
-                        : isMonthly
-                          ? tabCopy.pages.membership.copy.bonusItems.monthly
-                          : [];
-
-                      const activationFeeText = isAnnual
-                        ? getCopy(tabCopy.pages.membership.copy.activationFeeCopy.annual)
-                        : isMonthly
-                          ? getCopy(tabCopy.pages.membership.copy.activationFeeCopy.monthly)
-                          : getCopy(tabCopy.pages.membership.copy.activationFeeCopy.default);
-
-                      return (
-                        <article key={row.key} className="relative overflow-hidden rounded-2xl border border-white/12 bg-[linear-gradient(135deg,rgba(8,15,30,0.92),rgba(6,24,34,0.85))] p-3 md:p-4">
-                          <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-cyan-300/10 blur-2xl" />
-                          <div className="grid gap-3 md:grid-cols-[1.05fr_0.9fr_2.05fr] md:items-start">
-                            <div>
-                              <p className="text-[11px] uppercase tracking-[0.14em] text-cyan-200/80">
-                                {activeLocale === "zh" ? `方案 ${index + 1}` : `Plan ${index + 1}`}
-                              </p>
-                              <p className="mt-1 font-semibold text-white">
-                                {index + 1}. {activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh}
-                              </p>
-                              <p className="mt-1 text-xs text-slate-300">
-                                {activeLocale === "zh" ? "周期" : "Cycle"}: {cycleLabel}
-                              </p>
-                            </div>
-
-                            <div className="rounded-xl px-3 py-2">
-                              <p className="text-[10px] text-emerald-100/80">
-                                {activeLocale === "zh" ? "会籍价格" : "Membership Price"}
-                              </p>
-                              <p className="font-semibold text-emerald-200">{formatMoney(membershipPrice ?? undefined)}</p>
-                              <p className="mt-2 text-[10px] text-amber-100/80">
-                                {activeLocale === "zh" ? "激活费" : "Activation Fee"}
-                              </p>
-                              <p className="text-xs text-amber-200">{activationFeeText}</p>
-                            </div>
-
-                            <div className="overflow-hidden rounded-md border border-white/10">
-                              <div className="grid grid-cols-2 bg-white/[0.02] text-[10px] text-slate-500">
-                                <div className="border-r border-white/10 px-2 py-1">
-                                  {activeLocale === "zh" ? "核心权益" : "Core Access"}
-                                </div>
-                                <div className="px-2 py-1">
-                                  {activeLocale === "zh" ? "加赠福利" : "Bonus"}
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 text-xs">
-                                <div className="border-r border-white/10 px-2 py-2 text-slate-300">
-                                  <ul className="list-disc space-y-1 pl-4 text-xs">
+                              return (
+                                <td
+                                  key={`${row.key}-activation`}
+                                  className={`membership-cell text-xs ${highlight ? "membership-cell-highlight" : "text-zinc-500"}`}
+                                >
+                                  {activationFeeText}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          <tr className="membership-row">
+                            <td className="membership-label pt-4">{activeLocale === "zh" ? "核心权益" : "Core Access"}</td>
+                            {membershipRows.map((row) => {
+                              const activeName = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
+                              const name = activeName.toLowerCase();
+                              const highlight = name.includes("年") || name.includes("year") || name.includes("annual");
+                              return (
+                                <td key={`${row.key}-core`} className={`membership-cell p-0 ${highlight ? "membership-cell-highlight" : ""}`}>
+                                  <div className="space-y-3 p-4">
                                     {coreAccessItems.map((item) => (
-                                      <li key={item}>{item}</li>
+                                      <div key={`${row.key}-${item}`} className={`membership-feature ${highlight ? "text-zinc-200" : "text-zinc-400"}`}>
+                                        <span className="membership-check" />
+                                        {item}
+                                      </div>
                                     ))}
-                                  </ul>
-                                </div>
-                                <div className="px-2 py-2 text-slate-300">
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          <tr className="membership-row">
+                            <td className="membership-label">{activeLocale === "zh" ? "加赠福利" : "Bonus"}</td>
+                            {membershipRows.map((row) => {
+                              const activeName = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
+                              const name = activeName.toLowerCase();
+                              const isMonthly = name.includes("月") || name.includes("month") || name.includes("monthly");
+                              const isAnnual = name.includes("年") || name.includes("year") || name.includes("annual");
+                              const bonusItems = isAnnual
+                                ? tabCopy.pages.membership.copy.bonusItems.annual
+                                : isMonthly
+                                  ? tabCopy.pages.membership.copy.bonusItems.monthly
+                                  : [];
+                              const highlight = isAnnual;
+
+                              return (
+                                <td key={`${row.key}-bonus`} className={`membership-cell ${highlight ? "membership-cell-highlight" : ""}`}>
                                   {bonusItems.length > 0 ? (
-                                    <div className="space-y-1.5">
+                                    <div className="space-y-1.5 text-[11px] font-semibold text-left">
                                       {bonusItems.map((item) => {
-                                        const iconMap: Record<string, typeof CupSoda> = {
+                                        const iconMap: Record<string, typeof Gift> = {
                                           "Drink Voucher": CupSoda,
                                           "Meal Voucher": UtensilsCrossed,
                                           "Weekly Pass": CalendarDays,
                                         };
                                         const Icon = iconMap[item.en] ?? Gift;
                                         return (
-                                          <div
-                                            key={item.en}
-                                            className="relative overflow-hidden rounded-lg border border-amber-300/30 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-emerald-500/10 px-2 py-1.5"
-                                          >
-                                            <div className="absolute -right-4 -top-4 h-10 w-10 rounded-full bg-amber-300/10 blur-md" />
-                                            <div className="flex items-start gap-2">
-                                              <div className="mt-0.5 rounded-md border border-amber-200/25 bg-amber-400/10 p-1 text-amber-200">
-                                                <Icon size={12} />
-                                              </div>
-                                              <div className="leading-tight">
-                                                <p className="text-[11px] font-semibold text-amber-100">
-                                                  {getCopy(item)} ×{item.qty}
-                                                </p>
-                                              </div>
-                                            </div>
+                                          <div key={`${row.key}-${item.en}`} className="flex items-center gap-3">
+                                            <span className="rounded-md border border-white/10 bg-black/30 p-1 text-[#39FF14]">
+                                              <Icon size={12} />
+                                            </span>
+                                            <span className="text-zinc-400">{getCopy(item)}</span>
+                                            <span className="text-[#39FF14]">×{item.qty}</span>
                                           </div>
                                         );
                                       })}
                                     </div>
                                   ) : (
-                                    <p className="text-xs text-slate-400">
+                                    <span className="text-[10px] italic text-zinc-600">
                                       {getCopy(tabCopy.pages.membership.copy.bonusItems.none)}
-                                    </p>
+                                    </span>
                                   )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          <tr>
+                            <td className="membership-label">{activeLocale === "zh" ? "操作" : "Action"}</td>
+                            {membershipRows.map((row) => {
+                              const activeName = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
+                              const name = activeName.toLowerCase();
+                              const highlight = name.includes("年") || name.includes("year") || name.includes("annual");
+                              return (
+                                <td key={`${row.key}-action`} className={`membership-cell py-4 ${highlight ? "membership-cell-highlight" : ""}`}>
+                                  <button
+                                    type="button"
+                                    onClick={() => addCartMembership(row)}
+                                    className={`membership-action ${highlight ? "membership-action-highlight" : ""} ${
+                                      addingItemKey === `membership-${row.key}` ? "membership-action-active" : ""
+                                    }`}
+                                    aria-label="加入报价"
+                                    title="加入报价"
+                                  >
+                                    {activeLocale === "zh" ? "加入报价" : "Add"}
+                                  </button>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  <div className="mt-10 grid gap-10 lg:grid-cols-2">
+                    <section className="space-y-6">
+                      <div className="flex items-baseline justify-between border-b border-white/10 pb-3">
+                        <h4 className="text-2xl font-bold tracking-tight text-white">
+                          {getCopy(tabCopy.pages.membership.copy.newSignupTitle)}
+                        </h4>
+                        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                          {getCopy(tabCopy.pages.membership.copy.newSignupBadge)}
+                        </span>
+                      </div>
+                      <div className="grid gap-2">
+                        {tabCopy.pages.membership.copy.newSignupBenefits.map((benefit) => (
+                          <div key={benefit.en} className="membership-list-item">
+                            <p className="text-[13px] font-medium text-slate-100">
+                              {getCopy(benefit)}
+                            </p>
+                            <span className="membership-check" />
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="space-y-6">
+                      <div className="flex items-baseline justify-between border-b border-white/10 pb-3">
+                        <h4 className="text-2xl font-bold tracking-tight text-white uppercase">
+                          {getCopy(tabCopy.pages.membership.copy.groupClass.title)}
+                        </h4>
+                        <span className="membership-badge">
+                          {getCopy(tabCopy.pages.membership.copy.groupClass.badge)}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {groupedSections.groupClassRows?.map((row, index) => {
+                          const groupClassDays = getGroupClassDays(row.modeKey);
+                          const displayName = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
+                          const modeLabel = row.modeKey === "weekly_pass"
+                            ? activeLocale === "zh" ? "周通" : "Weekly"
+                            : row.modeKey === "monthly_pass"
+                              ? activeLocale === "zh" ? "月通" : "Monthly"
+                              : row.modeKey === "single"
+                                ? activeLocale === "zh" ? "单次" : "Single"
+                                : row.modeKey ?? "-";
+                          const durationLabel = groupClassDays
+                            ? activeLocale === "zh"
+                              ? `${groupClassDays} 天`
+                              : `${groupClassDays} days`
+                            : "-";
+
+                          return (
+                            <article
+                              key={row.key}
+                              className={`membership-list-item grid items-center gap-2 px-5 py-3 lg:grid-cols-12 ${
+                                row.modeKey === "monthly_pass" ? "border-l-2 border-l-[#39FF14]" : ""
+                              }`}
+                            >
+                              <div className="lg:col-span-5">
+                                <h5 className="text-sm font-bold text-white">
+                                  {index + 1}. {displayName}
+                                </h5>
+                                <p className="mt-0.5 text-[9px] uppercase tracking-wide text-zinc-500">
+                                  {activeLocale === "zh" ? "模式" : "Mode"}: {modeLabel} | {activeLocale === "zh" ? "周期" : "Duration"}: {durationLabel}
+                                </p>
+                              </div>
+                              <div className="lg:col-span-2">
+                                <span className="block text-[8px] font-bold uppercase text-zinc-600">
+                                  {getCopy(tabCopy.pages.membership.copy.groupClass.columns.member)}
+                                </span>
+                                <p className="text-lg font-black text-[#39FF14]">
+                                  {formatMoney(row.memberPrice)}
+                                </p>
+                              </div>
+                              <div className="lg:col-span-2">
+                                <span className="block text-[8px] font-bold uppercase text-zinc-600">
+                                  {getCopy(tabCopy.pages.membership.copy.groupClass.columns.nonMember)}
+                                </span>
+                                <p className="text-lg font-black text-white">
+                                  {formatMoney(row.nonMemberPrice)}
+                                </p>
+                              </div>
+                              <div className="lg:col-span-3">
+                                <div className="flex gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => addCartGroupClass(row, "member")}
+                                    className={`membership-action membership-action-split flex-1 min-w-[110px] py-2 text-[9px] ${
+                                      addingItemKey === `group-member-${row.key}` ? "membership-action-active" : ""
+                                    }`}
+                                    aria-label="加入会员价"
+                                    title="加入会员价"
+                                  >
+                                    {activeLocale === "zh" ? "会员价" : "Member"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => addCartGroupClass(row, "non_member")}
+                                    className={`membership-action membership-action-split flex-1 min-w-[110px] py-2 text-[9px] ${
+                                      addingItemKey === `group-non_member-${row.key}` ? "membership-action-active" : ""
+                                    }`}
+                                    aria-label="加入非会员价"
+                                    title="加入非会员价"
+                                  >
+                                    {activeLocale === "zh" ? "非会员" : "Non-member"}
+                                  </button>
                                 </div>
                               </div>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => addCartMembership(row)}
-                              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
-                                addingItemKey === `membership-${row.key}`
-                                  ? "border-emerald-200/70 bg-emerald-500/30 text-emerald-50 shadow-[0_0_16px_rgba(16,185,129,0.45)]"
-                                  : "border-emerald-300/40 bg-emerald-500/15 text-emerald-100 hover:border-emerald-200/70 hover:bg-emerald-500/25"
-                              }`}
-                              aria-label="加入报价"
-                              title="加入报价"
-                            >
-                              <Plus size={12} />
-                              <span>{activeLocale === "zh" ? "加入报价" : "Add"}</span>
-                            </button>
-                          </div>
-                        </article>
-                      );
-
-                  })}
-                </div>
-
-                <div className="mt-5 rounded-2xl border border-cyan-300/30 bg-[linear-gradient(135deg,rgba(14,116,144,0.18),rgba(8,47,73,0.3))] p-4 md:p-5">
-                  <div className="mb-2 flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-cyan-100 md:text-base">
-                      {getCopy(tabCopy.pages.membership.copy.newSignupTitle)}
-                    </h4>
-                    <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] text-cyan-100">
-                      {getCopy(tabCopy.pages.membership.copy.newSignupBadge)}
-                    </span>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
                   </div>
-                  <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-slate-100">
-                    {tabCopy.pages.membership.copy.newSignupBenefits.map((benefit) => (
-                      <li key={benefit.en}>{getCopy(benefit)}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                {groupedSections.groupClassRows && (
-                  <div className="mt-5 rounded-2xl border border-white/12 bg-[#0a1628]/70 p-3 md:p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                      <h4 className="text-base font-semibold text-white">{getCopy(tabCopy.pages.membership.copy.groupClass.title)}</h4>
-                      <span className="rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-[10px] text-cyan-100">
-                        {getCopy(tabCopy.pages.membership.copy.groupClass.badge)}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {groupedSections.groupClassRows.map((row, index) => {
-                        const groupClassDays = getGroupClassDays(row.modeKey);
-                        const memberPerDay =
-                          groupClassDays && typeof row.memberPrice === "number" ? row.memberPrice / groupClassDays : null;
-                        const nonMemberPerDay =
-                          groupClassDays && typeof row.nonMemberPrice === "number" ? row.nonMemberPrice / groupClassDays : null;
-                        const displayName = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
-                        const modeLabel = row.modeKey === "weekly_pass"
-                          ? activeLocale === "zh" ? "周通" : "Weekly"
-                          : row.modeKey === "monthly_pass"
-                            ? activeLocale === "zh" ? "月通" : "Monthly"
-                            : row.modeKey === "single"
-                              ? activeLocale === "zh" ? "单次" : "Single"
-                              : row.modeKey ?? "-";
-                        const durationLabel = groupClassDays
-                          ? activeLocale === "zh"
-                            ? `${groupClassDays} 天`
-                            : `${groupClassDays} days`
-                          : "-";
-
-                        return (
-                          <article key={row.key} className="py-1.5">
-                            <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/12 bg-[linear-gradient(135deg,rgba(9,19,35,0.92),rgba(7,28,45,0.8))] text-xs md:grid-cols-6 md:text-sm">
-                              <div className="col-span-2 border-b border-white/10 px-3 py-2 md:col-span-2 md:border-b-0 md:border-r">
-                                <p className="font-semibold text-white">{index + 1}. {displayName}</p>
-                                <p className="mt-0.5 text-[11px] text-slate-400">
-                                  {activeLocale === "zh" ? "模式" : "Mode"}: {modeLabel}
-                                </p>
-                                <p className="text-[11px] text-slate-500">
-                                  {activeLocale === "zh" ? "周期" : "Duration"}: {durationLabel}
-                                </p>
-                              </div>
-
-                              <div className="border-b border-r border-white/10 px-3 py-2 md:border-b-0">
-                                <p className="text-[10px] text-slate-500">{getCopy(tabCopy.pages.membership.copy.groupClass.columns.member)}</p>
-                                <p className="font-semibold text-emerald-200">{formatMoney(row.memberPrice)}</p>
-                              </div>
-
-                              <div className="border-b border-white/10 px-3 py-2 md:border-b-0 md:border-r">
-                                <p className="text-[10px] text-slate-500">{getCopy(tabCopy.pages.membership.copy.groupClass.columns.nonMember)}</p>
-                                <p className="font-semibold text-amber-200">{formatMoney(row.nonMemberPrice)}</p>
-                              </div>
-
-                              <div className="border-r border-white/10 px-3 py-2">
-                                <p className="text-[10px] text-slate-500">{getCopy(tabCopy.pages.membership.copy.groupClass.columns.memberPerDay)}</p>
-                                <p className="text-cyan-200">{memberPerDay !== null ? `$${memberPerDay.toFixed(2)}` : "-"}</p>
-                              </div>
-
-                              <div className="px-3 py-2">
-                                <p className="text-[10px] text-slate-500">{getCopy(tabCopy.pages.membership.copy.groupClass.columns.nonMemberPerDay)}</p>
-                                <p className="text-cyan-100">{nonMemberPerDay !== null ? `$${nonMemberPerDay.toFixed(2)}` : "-"}</p>
-                              </div>
-                            </div>
-                            <div className="mt-2 flex justify-end">
-                              <button
-                                type="button"
-                                onClick={() => addCartGroupClass(row)}
-                                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
-                                  addingItemKey === `group-${row.key}`
-                                    ? "border-emerald-200/70 bg-emerald-500/30 text-emerald-50 shadow-[0_0_16px_rgba(16,185,129,0.45)]"
-                                    : "border-emerald-300/40 bg-emerald-500/15 text-emerald-100 hover:border-emerald-200/70 hover:bg-emerald-500/25"
-                                }`}
-                                aria-label="加入报价"
-                                title="加入报价"
-                              >
-                                <Plus size={12} />
-                                <span>{activeLocale === "zh" ? "加入报价" : "Add"}</span>
-                              </button>
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </article>
-            ))}
+                </article>
+              );
+            })}
 
             {categoryFilter === "stored_value" && (
               <article className={`${glass} relative p-6 lg:p-12`}>
@@ -1081,6 +1185,7 @@ export default function Home() {
                           const gridGap = isFirst ? "gap-6" : isMidTier ? "gap-8" : "gap-10";
                           const gridPadding = isFirst ? "pt-6" : isMidTier ? "pt-8" : "pt-10";
                           const pointsSize = isFirst ? "text-2xl" : isMidTier ? "text-3xl" : "text-4xl";
+                          const valueClass = `font-futuristic leading-none ${pointsSize}`;
                           const buttonPadding = isTopTier ? "px-10 py-3 text-base" : "px-6 py-2 text-sm";
                           const buttonShadow = isTopTier
                             ? "shadow-[0_0_20px_rgba(236,72,153,0.4)]"
@@ -1101,13 +1206,6 @@ export default function Home() {
                               role="button"
                               tabIndex={0}
                               key={`${plan.id}-tier`}
-                              onClick={() => setSelectedRechargeIndex(index)}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter" || event.key === " ") {
-                                  event.preventDefault();
-                                  setSelectedRechargeIndex(index);
-                                }
-                              }}
                               className={`relative tier-card ${cardWidth} ${paddingSize} mb-[-2px] ${meta.cardClass} border-l-2 transition-all duration-500 ease-out hover:scale-[1.02] hover:-translate-y-1 hover:shadow-2xl ${
                                 isTopTier ? "shadow-[0_20px_60px_-15px_rgba(236,72,153,0.15)]" : ""
                               }`}
@@ -1130,28 +1228,28 @@ export default function Home() {
                                   <h4 className={`font-futuristic font-bold text-white tracking-wide ${amountSize}`}>
                                     {amountDisplay}
                                   </h4>
-                                  <div className={`mt-6 grid grid-cols-2 md:grid-cols-3 ${gridGap} border-t border-white/10 ${gridPadding}`}>
+                                  <div className={`mt-6 grid grid-cols-2 md:grid-cols-3 items-end ${gridGap} border-t border-white/10 ${gridPadding}`}>
                                     <div>
-                                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">
+                                      <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mb-2">
                                         {activeLocale === "zh" ? "赠送会员" : "Membership"}
                                       </p>
-                                      <p className="text-xs font-semibold text-slate-300">
+                                      <p className={`${valueClass} text-white`}>
                                         {getCopy(plan.membershipGift)}
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">
+                                      <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mb-2">
                                         {activeLocale === "zh" ? "赠送积分" : "Bonus Credit"}
                                       </p>
-                                      <p className={`font-futuristic text-white leading-none ${pointsSize}`}>
+                                      <p className={`${valueClass} text-white`}>
                                         {formatMoney(plan.bonusCredit)}
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">
+                                      <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mb-2">
                                         {activeLocale === "zh" ? "赠送价值" : "Gift Value"}
                                       </p>
-                                      <p className={`font-futuristic leading-none ${pointsSize} ${meta.accentText}`}>
+                                      <p className={`${valueClass} ${meta.accentText}`}>
                                         {formatMoney(plan.totalValue)}
                                       </p>
                                     </div>
@@ -1516,6 +1614,8 @@ export default function Home() {
         items={cartItems}
         totals={cartTotals}
         customer={cartCustomer}
+        creditApplied={cartCreditApplied}
+        onCreditChange={setCartCreditApplied}
         onClose={() => setCartOpen(false)}
         onRemoveItem={removeCartItem}
         onUpdateItem={updateCartItem}

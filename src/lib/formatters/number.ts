@@ -12,6 +12,14 @@ export function formatMoney(value?: number) {
   return `$${value.toLocaleString()}`;
 }
 
+export function formatMoneyWithDecimals(value?: number, decimals = 2) {
+  if (typeof value !== "number") return "-";
+  return `$${value.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })}`;
+}
+
 export function formatPercent(value?: number) {
   if (typeof value !== "number") return "-";
   return `${value.toFixed(0)}%`;

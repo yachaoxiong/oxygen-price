@@ -15,11 +15,20 @@ export type CartItem = {
   originalPrice?: number;
   note?: string;
   details?: string[];
+  membershipWeeks?: number;
+  isNewCustomer?: boolean;
+  activationFee?: number;
 };
 
 export type CartTotals = {
   subtotal: number;
+  taxableSubtotal: number;
+  nonTaxableSubtotal: number;
   tax: number;
+  totalBeforeCredit: number;
+  creditApplied: number;
+  creditUsed: number;
+  creditOverflow: number;
   total: number;
   itemsCount: number;
 };

@@ -3,6 +3,7 @@ import { User, Users, X } from "lucide-react";
 import { ptCalculatorCopy, ptReportCopy } from "@/lib/copy/modalCopy";
 import { formatMoney } from "@/lib/formatters/number";
 import type { PtPreset, PtRow } from "@/types/pricing";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type PtCalculatorModalProps = {
   selectedPtRow: PtRow | null;
@@ -228,18 +229,15 @@ export function PtCalculatorModal({
                       <div className="grid gap-3 sm:grid-cols-[1.2fr_1fr]">
                         <div>
                           <label className="text-[11px] text-slate-400">{copy.unitPrice}</label>
-                          <input
-                            type="number"
-                            value={ptUnitInputEmpty ? "" : String(line.unit)}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (raw === "") {
-                                onSetPtUnitInputEmpty(true);
-                                line.setUnit(0);
-                                return;
-                              }
-                              onSetPtUnitInputEmpty(false);
-                              line.setUnit(Number(raw));
+                          <NumberInput
+                            className="input-subdued mt-1 w-full rounded-xl px-3 py-2 text-sm"
+                            value={line.unit}
+                            min={0}
+                            allowDecimal={true}
+                            allowEmpty={true}
+                            onChange={(value) => {
+                              onSetPtUnitInputEmpty(value === 0);
+                              line.setUnit(value);
                             }}
                             onBlur={() => {
                               if (ptUnitInputEmpty) {
@@ -247,25 +245,21 @@ export function PtCalculatorModal({
                                 line.setUnit(0);
                               }
                             }}
-                            className="input-subdued mt-1 w-full rounded-xl px-3 py-2 text-sm"
                           />
                         </div>
                         <div>
                           <label className="text-[11px] text-slate-400">
                             {activeLocale === "zh" ? "数量" : "Quantity"}
                           </label>
-                          <input
-                            type="number"
-                            value={ptQtyInputEmpty ? "" : String(line.qty)}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (raw === "") {
-                                onSetPtQtyInputEmpty(true);
-                                line.setQty(0);
-                                return;
-                              }
-                              onSetPtQtyInputEmpty(false);
-                              line.setQty(Number(raw));
+                          <NumberInput
+                            className="input-subdued mt-1 w-full rounded-xl px-3 py-2 text-sm"
+                            value={line.qty}
+                            min={0}
+                            allowDecimal={false}
+                            allowEmpty={true}
+                            onChange={(value) => {
+                              onSetPtQtyInputEmpty(value === 0);
+                              line.setQty(value);
                             }}
                             onBlur={() => {
                               if (ptQtyInputEmpty) {
@@ -273,7 +267,6 @@ export function PtCalculatorModal({
                                 line.setQty(0);
                               }
                             }}
-                            className="input-subdued mt-1 w-full rounded-xl px-3 py-2 text-sm"
                           />
                         </div>
                       </div>
@@ -332,21 +325,22 @@ export function PtCalculatorModal({
                       <span className="text-slate-300">{copy.subtotal}</span>
                       <span className="font-semibold text-emerald-200">{formatMoney(ptActiveSubtotal)}</span>
                     </div>
+                    <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                      <span className="text-slate-300">{copy.tax} (13%)</span>
+                      <span className="font-semibold text-cyan-200">{formatMoney(ptTaxAfterAdjust)}</span>
+                    </div>
                     <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                       <div className="flex items-center justify-between">
                         <span className="text-slate-300">{copy.credit}</span>
-                        <input
-                          type="number"
-                          value={ptCreditInputEmpty ? "" : String(ptCredit)}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            if (raw === "") {
-                              onSetPtCreditInputEmpty(true);
-                              onSetPtCredit(0);
-                              return;
-                            }
-                            onSetPtCreditInputEmpty(false);
-                            onSetPtCredit(Number(raw));
+                        <NumberInput
+                          className="input-subdued w-28 rounded-md px-2 py-1 text-right text-sm"
+                          value={ptCredit}
+                          min={0}
+                          allowDecimal={false}
+                          allowEmpty={true}
+                          onChange={(value) => {
+                            onSetPtCreditInputEmpty(value === 0);
+                            onSetPtCredit(value);
                           }}
                           onBlur={() => {
                             if (ptCreditInputEmpty) {
@@ -354,17 +348,12 @@ export function PtCalculatorModal({
                               onSetPtCredit(0);
                             }
                           }}
-                          className="input-subdued w-28 rounded-md px-2 py-1 text-right text-sm"
                         />
                       </div>
                     </div>
                     <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                       <span className="text-slate-300">{copy.afterCredit}</span>
                       <span className="font-semibold text-emerald-200">{formatMoney(ptAfterCredit)}</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                      <span className="text-slate-300">{copy.tax} (13%)</span>
-                      <span className="font-semibold text-cyan-200">{formatMoney(ptTaxAfterAdjust)}</span>
                     </div>
                     <div className="flex items-center justify-between rounded-lg border border-emerald-300/35 bg-emerald-500/12 px-3 py-2">
                       <span className="text-slate-100">{copy.total}</span>

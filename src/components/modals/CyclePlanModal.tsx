@@ -5,6 +5,7 @@ import { cycleCopy } from "@/lib/copy/cycleCopy";
 import { formatMoney } from "@/lib/formatters/number";
 import type { CycleCourseSelection, CyclePlanRow, PtPreset, PtRow } from "@/types/pricing";
 import { CycleReportStep } from "@/components/modals/CycleReportStep";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type CyclePlanModalProps = {
   selectedCyclePlan: CyclePlanRow | null;
@@ -308,19 +309,16 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                         <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/35 px-4 py-3">
                           <label className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
                             {copy.unit}
-                            <input
-                              type="number"
-                              min={0}
+                            <NumberInput
                               className="input-subdued mt-2 w-full rounded-xl px-3 py-2 text-sm text-slate-100"
                               value={course.unitPrice}
-                              onChange={(event) => {
-                                const raw = event.target.value;
-                                const cleaned = raw.replace(/^0+(?=\d)/, "");
-                                const value = cleaned === "" ? 0 : Number(cleaned);
+                              min={0}
+                              allowDecimal={true}
+                              onChange={(value) => {
                                 onSetCycleSelectedCourses(
                                   cycleSelectedCourses.map((item) =>
                                     item.program.key === row.key
-                                      ? { ...item, unitPrice: Math.max(0, value) }
+                                      ? { ...item, unitPrice: value }
                                       : item,
                                   ),
                                 );
@@ -354,19 +352,16 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                                 </button>
                               ))}
                             </div>
-                            <input
-                              type="number"
-                              min={1}
+                            <NumberInput
                               className="input-subdued mt-2 w-full rounded-xl px-3 py-2 text-sm text-slate-100"
                               value={course.qty}
-                              onChange={(event) => {
-                                const raw = event.target.value;
-                                const cleaned = raw.replace(/^0+(?=\d)/, "");
-                                const value = cleaned === "" ? 1 : Number(cleaned);
+                              min={1}
+                              allowDecimal={false}
+                              onChange={(value) => {
                                 onSetCycleSelectedCourses(
                                   cycleSelectedCourses.map((item) =>
                                     item.program.key === row.key
-                                      ? { ...item, qty: Math.max(1, value) }
+                                      ? { ...item, qty: value }
                                       : item,
                                   ),
                                 );
