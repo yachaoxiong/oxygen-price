@@ -329,7 +329,7 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                           <div>
                             <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{copy.sessions}</p>
                             <div className="mt-2 flex flex-wrap gap-2">
-                              {[6, 12, 18, 24].map((value) => (
+                              {[6, 12, 18, 24, 36, 48].map((value) => (
                                 <button
                                   key={value}
                                   type="button"

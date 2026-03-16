@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 
 export type NavbarProps = {
@@ -126,6 +127,13 @@ export function Navbar({
                   </div>
                 </div>
                 <div className="px-4 py-3">
+                  <Link
+                    href="/invoice"
+                    className="mb-2 flex w-full items-center justify-between rounded-lg border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:border-emerald-300/50 hover:bg-emerald-500/20"
+                  >
+                    <span>{activeLocale === "zh" ? "发票中心" : "Invoice Center"}</span>
+                    <span className="text-[10px] text-emerald-200/70">Open</span>
+                  </Link>
                   <button
                     onClick={onSignOut}
                     className="w-full rounded-lg border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20"

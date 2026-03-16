@@ -2,6 +2,7 @@
 /* cSpell:words supabase fullpay */
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Activity, CalendarDays, CupSoda, Gift, UtensilsCrossed } from "lucide-react";
 import { useAuth } from "@/features/auth/useAuth";
 import { AuthLoginScreen } from "@/features/auth/AuthLoginScreen";
@@ -33,6 +34,8 @@ import type { CyclePlanRow, PricingCategory, PtPreset, PtRow } from "@/types/pri
 type CategoryFilter = PricingCategory;
 
 export default function Home() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("membership");
   const [selectedPromoTrigger, setSelectedPromoTrigger] = useState(
     tabCopy.pages.storedValue.copy.promotionHighlights[0]?.trigger ?? "",
@@ -57,6 +60,15 @@ export default function Home() {
 
     return () => body.classList.remove("stored-value-mode");
   }, [categoryFilter]);
+
+  useEffect(() => {
+    const nextCategory = searchParams?.get("category") as CategoryFilter | null;
+    if (nextCategory && nextCategory !== categoryFilter) {
+      setCategoryFilter(nextCategory);
+    } else if (!nextCategory && categoryFilter !== "membership") {
+      setCategoryFilter("membership");
+    }
+  }, [searchParams, categoryFilter]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -736,7 +748,10 @@ export default function Home() {
       <Navbar
         activeLocale={activeLocale}
         activeCategory={categoryFilter}
-        onSelectCategory={(category) => setCategoryFilter(category)}
+        onSelectCategory={(category) => {
+          setCategoryFilter(category);
+          router.push(`/?category=${category}`);
+        }}
         onToggleLocale={() => setActiveLocale((prev) => (prev === "zh" ? "en" : "zh"))}
         cartCount={cartTotals.itemsCount}
         onOpenCart={() => setCartOpen(true)}
@@ -821,7 +836,7 @@ export default function Home() {
                                   key={row.key}
                                   className={`membership-header ${highlight ? "membership-header-highlight" : ""}`}
                                 >
-                                  <span className={`block text-[9px] uppercase tracking-wider ${highlight ? "text-[#39FF14]" : "text-slate-500"}`}>
+                                  <span className={`block text-[9px] uppercase tracking-wider ${highlight ? "text-[var(--theme-green)]" : "text-slate-500"}`}>
                                     {activeLocale === "zh" ? `方案 ${index + 1}` : `Plan ${index + 1}`}
                                   </span>
                                   <h4 className="mt-1 text-lg font-bold text-white">
@@ -930,11 +945,11 @@ export default function Home() {
                                         const Icon = iconMap[item.en] ?? Gift;
                                         return (
                                           <div key={`${row.key}-${item.en}`} className="flex items-center gap-3">
-                                            <span className="rounded-md border border-white/10 bg-black/30 p-1 text-[#39FF14]">
+                                            <span className="rounded-md border border-white/10 bg-black/30 p-1 text-[var(--theme-green)]">
                                               <Icon size={12} />
                                             </span>
                                             <span className="text-zinc-400">{getCopy(item)}</span>
-                                            <span className="text-[#39FF14]">×{item.qty}</span>
+                                            <span className="text-[var(--theme-green)]">×{item.qty}</span>
                                           </div>
                                         );
                                       })}
@@ -1029,7 +1044,7 @@ export default function Home() {
                             <article
                               key={row.key}
                               className={`membership-list-item grid items-center gap-2 px-5 py-3 lg:grid-cols-12 ${
-                                row.modeKey === "monthly_pass" ? "border-l-2 border-l-[#39FF14]" : ""
+                                row.modeKey === "monthly_pass" ? "border-l-2 border-l-[var(--theme-green)]" : ""
                               }`}
                             >
                               <div className="lg:col-span-5">
@@ -1044,7 +1059,7 @@ export default function Home() {
                                 <span className="block text-[8px] font-bold uppercase text-zinc-600">
                                   {getCopy(tabCopy.pages.membership.copy.groupClass.columns.member)}
                                 </span>
-                                <p className="text-lg font-black text-[#39FF14]">
+                                <p className="text-lg font-black text-[var(--theme-green)]">
                                   {formatMoney(row.memberPrice)}
                                 </p>
                               </div>
