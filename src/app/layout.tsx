@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   applicationName: "OXYGEN 销售报价系统",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "OXYGEN 销售报价系统",
   },
   formatDetection: {
@@ -39,7 +39,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a",
+  themeColor: "#03050b",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -58,7 +59,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansSc.variable} ${teko.variable} antialiased`}
       >
-        {children}
+        <div className="app-shell">
+          {children}
+        </div>
         <Script id="pwa-register-sw" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {

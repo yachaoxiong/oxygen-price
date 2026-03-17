@@ -3,8 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navigation/Navbar";
+import { CartQuoteModal } from "@/components/modals/CartQuoteModal";
 import { glass } from "@/lib/pricing/constants";
 import { formatMoney } from "@/lib/formatters/number";
+import { useCartState } from "@/features/cart/useCartState";
+import { buildCartSummaryText } from "@/lib/cart/cartTextBuilder";
+import { buildCartPdfHtml } from "@/lib/export/cartPdfBuilder";
+import { printHtml } from "@/lib/export/print";
+import { useAuth } from "@/features/auth/useAuth";
+import { AuthLoadingScreen } from "@/features/auth/AuthLoadingScreen";
+import { AuthLoginScreen } from "@/features/auth/AuthLoginScreen";
 
 const invoiceItems = [
   {
@@ -38,14 +46,29 @@ const total = subtotal - discount + tax;
 
 export default function InvoicePage() {
   const router = useRouter();
-  const handleReturnHome = () => router.push("/");
+  const { authState, email, setEmail, password, setPassword, authError, handleSignIn } = useAuth();
   const handleSelectCategory = (category: string) => {
     router.push(`/?category=${category}`);
   };
-  const handleOpenCart = () => router.push("/?cart=open");
   const handleSignOut = () => router.push("/?signout=1");
   const [activeLocale, setActiveLocale] = useState<"zh" | "en">("en");
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+
+  const {
+    items: cartItems,
+    totals: cartTotals,
+    customer: cartCustomer,
+    isOpen: cartOpen,
+    setIsOpen: setCartOpen,
+    creditApplied: cartCreditApplied,
+    setCreditApplied: setCartCreditApplied,
+    updateItem: updateCartItem,
+    removeItem: removeCartItem,
+    clearCart,
+    updateCustomer: updateCartCustomer,
+    lastAddedId,
+    clearLastAdded,
+  } = useCartState();
 
   useEffect(() => {
     function handleDocumentClick(event: MouseEvent) {
@@ -79,15 +102,32 @@ export default function InvoicePage() {
     });
   };
 
+  if (authState === "loading") {
+    return <AuthLoadingScreen />;
+  }
+
+  if (authState !== "authed") {
+    return (
+      <AuthLoginScreen
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+        authError={authError}
+        onSignIn={handleSignIn}
+      />
+    );
+  }
+
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#03050b] text-slate-100">
+    <div className="relative min-h-screen  bg-[#03050b] text-slate-100">
       <Navbar
         activeLocale={activeLocale}
         activeCategory="membership"
         onSelectCategory={handleSelectCategory}
         onToggleLocale={handleToggleLocale}
-        cartCount={0}
-        onOpenCart={handleOpenCart}
+        cartCount={cartTotals.itemsCount}
+        onOpenCart={() => setCartOpen(true)}
         addingItemKey={null}
         avatarInitial="AW"
         avatarName="Alicia Wang"
@@ -245,6 +285,50 @@ export default function InvoicePage() {
           </section>
         </section>
       </main>
+
+      <CartQuoteModal
+        open={cartOpen}
+        items={cartItems}
+        totals={cartTotals}
+        customer={cartCustomer}
+        creditApplied={cartCreditApplied}
+        onCreditChange={setCartCreditApplied}
+        onClose={() => setCartOpen(false)}
+        onRemoveItem={removeCartItem}
+        onUpdateItem={updateCartItem}
+        onUpdateCustomer={updateCartCustomer}
+        onClearCart={clearCart}
+        onCopySummary={() => {
+          const reportDate = new Date().toLocaleDateString("zh-CN", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+          const summary = buildCartSummaryText({
+            reportDate,
+            customer: cartCustomer,
+            items: cartItems,
+            totals: cartTotals,
+          });
+          navigator.clipboard.writeText(summary);
+        }}
+        onDownloadPdf={() => {
+          const reportDate = new Date().toLocaleDateString("zh-CN", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+          const html = buildCartPdfHtml({
+            reportDate,
+            customer: cartCustomer,
+            items: cartItems,
+            totals: cartTotals,
+          });
+          printHtml(html, { width: 980, height: 760, delayMs: 250 });
+        }}
+        lastAddedId={lastAddedId}
+        onAnimationComplete={clearLastAdded}
+      />
     </div>
   );
 }

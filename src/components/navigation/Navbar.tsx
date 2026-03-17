@@ -1,12 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
+
+const NAV_ITEMS = [
+  { key: "membership", labelZh: "会员&团课", labelEn: "Membership & Classes", href: "/membership" },
+  { key: "personal_training", labelZh: "私教课程", labelEn: "Personal Training", href: "/personal-training" },
+  { key: "cycle_plan", labelZh: "周期计划", labelEn: "Cycle Plans", href: "/cycle-plan" },
+  { key: "stored_value", labelZh: "储值计划", labelEn: "Stored Value", href: "/stored-value" },
+] as const;
+
+type CategoryKey = (typeof NAV_ITEMS)[number]["key"];
 
 export type NavbarProps = {
   activeLocale: "zh" | "en";
-  activeCategory: "membership" | "personal_training" | "cycle_plan" | "stored_value" | "group_class" | "assessment";
-  onSelectCategory: (category: "membership" | "personal_training" | "cycle_plan" | "stored_value" | "group_class" | "assessment") => void;
+  activeCategory: CategoryKey;
+  onSelectCategory: (category: CategoryKey) => void;
   onToggleLocale: () => void;
   cartCount: number;
   onOpenCart: () => void;
@@ -18,13 +28,6 @@ export type NavbarProps = {
   onToggleAvatarMenu: () => void;
   onSignOut: () => void;
 };
-
-const NAV_ITEMS = [
-  { key: "membership", labelZh: "会员&团课", labelEn: "Membership & Classes" },
-  { key: "personal_training", labelZh: "私教课程", labelEn: "Personal Training" },
-  { key: "cycle_plan", labelZh: "周期计划", labelEn: "Cycle Plans" },
-  { key: "stored_value", labelZh: "储值计划", labelEn: "Stored Value" },
-] as const;
 
 export function Navbar({
   activeLocale,
@@ -41,11 +44,13 @@ export function Navbar({
   onToggleAvatarMenu,
   onSignOut,
 }: NavbarProps) {
+  const router = useRouter();
 
   return (
-    <header className="relative z-[40] p-4 w-full overflow-visible border-b border-slate-800/70 bg-[#020b0d]/80 backdrop-blur-md">
-      <div className="pointer-events-none absolute inset-0 opacity-30 [background-size:30px_30px] [background-image:linear-gradient(rgba(0,242,150,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(0,242,150,0.08)_1px,transparent_1px)]" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-400/15 via-transparent to-transparent" />
+    <header
+      className="relative z-[40] w-full overflow-visible border-b border-slate-800/70 bg-[#03050b]"
+      style={{ paddingTop: "env(safe-area-inset-top)", paddingLeft: "1rem", paddingRight: "1rem", paddingBottom: "1rem" }}
+    >
       <div className="relative mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-6 px-4 py-5 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:px-6">
         <div className="flex flex-col items-start">
           <div className="flex items-center gap-1">
@@ -63,7 +68,10 @@ export function Navbar({
               <button
                 key={item.key}
                 type="button"
-                onClick={() => onSelectCategory(item.key)}
+                onClick={() => {
+                  onSelectCategory(item.key);
+                  router.push(item.href);
+                }}
                 className={`relative inline-flex h-8 items-center px-4 text-sm font-semibold leading-none transition-colors duration-300 box-border border cursor-pointer ${
                   isActive
                     ? "border-emerald-300/60 text-emerald-300 shadow-[0_0_12px_rgba(0,242,150,0.25)]"

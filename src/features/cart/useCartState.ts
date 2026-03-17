@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CartCustomerInfo, CartItem, CartTotals } from "@/types/cart";
 import type { PricingCategory } from "@/types/pricing";
 
@@ -25,12 +25,42 @@ const defaultCustomer: CartCustomerInfo = {
   notes: "",
 };
 
+const CART_STORAGE_KEY = "oxygen-pricing-cart";
+
 export function useCartState() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<CartCustomerInfo>(defaultCustomer);
   const [isOpen, setIsOpen] = useState(false);
   const [creditApplied, setCreditApplied] = useState(0);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = window.localStorage.getItem(CART_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as {
+          items?: CartItem[];
+          customer?: CartCustomerInfo;
+          creditApplied?: number;
+        };
+        if (parsed.items) setItems(parsed.items);
+        if (parsed.customer) setCustomer({ ...defaultCustomer, ...parsed.customer });
+        if (typeof parsed.creditApplied === "number") setCreditApplied(parsed.creditApplied);
+      }
+    } catch {
+      // Ignore malformed storage data.
+    } finally {
+      setHasHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !hasHydrated) return;
+    const payload = JSON.stringify({ items, customer, creditApplied });
+    window.localStorage.setItem(CART_STORAGE_KEY, payload);
+  }, [items, customer, creditApplied, hasHydrated]);
 
   const totals = useMemo<CartTotals>(() => {
     const { subtotal, itemsCount, taxableSubtotal, nonTaxableSubtotal } = items.reduce(
