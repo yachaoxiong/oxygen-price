@@ -765,39 +765,38 @@ function HomeContent() {
       />
 
       <div className="relative mx-auto max-w-7xl px-4 py-12 md:px-6 md:py-16">
-
         <PwaInstallHint
           visible={showInstallHint && Boolean(deferredInstallPrompt)}
           onInstall={handleInstallApp}
           onDismiss={handleDismissInstallHint}
         />
 
-          <section className="mt-5 space-y-5">
-            {groupedSections.standardSections.map(({ category, rows }) => {
-              const membershipRows = (() => {
-                const pickByType = new Map<number, (typeof rows)[number]>();
-                const getType = (nameZh: string) => {
-                  const n = nameZh.toLowerCase();
-                  if (n.includes("vip") || n.includes("plus")) return -1;
-                  if (n.includes("日") || n.includes("day")) return 0;
-                  if (n.includes("周") || n.includes("week")) return 1;
-                  if (n.includes("月") || n.includes("month") || n.includes("monthly")) return 2;
-                  if (n.includes("年") || n.includes("year") || n.includes("annual")) return 3;
-                  return -1;
-                };
+        <section className="mt-5 space-y-5">
+          {groupedSections.standardSections.map(({ category, rows }) => {
+            const membershipRows = (() => {
+              const pickByType = new Map<number, (typeof rows)[number]>();
+              const getType = (nameZh: string) => {
+                const n = nameZh.toLowerCase();
+                if (n.includes("vip") || n.includes("plus")) return -1;
+                if (n.includes("日") || n.includes("day")) return 0;
+                if (n.includes("周") || n.includes("week")) return 1;
+                if (n.includes("月") || n.includes("month") || n.includes("monthly")) return 2;
+                if (n.includes("年") || n.includes("year") || n.includes("annual")) return 3;
+                return -1;
+              };
 
-                rows.forEach((row) => {
-                  const t = getType(row.nameZh);
-                  if (t >= 0 && !pickByType.has(t)) pickByType.set(t, row);
-                });
+              rows.forEach((row) => {
+                const t = getType(row.nameZh);
+                if (t >= 0 && !pickByType.has(t)) pickByType.set(t, row);
+              });
 
-                return [0, 1, 2, 3].map((t) => pickByType.get(t)).filter(Boolean) as typeof rows;
-              })();
+              return [0, 1, 2, 3].map((t) => pickByType.get(t)).filter(Boolean) as typeof rows;
+            })();
 
-              const coreAccessItems = tabCopy.pages.membership.copy.coreAccessItems.map((item) => getCopy(item));
+            const coreAccessItems = tabCopy.pages.membership.copy.coreAccessItems.map((item) => getCopy(item));
 
-              return (
-                <article key={category} className={`${glass} px-4 py-6 md:px-6 md:py-8 lg:px-10`}>
+            return (
+              <article key={category} className={`${glass} px-4 py-6 md:px-6 md:py-8 lg:px-10`}>
                   <header className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-6">
                     <div>
                       <h3 className="text-2xl font-black tracking-tight text-white md:text-3xl">
@@ -1643,7 +1642,7 @@ function HomeContent() {
           />
         </div>
       </div>
-    </div>
+        
   );
 }
 
