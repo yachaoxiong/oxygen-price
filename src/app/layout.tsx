@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Geist, Geist_Mono, Noto_Sans_SC, Teko } from "next/font/google";
 import "./globals.css";
@@ -28,7 +28,6 @@ export const metadata: Metadata = {
   description: "内部销售顾问使用的价格查询与权益计算工具",
   manifest: "/manifest.webmanifest",
   applicationName: "OXYGEN 销售报价系统",
-  themeColor: "#0f172a",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -37,6 +36,10 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({

@@ -1,7 +1,7 @@
 "use client";
 /* cSpell:words supabase fullpay */
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Activity, CalendarDays, CupSoda, Gift, UtensilsCrossed } from "lucide-react";
 import { useAuth } from "@/features/auth/useAuth";
@@ -33,7 +33,7 @@ import type { CyclePlanRow, PricingCategory, PtPreset, PtRow } from "@/types/pri
 
 type CategoryFilter = PricingCategory;
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("membership");
@@ -1549,99 +1549,109 @@ export default function Home() {
             )}
           </section>
 
-      <PtCalculatorModal
-        selectedPtRow={selectedPtRow}
-        activeLocale={activeLocale}
-        ptPreset={ptPreset}
-        ptUnitInputEmpty={ptUnitInputEmpty}
-        ptQtyInputEmpty={ptQtyInputEmpty}
-        ptCreditInputEmpty={ptCreditInputEmpty}
-        ptUnitMember1v1={ptUnitMember1v1}
-        ptUnitNonMember1v1={ptUnitNonMember1v1}
-        ptUnitMember1v2={ptUnitMember1v2}
-        ptUnitNonMember1v2={ptUnitNonMember1v2}
-        ptQtyMember1v1={ptQtyMember1v1}
-        ptQtyNonMember1v1={ptQtyNonMember1v1}
-        ptQtyMember1v2={ptQtyMember1v2}
-        ptQtyNonMember1v2={ptQtyNonMember1v2}
-        ptActiveLabel={ptActiveLabel}
-        ptActivePresetUnit={ptActivePresetValues.unit}
-        ptActivePresetQty={ptActivePresetValues.qty}
-        ptActiveSubtotal={ptActiveSubtotal}
-        ptCredit={ptCredit}
-        ptAfterCredit={ptAfterCredit}
-        ptTaxAfterAdjust={ptTaxAfterAdjust}
-        ptFinalTotal={ptFinalTotal}
-        ptReportDate={ptReportDate}
-        ptClientName={ptClientName}
-        onSetPtClientName={setPtClientName}
-        ptCopySuccess={ptCopySuccess}
-        onClose={closePtCalculator}
-        onApplyPreset={applyPtPreset}
-        onSetPtUnitInputEmpty={setPtUnitInputEmpty}
-        onSetPtQtyInputEmpty={setPtQtyInputEmpty}
-        onSetPtCreditInputEmpty={setPtCreditInputEmpty}
-        onSetPtUnitMember1v1={setPtUnitMember1v1}
-        onSetPtUnitNonMember1v1={setPtUnitNonMember1v1}
-        onSetPtUnitMember1v2={setPtUnitMember1v2}
-        onSetPtUnitNonMember1v2={setPtUnitNonMember1v2}
-        onSetPtQtyMember1v1={setPtQtyMember1v1}
-        onSetPtQtyNonMember1v1={setPtQtyNonMember1v1}
-        onSetPtQtyMember1v2={setPtQtyMember1v2}
-        onSetPtQtyNonMember1v2={setPtQtyNonMember1v2}
-        onSetPtCredit={setPtCredit}
-        onCopySummary={handleCopyQuoteSummary}
-        onDownloadPdf={handleDownloadQuotePdf}
-        onAddToCart={handleAddPtToCart}
-      />
+          <PtCalculatorModal
+            selectedPtRow={selectedPtRow}
+            activeLocale={activeLocale}
+            ptPreset={ptPreset}
+            ptUnitInputEmpty={ptUnitInputEmpty}
+            ptQtyInputEmpty={ptQtyInputEmpty}
+            ptCreditInputEmpty={ptCreditInputEmpty}
+            ptUnitMember1v1={ptUnitMember1v1}
+            ptUnitNonMember1v1={ptUnitNonMember1v1}
+            ptUnitMember1v2={ptUnitMember1v2}
+            ptUnitNonMember1v2={ptUnitNonMember1v2}
+            ptQtyMember1v1={ptQtyMember1v1}
+            ptQtyNonMember1v1={ptQtyNonMember1v1}
+            ptQtyMember1v2={ptQtyMember1v2}
+            ptQtyNonMember1v2={ptQtyNonMember1v2}
+            ptActiveLabel={ptActiveLabel}
+            ptActivePresetUnit={ptActivePresetValues.unit}
+            ptActivePresetQty={ptActivePresetValues.qty}
+            ptActiveSubtotal={ptActiveSubtotal}
+            ptCredit={ptCredit}
+            ptAfterCredit={ptAfterCredit}
+            ptTaxAfterAdjust={ptTaxAfterAdjust}
+            ptFinalTotal={ptFinalTotal}
+            ptReportDate={ptReportDate}
+            ptClientName={ptClientName}
+            onSetPtClientName={setPtClientName}
+            ptCopySuccess={ptCopySuccess}
+            onClose={closePtCalculator}
+            onApplyPreset={applyPtPreset}
+            onSetPtUnitInputEmpty={setPtUnitInputEmpty}
+            onSetPtQtyInputEmpty={setPtQtyInputEmpty}
+            onSetPtCreditInputEmpty={setPtCreditInputEmpty}
+            onSetPtUnitMember1v1={setPtUnitMember1v1}
+            onSetPtUnitNonMember1v1={setPtUnitNonMember1v1}
+            onSetPtUnitMember1v2={setPtUnitMember1v2}
+            onSetPtUnitNonMember1v2={setPtUnitNonMember1v2}
+            onSetPtQtyMember1v1={setPtQtyMember1v1}
+            onSetPtQtyNonMember1v1={setPtQtyNonMember1v1}
+            onSetPtQtyMember1v2={setPtQtyMember1v2}
+            onSetPtQtyNonMember1v2={setPtQtyNonMember1v2}
+            onSetPtCredit={setPtCredit}
+            onCopySummary={handleCopyQuoteSummary}
+            onDownloadPdf={handleDownloadQuotePdf}
+            onAddToCart={handleAddPtToCart}
+          />
 
-      <CyclePlanModal
-        selectedCyclePlan={selectedCyclePlan}
-        activeLocale={activeLocale}
-        cycleStep={cycleStep}
-        cyclePtProgramOptions={cyclePtProgramOptions}
-        cycleSelectedPtProgram={cycleSelectedPtProgram}
-        cycleSelectedCourses={cycleSelectedCourses}
-        cycleClientName={cycleClientName}
-        onSetCycleSelectedCourses={setCycleSelectedCourses}
-        cycleCreditInputStr={cycleCreditInputStr}
-        cycleCredit={cycleCredit}
-        cycleSubtotal={cycleSubtotal}
-        cycleAfterCredit={cycleAfterCredit}
-        cycleTax={cycleTax}
-        cycleTotal={cycleTotal}
-        cycleCopied={cycleCopied}
-        cycleActivePresetUnit={cycleActivePresetValues.unit}
-        cycleActivePresetQty={cycleActivePresetValues.qty}
-        onClose={closeCyclePlanCalculator}
-        onSetCycleStep={setCycleStep}
-        onSelectProgramAndContinue={selectCyclePtProgramAndContinue}
-        onSetCycleClientName={setCycleClientName}
-        onSetCycleCreditInputStr={setCycleCreditInputStr}
-        onSetCycleCredit={setCycleCredit}
-        onCopySummary={handleCopyCycleSummary}
-        onDownloadPdf={handleDownloadCyclePdf}
-        onAddToCart={handleAddCycleToCart}
-      />
+          <CyclePlanModal
+            selectedCyclePlan={selectedCyclePlan}
+            activeLocale={activeLocale}
+            cycleStep={cycleStep}
+            cyclePtProgramOptions={cyclePtProgramOptions}
+            cycleSelectedPtProgram={cycleSelectedPtProgram}
+            cycleSelectedCourses={cycleSelectedCourses}
+            cycleClientName={cycleClientName}
+            onSetCycleSelectedCourses={setCycleSelectedCourses}
+            cycleCreditInputStr={cycleCreditInputStr}
+            cycleCredit={cycleCredit}
+            cycleSubtotal={cycleSubtotal}
+            cycleAfterCredit={cycleAfterCredit}
+            cycleTax={cycleTax}
+            cycleTotal={cycleTotal}
+            cycleCopied={cycleCopied}
+            cycleActivePresetUnit={cycleActivePresetValues.unit}
+            cycleActivePresetQty={cycleActivePresetValues.qty}
+            onClose={closeCyclePlanCalculator}
+            onSetCycleStep={setCycleStep}
+            onSelectProgramAndContinue={selectCyclePtProgramAndContinue}
+            onSetCycleClientName={setCycleClientName}
+            onSetCycleCreditInputStr={setCycleCreditInputStr}
+            onSetCycleCredit={setCycleCredit}
+            onCopySummary={handleCopyCycleSummary}
+            onDownloadPdf={handleDownloadCyclePdf}
+            onAddToCart={handleAddCycleToCart}
+          />
 
-      <CartQuoteModal
-        open={cartOpen}
-        items={cartItems}
-        totals={cartTotals}
-        customer={cartCustomer}
-        creditApplied={cartCreditApplied}
-        onCreditChange={setCartCreditApplied}
-        onClose={() => setCartOpen(false)}
-        onRemoveItem={removeCartItem}
-        onUpdateItem={updateCartItem}
-        onUpdateCustomer={updateCartCustomer}
-        onClearCart={clearCart}
-        onCopySummary={handleCopyCartSummary}
-        onDownloadPdf={handleDownloadCartPdf}
-        lastAddedId={lastAddedId}
-        onAnimationComplete={clearLastAdded}
-      />
+          <CartQuoteModal
+            open={cartOpen}
+            items={cartItems}
+            totals={cartTotals}
+            customer={cartCustomer}
+            creditApplied={cartCreditApplied}
+            onCreditChange={setCartCreditApplied}
+            onClose={() => setCartOpen(false)}
+            onRemoveItem={removeCartItem}
+            onUpdateItem={updateCartItem}
+            onUpdateCustomer={updateCartCustomer}
+            onClearCart={clearCart}
+            onCopySummary={handleCopyCartSummary}
+            onDownloadPdf={handleDownloadCartPdf}
+            lastAddedId={lastAddedId}
+            onAnimationComplete={clearLastAdded}
+          />
+        </div>
       </div>
     </div>
   );
 }
+
+export default function Home() {
+  return (
+    <Suspense fallback={<LoadingCircuit />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
