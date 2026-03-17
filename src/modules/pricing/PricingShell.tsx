@@ -862,7 +862,13 @@ function PricingShellContent({ section }: { section: PricingSection }) {
 
       <Navbar
         activeLocale={activeLocale}
-        activeCategory={categoryFilter}
+        activeCategory={
+          (categoryFilter === "group_class" || categoryFilter === "assessment" ? "membership" : categoryFilter) as
+            | "membership"
+            | "personal_training"
+            | "cycle_plan"
+            | "stored_value"
+        }
         onSelectCategory={(category) => {
           setCategoryFilter(category);
         }}

@@ -46,11 +46,15 @@ const total = subtotal - discount + tax;
 
 export default function InvoicePage() {
   const router = useRouter();
-  const { authState, email, setEmail, password, setPassword, authError, handleSignIn } = useAuth();
+  const { authState, email, setEmail, password, setPassword, authError, profile, handleSignIn, handleSignOut } = useAuth();
   const handleSelectCategory = (category: string) => {
     router.push(`/?category=${category}`);
   };
-  const handleSignOut = () => router.push("/?signout=1");
+  const handleSignOutClick = async () => {
+    await handleSignOut();
+    setAvatarMenuOpen(false);
+    router.push("/");
+  };
   const [activeLocale, setActiveLocale] = useState<"zh" | "en">("en");
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
 
@@ -129,15 +133,13 @@ export default function InvoicePage() {
         cartCount={cartTotals.itemsCount}
         onOpenCart={() => setCartOpen(true)}
         addingItemKey={null}
-        avatarInitial="AW"
-        avatarName="Alicia Wang"
-        avatarRole={activeLocale === "zh" ? "会员" : "Member"}
+        avatarInitial={(profile?.full_name || profile?.email || email || "U")[0]?.toUpperCase()}
+        avatarName={profile?.full_name || profile?.email || email || "-"}
+        avatarRole={profile?.role ?? (email?.toLowerCase() === "admin" ? "admin" : "sales")}
         avatarMenuOpen={avatarMenuOpen}
         onToggleAvatarMenu={() => setAvatarMenuOpen((prev) => !prev)}
-        onSignOut={handleSignOut}
+        onSignOut={handleSignOutClick}
       />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,255,163,0.18),transparent_34%),radial-gradient(circle_at_84%_8%,rgba(59,130,246,0.14),transparent_28%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-20 [background-size:3px_3px] [background-image:radial-gradient(rgba(255,255,255,0.4)_0.4px,transparent_0.4px)]" />
 
       <main className="relative mx-auto w-full max-w-6xl px-4 py-12 md:px-8 md:py-16">
         <section className={`${glass} border border-white/10 bg-white/[0.03] p-6 shadow-[0_20px_60px_rgba(5,8,15,0.65)] md:p-10`}>
