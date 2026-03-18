@@ -158,6 +158,7 @@ export function useCartState() {
 
   const clearCart = () => {
     setItems([]);
+    setCreditApplied(0);
   };
 
   const updateCustomer = (update: Partial<CartCustomerInfo>) => {

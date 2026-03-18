@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ClipboardList, CreditCard, Dumbbell, Receipt, UserRound, X, ChevronDown, UserCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ClipboardList, CreditCard, Dumbbell, Receipt, UserRound, X, UserCircle } from "lucide-react";
 
 import type { CartCustomerInfo, CartItem, CartTotals } from "@/types/cart";
 import { formatMoney, formatMoneyWithDecimals } from "@/lib/formatters/number";
@@ -92,6 +92,42 @@ export function CartQuoteModal(props: {
 
   const [customerOpen, setCustomerOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    const previousOverscroll = body.style.overscrollBehaviorY;
+    const previousPosition = body.style.position;
+    const previousTop = body.style.top;
+    const previousWidth = body.style.width;
+    const scrollY = window.scrollY;
+
+    body.style.overflow = "hidden";
+    body.style.overscrollBehaviorY = "none";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    const preventTouchMove = (event: TouchEvent) => {
+      if (event.target instanceof HTMLElement && event.target.closest(".cart-modal-scroll")) {
+        return;
+      }
+      event.preventDefault();
+    };
+
+    document.addEventListener("touchmove", preventTouchMove, { passive: false });
+
+    return () => {
+      document.removeEventListener("touchmove", preventTouchMove);
+      body.style.overflow = previousOverflow;
+      body.style.overscrollBehaviorY = previousOverscroll;
+      body.style.position = previousPosition;
+      body.style.top = previousTop;
+      body.style.width = previousWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
   const membershipGiftItems = items
     .map((item) => ({
       item,
@@ -110,9 +146,9 @@ export function CartQuoteModal(props: {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--modal-backdrop)] px-4 py-6 backdrop-blur">
-      <div className="glass-panel flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[40px] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.01] px-10 py-7">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--modal-backdrop)] px-3 py-4 sm:px-4 sm:py-6 backdrop-blur">
+      <div className="glass-panel flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl sm:rounded-[32px] lg:rounded-[40px] shadow-2xl max-h-[80vh]">
+        <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.01] px-5 py-5 sm:px-8 sm:py-6 lg:px-10 lg:py-7">
           <div className="flex items-center gap-6">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/20 bg-cyan-500/10">
               <Receipt size={22} className="text-cyan-400" />
@@ -135,8 +171,8 @@ export function CartQuoteModal(props: {
           </button>
         </div>
 
-        <div className="flex max-h-[90vh] flex-1 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
+        <div className="flex flex-1 overflow-hidden cart-modal-scroll">
+          <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-8 sm:py-7 lg:px-10 lg:py-8 custom-scrollbar">
             <div className="grid gap-12 lg:grid-cols-12">
               <div className="lg:col-span-8 space-y-6">
                 <div className="relative flex items-center justify-between pb-3">
@@ -222,14 +258,14 @@ export function CartQuoteModal(props: {
                       return (
                         <article
                           key={item.id}
-                          className={`glass-card group rounded-2xl border border-white/5 p-5 transition-colors hover:bg-white/[0.03] ${
+                          className={`glass-card group rounded-2xl border border-white/5 p-4 sm:p-5 transition-colors hover:bg-white/[0.03] ${
                             isNew ? "border-cyan-500/30 bg-white/[0.02]" : ""
                           }`}
                           onAnimationEnd={() => {
                             if (isNew && onAnimationComplete) onAnimationComplete();
                           }}
                         >
-                          <div className="mb-4 flex items-center justify-between">
+                          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
                               <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/5 bg-slate-800/50">
                                 <CategoryIcon size={18} className={meta.tone} />
@@ -328,8 +364,8 @@ export function CartQuoteModal(props: {
                               </div>
                             </div>
                           ) : (
-                            <div className="grid grid-cols-12 gap-4 items-end">
-                              <div className="col-span-3 space-y-1.5">
+                            <div className="grid grid-cols-1 gap-4 items-end sm:grid-cols-12">
+                              <div className="sm:col-span-3 space-y-1.5">
                                 <label className="pl-1 text-[10px] font-semibold text-slate-500">数量</label>
                                 <NumberInput
                                   className="input-subdued w-full rounded-xl px-3 py-2 text-center text-xs font-semibold text-white"
@@ -339,7 +375,7 @@ export function CartQuoteModal(props: {
                                   onChange={(value) => onUpdateItem(item.id, { quantity: value })}
                                 />
                               </div>
-                              <div className="col-span-4 space-y-1.5">
+                              <div className="sm:col-span-4 space-y-1.5">
                                 <label className="pl-1 text-[10px] font-semibold text-slate-500">单价 (CAD)</label>
                                 <NumberInput
                                   className="input-subdued w-full rounded-xl px-3 py-2 text-right text-xs font-mono text-white"
@@ -349,7 +385,7 @@ export function CartQuoteModal(props: {
                                   onChange={(value) => onUpdateItem(item.id, { unitPrice: value })}
                                 />
                               </div>
-                              <div className="col-span-5 pb-1 text-right">
+                              <div className="sm:col-span-5 pb-1 text-right">
                                 <span className="mb-0.5 block text-[10px] text-slate-600">项目小计</span>
                                 <span className="text-lg font-bold text-cyan-400 tracking-tight">
                                   {formatMoney(item.unitPrice * item.quantity + (item.isNewCustomer ? item.activationFee ?? 0 : 0))}
@@ -367,7 +403,7 @@ export function CartQuoteModal(props: {
 
               <div className="lg:col-span-4 flex flex-col gap-6 self-start lg:sticky lg:top-6">
                 <section>
-                  <div className="glass-card relative flex max-h-[calc(90vh-220px)] flex-col overflow-x-hidden overflow-y-auto rounded-[28px] border border-cyan-500/10 bg-white/[0.01] p-8">
+                  <div className="glass-card relative flex flex-col overflow-x-hidden rounded-3xl border border-cyan-500/10 bg-white/[0.01] p-6 sm:rounded-[28px] sm:p-8">
                     <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-cyan-500/5 blur-[60px]" />
                     <div className="relative mb-8 flex items-center justify-between">
                       <h2 className="text-lg font-bold text-white tracking-tight">报价汇总</h2>
@@ -447,7 +483,7 @@ export function CartQuoteModal(props: {
                       </div>
                     </div>
 
-                    <div className="relative mt-10 space-y-3">
+                    <div className="relative mt-8 space-y-3 sm:mt-10">
                       <button
                         type="button"
                         onClick={onCopySummary}
@@ -487,7 +523,7 @@ export function CartQuoteModal(props: {
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-white/5 bg-black/40 px-10 py-5 text-[9px] font-medium tracking-wider text-slate-700">
+        <div className="flex flex-col gap-2 border-t border-white/5 bg-black/40 px-5 py-4 text-[9px] font-medium tracking-wider text-slate-700 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-5 lg:px-10">
           <p>© 2026 Oxygen 报价系统 · 销售报价模块</p>
           <p>最后更新: {lastUpdated}</p>
         </div>

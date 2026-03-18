@@ -72,9 +72,9 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
   const selectedCycleProgramName = activeLocale === "zh" ? selectedCyclePlan.programZh : selectedCyclePlan.programEn ?? selectedCyclePlan.programZh;
 
   return (
-    <div className="fixed inset-0 z-[58] flex items-center justify-center bg-[var(--modal-backdrop)] px-4 py-6 backdrop-blur">
-      <div className="glass-panel flex w-full max-w-6xl flex-col overflow-hidden rounded-[40px] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.01] px-10 py-7">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--modal-backdrop)] px-3 py-4 sm:px-4 sm:py-6 backdrop-blur">
+      <div className="glass-panel flex w-full max-w-6xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl sm:rounded-[32px] lg:rounded-[40px] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.01] px-5 py-5 sm:px-8 sm:py-6 lg:px-10 lg:py-7">
           <div className="flex items-center gap-6">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/20 bg-cyan-500/10">
               <Users size={22} className="text-cyan-400" />
@@ -99,9 +99,9 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
           </button>
         </div>
 
-        <div className="flex max-h-[88vh] flex-1 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
-            <div className="mb-6 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10 text-[11px]">
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-5 py-6 sm:px-8 sm:py-7 lg:px-10 lg:py-8 custom-scrollbar">
+            <div className="mb-6 grid grid-cols-1 overflow-hidden rounded-2xl border border-white/10 text-[11px] sm:grid-cols-3">
               {[
                 [1, copy.step1],
                 [2, copy.step2],
@@ -126,7 +126,7 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                 {cycleSelectedCourses.length}
               </span>
             </div>
-            <div className="mb-2 grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-x-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+            <div className="mb-2 hidden grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-x-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600 sm:grid">
               <span>{copy.programColumn}</span>
               <span className="text-center text-emerald-500/80">1v1 {copy.member}</span>
               <span className="text-center text-amber-500/80">1v1 {copy.nonMember}</span>
@@ -156,7 +156,7 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                         ]);
                       }
                     }}
-                    className={`glass-card group grid w-full grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center gap-x-3 rounded-2xl px-3 py-3 text-left transition ${
+                    className={`glass-card group grid w-full grid-cols-1 gap-3 rounded-2xl px-3 py-3 text-left transition sm:grid-cols-[2fr_1fr_1fr_1fr_1fr] sm:items-center sm:gap-x-3 ${
                       isSelected
                         ? "border-cyan-400/70 bg-cyan-500/15 shadow-[0_0_0_1px_rgba(34,211,238,0.25)]"
                         : "border-white/5 bg-white/[0.02] hover:border-cyan-500/20 hover:bg-white/[0.04]"
@@ -182,12 +182,33 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                             </span>
                           )}
                         </div>
+                        {activeLocale === "zh" && row.nameEn && (
+                          <p className="mt-1 text-[11px] text-slate-500">{row.nameEn}</p>
+                        )}
                       </div>
                     </div>
-                    <p className="text-center text-[13px] font-semibold text-emerald-300">{formatMoney(row.member1v1)}</p>
-                    <p className="text-center text-[13px] font-semibold text-amber-300">{formatMoney(row.nonMember1v1)}</p>
-                    <p className="text-center text-[13px] font-medium text-emerald-400/80">{formatMoney(row.member1v2)}</p>
-                    <p className="text-center text-[13px] font-medium text-amber-400/80">{formatMoney(row.nonMember1v2)}</p>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 sm:hidden">
+                      <div className="rounded-xl border border-white/5 bg-black/30 px-3 py-2">
+                        <p className="text-[9px] uppercase tracking-[0.18em]">1v1 {copy.member}</p>
+                        <p className="mt-1 text-sm font-semibold text-emerald-300">{formatMoney(row.member1v1)}</p>
+                      </div>
+                      <div className="rounded-xl border border-white/5 bg-black/30 px-3 py-2">
+                        <p className="text-[9px] uppercase tracking-[0.18em]">1v1 {copy.nonMember}</p>
+                        <p className="mt-1 text-sm font-semibold text-amber-300">{formatMoney(row.nonMember1v1)}</p>
+                      </div>
+                      <div className="rounded-xl border border-white/5 bg-black/30 px-3 py-2">
+                        <p className="text-[9px] uppercase tracking-[0.18em]">1v2 {copy.member}</p>
+                        <p className="mt-1 text-sm font-semibold text-emerald-400/80">{formatMoney(row.member1v2)}</p>
+                      </div>
+                      <div className="rounded-xl border border-white/5 bg-black/30 px-3 py-2">
+                        <p className="text-[9px] uppercase tracking-[0.18em]">1v2 {copy.nonMember}</p>
+                        <p className="mt-1 text-sm font-semibold text-amber-400/80">{formatMoney(row.nonMember1v2)}</p>
+                      </div>
+                    </div>
+                    <p className="hidden text-center text-[13px] font-semibold text-emerald-300 sm:block">{formatMoney(row.member1v1)}</p>
+                    <p className="hidden text-center text-[13px] font-semibold text-amber-300 sm:block">{formatMoney(row.nonMember1v1)}</p>
+                    <p className="hidden text-center text-[13px] font-medium text-emerald-400/80 sm:block">{formatMoney(row.member1v2)}</p>
+                    <p className="hidden text-center text-[13px] font-medium text-amber-400/80 sm:block">{formatMoney(row.nonMember1v2)}</p>
                   </button>
                 );
               })}
@@ -243,23 +264,28 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
                   };
 
                   return (
-                    <div key={row.key} className="glass-card rounded-3xl border border-white/5 bg-white/[0.02] p-5">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div key={row.key} className="glass-card relative rounded-3xl border border-white/5 bg-white/[0.02] p-5">
+                      <div className="pointer-events-none absolute right-4 top-4 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">
+                        {labels[course.preset]}
+                      </div>
+                      <div className="flex flex-col gap-2 pr-10">
                         <div className="flex items-start gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-500/10 text-cyan-100">
                             <Dumbbell size={16} />
                           </div>
-                          <div>
-                            <p className="text-sm font-semibold text-white">
-                              {activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh}
-                            </p>
+                          <div className="min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-x-2">
+                              <p className="text-sm font-semibold text-white">
+                                {activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh}
+                              </p>
+                              {activeLocale === "zh" && row.nameEn && (
+                                <span className="mt-1 text-[11px] font-normal text-slate-500 sm:mt-0">{row.nameEn}</span>
+                              )}
+                            </div>
                             <p className="mt-1 text-[11px] text-slate-400">
                               {activeLocale === "zh" ? "选择方案与课时" : "Select pricing & sessions"}
                             </p>
                           </div>
-                        </div>
-                        <div className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300">
-                          {labels[course.preset]}
                         </div>
                       </div>
 
@@ -456,23 +482,23 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
               </section>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button
                 onClick={() => onSetCycleStep(1)}
-                className="flex items-center gap-2 rounded-xl bg-white/5 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-white"
+                className="flex items-center justify-center gap-2 rounded-xl bg-white/5 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-white"
               >
                 <ChevronRight size={14} className="rotate-180" />
                 {copy.back}
               </button>
               <button
                 onClick={onAddToCart}
-                className="rounded-2xl border border-white/5 bg-white/5 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-200 transition-all hover:bg-white/10"
+                className="rounded-2xl border border-white/5 bg-white/5 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-200 transition-all hover:bg-white/10 sm:w-auto"
               >
                 {activeLocale === "zh" ? "加入报价" : "Add to Cart"}
               </button>
               <button
                 onClick={() => onSetCycleStep(3)}
-                className="flex-1 rounded-2xl bg-cyan-500 px-5 py-3 text-xs font-black uppercase tracking-widest text-[#04070b] shadow-xl shadow-cyan-500/10 transition-all hover:bg-cyan-400 active:scale-[0.99]"
+                className="rounded-2xl bg-cyan-500 px-5 py-3 text-xs font-black uppercase tracking-widest text-[#04070b] shadow-xl shadow-cyan-500/10 transition-all hover:bg-cyan-400 active:scale-[0.99] sm:flex-1"
               >
                 {activeLocale === "zh" ? "下一步：生成完整报告" : "Next: Generate Report"}
               </button>
@@ -502,7 +528,7 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-white/5 bg-black/40 px-10 py-5 text-[9px] font-medium tracking-wider text-slate-700">
+        <div className="flex flex-col gap-2 border-t border-white/5 bg-black/40 px-5 py-4 text-[9px] font-medium tracking-wider text-slate-700 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-5 lg:px-10">
           <p>© 2026 Oxygen 报价系统 · 销售报价模块</p>
           <p>{activeLocale === "zh" ? "最后更新:" : "Last updated:"} {new Date().toLocaleString("zh-CN", {
             year: "numeric",

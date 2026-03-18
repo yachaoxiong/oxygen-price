@@ -70,7 +70,7 @@ export function PtReportModal({
   const copy = ptReportCopy[activeLocale];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--modal-backdrop)] px-4 backdrop-blur-md">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--modal-backdrop)] px-4 backdrop-blur-md">
       <div className="max-h-[92vh] w-full max-w-4xl overflow-auto rounded-3xl border border-emerald-300/25 bg-gradient-to-b from-[#071326] via-[#07111f] to-[#050b16] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.72)]">
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
