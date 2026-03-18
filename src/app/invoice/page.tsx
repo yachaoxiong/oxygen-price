@@ -55,7 +55,11 @@ export default function InvoicePage() {
     setAvatarMenuOpen(false);
     router.push("/");
   };
-  const [activeLocale, setActiveLocale] = useState<"zh" | "en">("en");
+  const [activeLocale, setActiveLocale] = useState<"zh" | "en">(() => {
+    if (typeof window === "undefined") return "en";
+    const saved = window.localStorage.getItem("oxygen-pricing-locale");
+    return saved === "zh" || saved === "en" ? saved : "en";
+  });
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
 
   const {
@@ -88,13 +92,6 @@ export default function InvoicePage() {
     return () => document.removeEventListener("mousedown", handleDocumentClick);
   }, [avatarMenuOpen]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem("oxygen-pricing-locale");
-    if (saved === "zh" || saved === "en") {
-      setActiveLocale(saved);
-    }
-  }, []);
 
   const handleToggleLocale = () => {
     setActiveLocale((prev) => {
@@ -300,6 +297,7 @@ export default function InvoicePage() {
         onUpdateItem={updateCartItem}
         onUpdateCustomer={updateCartCustomer}
         onClearCart={clearCart}
+        activeLocale={activeLocale}
         onCopySummary={() => {
           const reportDate = new Date().toLocaleDateString("zh-CN", {
             year: "numeric",
