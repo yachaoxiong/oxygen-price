@@ -13,13 +13,13 @@ import { cycleCopy } from "@/lib/copy/cycleCopy";
 import { usePwaInstallPrompt } from "@/features/app/usePwaInstallPrompt";
 import { asNumber, formatMoney } from "@/lib/formatters/number";
 import { printHtml } from "@/lib/export/print";
-import { getPresetUnitAndQty } from "@/lib/pricing/calculate";
 import { glass } from "@/lib/pricing/constants";
 import tabCopy from "@/lib/tabCopy.json";
 import { buildCycleSummaryText, buildPtSummaryText } from "@/lib/export/quoteBuilders";
 import { buildCyclePdfHtml, buildPtPdfHtml } from "@/lib/export/pdfBuilders";
 import { buildCartSummaryText } from "@/lib/cart/cartTextBuilder";
 import { buildCartPdfHtml } from "@/lib/export/cartPdfBuilder";
+import { cartCopy } from "@/lib/cart/cartCopy";
 import { PwaInstallHint } from "@/components/PwaInstallHint";
 import { Navbar } from "@/components/navigation/Navbar";
 import { CyclePlanModal } from "@/components/modals/CyclePlanModal";
@@ -201,6 +201,8 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     ptClientName,
     setPtClientName,
     ptActiveLabel,
+    ptActivePresetUnit,
+    ptActivePresetQty,
     ptActiveSubtotal,
     ptAfterCredit,
     ptTaxAfterAdjust,
@@ -235,10 +237,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     setCycleUnitNonMember1v2,
     cycleQtyMember1v1,
     setCycleQtyMember1v1,
-    cycleUnitInputStr,
-    setCycleUnitInputStr,
-    cycleQtyInputStr,
-    setCycleQtyInputStr,
     cycleQtyNonMember1v1,
     setCycleQtyNonMember1v1,
     cycleQtyMember1v2,
@@ -250,6 +248,8 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     cycleCreditInputStr,
     setCycleCreditInputStr,
     cycleActiveLabel,
+    cycleActivePresetUnit,
+    cycleActivePresetQty,
     cycleSubtotal,
     cycleAfterCredit,
     cycleTax,
@@ -372,27 +372,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
   );
   const { deferredInstallPrompt, showInstallHint, handleInstallApp, handleDismissInstallHint } = usePwaInstallPrompt();
 
-  const ptActivePresetValues = getPresetUnitAndQty(ptPreset, {
-    member1v1Unit: ptUnitMember1v1,
-    nonMember1v1Unit: ptUnitNonMember1v1,
-    member1v2Unit: ptUnitMember1v2,
-    nonMember1v2Unit: ptUnitNonMember1v2,
-    member1v1Qty: ptQtyMember1v1,
-    nonMember1v1Qty: ptQtyNonMember1v1,
-    member1v2Qty: ptQtyMember1v2,
-    nonMember1v2Qty: ptQtyNonMember1v2,
-  });
-
-  const cycleActivePresetValues = getPresetUnitAndQty(cyclePtPreset, {
-    member1v1Unit: cycleUnitMember1v1,
-    nonMember1v1Unit: cycleUnitNonMember1v1,
-    member1v2Unit: cycleUnitMember1v2,
-    nonMember1v2Unit: cycleUnitNonMember1v2,
-    member1v1Qty: cycleQtyMember1v1,
-    nonMember1v1Qty: cycleQtyNonMember1v1,
-    member1v2Qty: cycleQtyMember1v2,
-    nonMember1v2Qty: cycleQtyNonMember1v2,
-  });
 
   function openPtCalculator(row: PtRow) {
     setSelectedPtRow(row);
@@ -415,25 +394,20 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     setPtPreviewRow(row);
   }
 
+  function handlePtBackdropClick(event: React.MouseEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
+    closePtCalculator();
+  }
+
   function handleAddPtToCart() {
     if (!selectedPtRow) return;
-    const { unit, qty } = getPresetUnitAndQty(ptPreset, {
-      member1v1Unit: ptUnitMember1v1,
-      nonMember1v1Unit: ptUnitNonMember1v1,
-      member1v2Unit: ptUnitMember1v2,
-      nonMember1v2Unit: ptUnitNonMember1v2,
-      member1v1Qty: ptQtyMember1v1,
-      nonMember1v1Qty: ptQtyNonMember1v1,
-      member1v2Qty: ptQtyMember1v2,
-      nonMember1v2Qty: ptQtyNonMember1v2,
-    });
-
+    const courseName = activeLocale === "zh" ? selectedPtRow.nameZh : selectedPtRow.nameEn ?? selectedPtRow.nameZh;
     addCartItem({
-      name: `${selectedPtRow.nameZh} · ${ptActiveLabel.zh}`,
+      name: `${courseName} · ${ptActiveLabel[activeLocale]}`,
       category: selectedPtRow.key.startsWith("assessment:") ? "assessment" : "personal_training",
-      unitPrice: unit,
-      quantity: qty,
-      note: ptCredit > 0 ? `抵扣 ${formatMoney(ptCredit)}` : undefined,
+      unitPrice: ptActivePresetUnit,
+      quantity: ptActivePresetQty,
+      note: ptCredit > 0 ? `${cartCopy.modal.creditLabel[activeLocale]} ${formatMoney(ptCredit)}` : undefined,
     });
     setSelectedPtRow(null);
   }
@@ -445,25 +419,14 @@ function PricingShellContent({ section }: { section: PricingSection }) {
   async function handleCopyQuoteSummary() {
     if (!selectedPtRow) return;
     setPtCopySuccess(false);
-    const { unit, qty } = getPresetUnitAndQty(ptPreset, {
-      member1v1Unit: ptUnitMember1v1,
-      nonMember1v1Unit: ptUnitNonMember1v1,
-      member1v2Unit: ptUnitMember1v2,
-      nonMember1v2Unit: ptUnitNonMember1v2,
-      member1v1Qty: ptQtyMember1v1,
-      nonMember1v1Qty: ptQtyNonMember1v1,
-      member1v2Qty: ptQtyMember1v2,
-      nonMember1v2Qty: ptQtyNonMember1v2,
-    });
-
     const summary = buildPtSummaryText({
       reportDate: ptReportDate,
       clientName: ptClientName,
       courseNameZh: selectedPtRow.nameZh,
       courseNameEn: selectedPtRow.nameEn,
       activeLabel: ptActiveLabel,
-      unit,
-      qty,
+      unit: ptActivePresetUnit,
+      qty: ptActivePresetQty,
       subtotal: ptActiveSubtotal,
       credit: ptCredit,
       afterCredit: ptAfterCredit,
@@ -483,25 +446,14 @@ function PricingShellContent({ section }: { section: PricingSection }) {
   function handleDownloadQuotePdf() {
     if (!selectedPtRow) return;
 
-    const { unit, qty } = getPresetUnitAndQty(ptPreset, {
-      member1v1Unit: ptUnitMember1v1,
-      nonMember1v1Unit: ptUnitNonMember1v1,
-      member1v2Unit: ptUnitMember1v2,
-      nonMember1v2Unit: ptUnitNonMember1v2,
-      member1v1Qty: ptQtyMember1v1,
-      nonMember1v1Qty: ptQtyNonMember1v1,
-      member1v2Qty: ptQtyMember1v2,
-      nonMember1v2Qty: ptQtyNonMember1v2,
-    });
-
     const html = buildPtPdfHtml({
       courseNameZh: selectedPtRow.nameZh,
       courseNameEn: selectedPtRow.nameEn,
       reportDate: ptReportDate,
       clientName: ptClientName,
       activeLabel: ptActiveLabel[activeLocale],
-      unit,
-      qty,
+      unit: ptActivePresetUnit,
+      qty: ptActivePresetQty,
       subtotal: ptActiveSubtotal,
       credit: ptCredit,
       afterCredit: ptAfterCredit,
@@ -542,8 +494,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     setCycleQtyNonMember1v2(12);
 
     setCyclePtPreset("member_1v1");
-    setCycleUnitInputStr(String(row.member1v1 ?? 0));
-    setCycleQtyInputStr("12");
     setCycleStep(2);
   }
 
@@ -554,30 +504,28 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     setCycleSelectedCourses([]);
   }
 
+  function handleCycleBackdropClick(event: React.MouseEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
+    closeCyclePlanCalculator();
+  }
+
   function handleAddCycleToCart() {
     if (!selectedCyclePlan || !cycleSelectedPtProgram) return;
-    const { unit, qty } = getPresetUnitAndQty(cyclePtPreset, {
-      member1v1Unit: cycleUnitMember1v1,
-      nonMember1v1Unit: cycleUnitNonMember1v1,
-      member1v2Unit: cycleUnitMember1v2,
-      nonMember1v2Unit: cycleUnitNonMember1v2,
-      member1v1Qty: cycleQtyMember1v1,
-      nonMember1v1Qty: cycleQtyNonMember1v1,
-      member1v2Qty: cycleQtyMember1v2,
-      nonMember1v2Qty: cycleQtyNonMember1v2,
-    });
-
     const presetLabel = (preset: PtPreset) =>
       preset === "member_1v1"
-        ? "会员1v1"
+        ? { zh: "会员1v1", en: "Member 1v1" }
         : preset === "non_member_1v1"
-          ? "非会员1v1"
+          ? { zh: "非会员1v1", en: "Non-member 1v1" }
           : preset === "member_1v2"
-            ? "会员1v2"
-            : "非会员1v2";
+            ? { zh: "会员1v2", en: "Member 1v2" }
+            : { zh: "非会员1v2", en: "Non-member 1v2" };
+
+    const programName = activeLocale === "zh" ? selectedCyclePlan.programZh : selectedCyclePlan.programEn ?? selectedCyclePlan.programZh;
+    const mixLabel = activeLocale === "zh" ? "混合课程" : "Mixed Courses";
+    const itemLabel = activeLocale === "zh" ? "项" : "items";
 
     addCartItem({
-      name: `${selectedCyclePlan.programZh} · 混合课程 ${cycleSelectedCourses.length || 1} 项`,
+      name: `${programName} · ${mixLabel} ${cycleSelectedCourses.length || 1} ${itemLabel}`,
       category: "cycle_plan",
       unitPrice: cycleSubtotal,
       quantity: 1,
@@ -585,15 +533,19 @@ function PricingShellContent({ section }: { section: PricingSection }) {
       details:
         cycleSelectedCourses.length > 0
           ? cycleSelectedCourses.map((course) => {
-              const displayName = course.program.nameEn
-                ? `${course.program.nameZh} / ${course.program.nameEn}`
-                : course.program.nameZh;
-              return `${displayName} · ${presetLabel(course.preset)} · ${course.qty}次 · ${formatMoney(course.unitPrice)}`;
+              const displayName = activeLocale === "zh"
+                ? course.program.nameZh
+                : course.program.nameEn
+                  ? `${course.program.nameZh} / ${course.program.nameEn}`
+                  : course.program.nameZh;
+              return `${displayName} · ${presetLabel(course.preset)[activeLocale]} · ${course.qty}${activeLocale === "zh" ? "次" : " sessions"} · ${formatMoney(course.unitPrice)}`;
             })
           : [
-              `${cycleSelectedPtProgram.nameEn
-                ? `${cycleSelectedPtProgram.nameZh} / ${cycleSelectedPtProgram.nameEn}`
-                : cycleSelectedPtProgram.nameZh} · ${cycleActiveLabel.zh} · ${qty}次 · ${formatMoney(unit)}`,
+              `${activeLocale === "zh"
+                ? cycleSelectedPtProgram.nameZh
+                : cycleSelectedPtProgram.nameEn
+                  ? `${cycleSelectedPtProgram.nameZh} / ${cycleSelectedPtProgram.nameEn}`
+                  : cycleSelectedPtProgram.nameZh} · ${cycleActiveLabel[activeLocale]} · ${cycleActivePresetQty}${activeLocale === "zh" ? "次" : " sessions"} · ${formatMoney(cycleActivePresetUnit)}`,
             ],
     });
     setSelectedCyclePlan(null);
@@ -603,17 +555,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
 
   async function handleCopyCycleSummary() {
     if (!selectedCyclePlan || !cycleSelectedPtProgram) return;
-    const { unit, qty } = getPresetUnitAndQty(cyclePtPreset, {
-      member1v1Unit: cycleUnitMember1v1,
-      nonMember1v1Unit: cycleUnitNonMember1v1,
-      member1v2Unit: cycleUnitMember1v2,
-      nonMember1v2Unit: cycleUnitNonMember1v2,
-      member1v1Qty: cycleQtyMember1v1,
-      nonMember1v1Qty: cycleQtyNonMember1v1,
-      member1v2Qty: cycleQtyMember1v2,
-      nonMember1v2Qty: cycleQtyNonMember1v2,
-    });
-
     const summary = buildCycleSummaryText({
       reportDate: ptReportDate,
       clientName: cycleClientName,
@@ -621,8 +562,8 @@ function PricingShellContent({ section }: { section: PricingSection }) {
       courseNameZh: cycleSelectedPtProgram.nameZh,
       courseNameEn: cycleSelectedPtProgram.nameEn,
       activeLabel: cycleActiveLabel,
-      unit,
-      qty,
+      unit: cycleActivePresetUnit,
+      qty: cycleActivePresetQty,
       subtotal: cycleSubtotal,
       credit: cycleCredit,
       afterCredit: cycleAfterCredit,
@@ -638,16 +579,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
 
   function handleDownloadCyclePdf() {
     if (!selectedCyclePlan || !cycleSelectedPtProgram) return;
-    const { unit: unitPrice, qty } = getPresetUnitAndQty(cyclePtPreset, {
-      member1v1Unit: cycleUnitMember1v1,
-      nonMember1v1Unit: cycleUnitNonMember1v1,
-      member1v2Unit: cycleUnitMember1v2,
-      nonMember1v2Unit: cycleUnitNonMember1v2,
-      member1v1Qty: cycleQtyMember1v1,
-      nonMember1v1Qty: cycleQtyNonMember1v1,
-      member1v2Qty: cycleQtyMember1v2,
-      nonMember1v2Qty: cycleQtyNonMember1v2,
-    });
     const reportDate = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
 
     const html = buildCyclePdfHtml({
@@ -663,8 +594,8 @@ function PricingShellContent({ section }: { section: PricingSection }) {
       assessmentsReports: selectedCyclePlan.assessmentsReports,
       membershipGift: selectedCyclePlan.membershipGift,
       extraBenefits: selectedCyclePlan.extraBenefits,
-      unitPrice,
-      qty,
+      unitPrice: cycleActivePresetUnit,
+      qty: cycleActivePresetQty,
       subtotal: cycleSubtotal,
       credit: cycleCredit,
       afterCredit: cycleAfterCredit,
@@ -692,7 +623,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
 
   function addCartMembership(row: StandardRow) {
     const price = row.generalPrice ?? row.memberPrice ?? row.nonMemberPrice ?? 0;
-    const name = row.nameZh;
+    const name = activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh;
     const lowerName = name.toLowerCase();
     const isMonthly = lowerName.includes("月") || lowerName.includes("month") || lowerName.includes("monthly");
     const isAnnual = lowerName.includes("年") || lowerName.includes("year") || lowerName.includes("annual");
@@ -717,7 +648,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
         ? row.memberPrice ?? row.generalPrice ?? row.nonMemberPrice ?? 0
         : row.nonMemberPrice ?? row.generalPrice ?? row.memberPrice ?? 0;
     addCartItem({
-      name: row.nameZh,
+      name: activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh,
       category: "group_class",
       unitPrice: price,
     });
@@ -742,6 +673,21 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     );
   }
 
+  function addAssessmentToCart(row: PtRow) {
+    const unitPrice = row.member1v1 ?? row.member1v2 ?? row.nonMember1v1 ?? row.nonMember1v2 ?? 0;
+    addCartItem({
+      name: activeLocale === "zh" ? row.nameZh : row.nameEn ?? row.nameZh,
+      category: "assessment",
+      unitPrice,
+      quantity: 1,
+    });
+    runAddAnimation(`assessment-${row.key}`);
+    showMessageToast(
+      activeLocale === "zh" ? "已加入报价" : "Added to Quote",
+      activeLocale === "zh" ? "评估已添加" : "Assessment Added",
+    );
+  }
+
   async function handleCopyCartSummary() {
     const reportDate = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
     const summary = buildCartSummaryText({
@@ -753,9 +699,15 @@ function PricingShellContent({ section }: { section: PricingSection }) {
 
     try {
       await navigator.clipboard.writeText(summary);
-      showMessageToast("内容已复制", "Cart Summary Copied");
+      showMessageToast(
+        cartCopy.toast.copySuccessTitle[activeLocale],
+        cartCopy.toast.copySuccessSubtitle[activeLocale],
+      );
     } catch {
-      showMessageToast("复制失败", "Copy Failed");
+      showMessageToast(
+        cartCopy.toast.copyFailedTitle[activeLocale],
+        cartCopy.toast.copyFailedSubtitle[activeLocale],
+      );
     }
   }
 
@@ -1462,7 +1414,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                               </div>
                             </div>
                             <div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <p className="text-sm font-semibold text-white">
                                   {index + 1}. {displayName}
                                 </p>
@@ -1493,7 +1445,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                           </div>
                         )}
 
-                        <div className="mt-3 grid gap-2 text-xs md:grid-cols-2">
+                        <div className={`relative mt-3 grid gap-2 text-xs md:grid-cols-2 ${isAssessmentItem ? "pb-7" : ""}`}>
                           <div className="border-l-2 border-emerald-300/40 pl-2">
                             <p className="text-slate-500">{getCopy(tabCopy.pages.personalTraining.copy.pricing.label1v1)}</p>
                             <p className="text-slate-300">
@@ -1512,7 +1464,27 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                               {getCopy(tabCopy.pages.personalTraining.copy.pricing.nonMember)}: <span className="font-semibold text-amber-200">{formatMoney(row.nonMember1v2)}</span>
                             </p>
                           </div>
+
+                          {isAssessmentItem && (
+                            <div className="absolute bottom-0 right-0">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  addAssessmentToCart(row);
+                                }}
+                                className={`membership-layered-action membership-layered-action--inline membership-layered-action--compact inline-flex items-center justify-center h-6 px-2.5 text-[10px] bg-emerald-400/30 border-emerald-300/70 text-emerald-50 shadow-[0_0_16px_rgba(16,185,129,0.4)] hover:bg-emerald-400/40 hover:border-emerald-200/90 hover:text-emerald-50 ${
+                                  addingItemKey === `assessment-${row.key}` ? "membership-layered-action--active" : ""
+                                }`}
+                                aria-label="加入报价"
+                                title="加入报价"
+                              >
+                                {activeLocale === "zh" ? "加入报价" : "Add"}
+                              </button>
+                            </div>
+                          )}
                         </div>
+
                       </article>
                     </div>
                   );
@@ -1648,8 +1620,8 @@ function PricingShellContent({ section }: { section: PricingSection }) {
             ptQtyMember1v2={ptQtyMember1v2}
             ptQtyNonMember1v2={ptQtyNonMember1v2}
             ptActiveLabel={ptActiveLabel}
-            ptActivePresetUnit={ptActivePresetValues.unit}
-            ptActivePresetQty={ptActivePresetValues.qty}
+            ptActivePresetUnit={ptActivePresetUnit}
+            ptActivePresetQty={ptActivePresetQty}
             ptActiveSubtotal={ptActiveSubtotal}
             ptCredit={ptCredit}
             ptAfterCredit={ptAfterCredit}
@@ -1660,6 +1632,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
             onSetPtClientName={setPtClientName}
             ptCopySuccess={ptCopySuccess}
             onClose={closePtCalculator}
+            onBackdropClick={handlePtBackdropClick}
             onApplyPreset={applyPtPreset}
             onSetPtUnitInputEmpty={setPtUnitInputEmpty}
             onSetPtQtyInputEmpty={setPtQtyInputEmpty}
@@ -1696,9 +1669,10 @@ function PricingShellContent({ section }: { section: PricingSection }) {
             cycleTax={cycleTax}
             cycleTotal={cycleTotal}
             cycleCopied={cycleCopied}
-            cycleActivePresetUnit={cycleActivePresetValues.unit}
-            cycleActivePresetQty={cycleActivePresetValues.qty}
+            cycleActivePresetUnit={cycleActivePresetUnit}
+            cycleActivePresetQty={cycleActivePresetQty}
             onClose={closeCyclePlanCalculator}
+            onBackdropClick={handleCycleBackdropClick}
             onSetCycleStep={setCycleStep}
             onSelectProgramAndContinue={selectCyclePtProgramAndContinue}
             onSetCycleClientName={setCycleClientName}
@@ -1726,6 +1700,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
           onDownloadPdf={handleDownloadCartPdf}
           lastAddedId={lastAddedId}
           onAnimationComplete={clearLastAdded}
+          activeLocale={activeLocale}
         />
       </div>
     </div>

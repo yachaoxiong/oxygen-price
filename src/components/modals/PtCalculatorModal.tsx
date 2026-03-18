@@ -33,6 +33,7 @@ type PtCalculatorModalProps = {
   onSetPtClientName: (value: string) => void;
   ptCopySuccess: boolean;
   onClose: () => void;
+  onBackdropClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
   onApplyPreset: (preset: PtPreset) => void;
   onSetPtUnitInputEmpty: (value: boolean) => void;
   onSetPtQtyInputEmpty: (value: boolean) => void;
@@ -79,6 +80,7 @@ export function PtCalculatorModal({
   onSetPtClientName,
   ptCopySuccess,
   onClose,
+  onBackdropClick,
   onApplyPreset,
   onSetPtUnitInputEmpty,
   onSetPtQtyInputEmpty,
@@ -105,7 +107,12 @@ export function PtCalculatorModal({
     activeLocale === "zh" ? selectedPtRow.nameZh : selectedPtRow.nameEn ?? selectedPtRow.nameZh;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--modal-backdrop)] px-4 py-6 backdrop-blur">
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--modal-backdrop)] px-4 py-6 backdrop-blur"
+      onClick={onBackdropClick}
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="glass-panel flex w-full max-w-6xl flex-col overflow-hidden rounded-[40px] shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.01] px-10 py-7">
           <div className="flex items-center gap-6">
@@ -362,9 +369,6 @@ export function PtCalculatorModal({
                   </div>
 
                   <div className="relative mt-6 space-y-6">
-                    <div className="space-y-2">
-                    </div>
-
                     <div className="space-y-3">
                       <button
                         onClick={onAddToCart}

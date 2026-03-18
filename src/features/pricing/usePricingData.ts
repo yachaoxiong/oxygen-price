@@ -8,7 +8,6 @@ import type { PricingItem } from "@/types/pricing";
 export function usePricingData(authState: "loading" | "authed" | "guest") {
   const [pricingItems, setPricingItems] = useState<PricingItem[]>([]);
 
-
   useEffect(() => {
     if (authState !== "authed") return;
     let mounted = true;
@@ -18,11 +17,9 @@ export function usePricingData(authState: "loading" | "authed" | "guest") {
         const items = await fetchPricingItems();
         if (!mounted) return;
         setPricingItems(items);
-
       } catch {
         if (!mounted) return;
         setPricingItems([]);
-
       }
     }
 

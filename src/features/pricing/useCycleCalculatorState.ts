@@ -6,6 +6,7 @@ import {
   calcSubtotal,
   calcTax,
   calcTotalWithTax,
+  getPresetUnitAndQty,
 } from "@/lib/pricing/calculate";
 import type { CycleCourseSelection, CyclePlanRow, PtPreset, PtRow } from "@/types/pricing";
 
@@ -23,8 +24,6 @@ export function useCycleCalculatorState() {
   const [cycleUnitMember1v2, setCycleUnitMember1v2] = useState<number>(0);
   const [cycleUnitNonMember1v2, setCycleUnitNonMember1v2] = useState<number>(0);
   const [cycleQtyMember1v1, setCycleQtyMember1v1] = useState<number>(PRICING_CONFIG.defaultSessionQty);
-  const [cycleUnitInputStr, setCycleUnitInputStr] = useState<string>("");
-  const [cycleQtyInputStr, setCycleQtyInputStr] = useState<string>("");
   const [cycleQtyNonMember1v1, setCycleQtyNonMember1v1] = useState<number>(12);
   const [cycleQtyMember1v2, setCycleQtyMember1v2] = useState<number>(12);
   const [cycleQtyNonMember1v2, setCycleQtyNonMember1v2] = useState<number>(12);
@@ -50,15 +49,23 @@ export function useCycleCalculatorState() {
           ? { zh: "会员 1v2", en: "Member 1v2" }
           : { zh: "非会员 1v2", en: "Non-member 1v2" };
 
+  const cycleActivePreset = getPresetUnitAndQty(cyclePtPreset, {
+    member1v1Unit: cycleUnitMember1v1,
+    nonMember1v1Unit: cycleUnitNonMember1v1,
+    member1v2Unit: cycleUnitMember1v2,
+    nonMember1v2Unit: cycleUnitNonMember1v2,
+    member1v1Qty: cycleQtyMember1v1,
+    nonMember1v1Qty: cycleQtyNonMember1v1,
+    member1v2Qty: cycleQtyMember1v2,
+    nonMember1v2Qty: cycleQtyNonMember1v2,
+  });
+
   const cycleSubtotal = cycleSelectedCourses.length > 0
     ? cycleCourseSubtotal
-    : cyclePtPreset === "member_1v1"
-      ? cycleCalcMember1v1
-      : cyclePtPreset === "non_member_1v1"
-        ? cycleCalcNonMember1v1
-        : cyclePtPreset === "member_1v2"
-          ? cycleCalcMember1v2
-          : cycleCalcNonMember1v2;
+    : calcSubtotal(cycleActivePreset.unit, cycleActivePreset.qty);
+
+  const cycleActivePresetUnit = cycleActivePreset.unit;
+  const cycleActivePresetQty = cycleActivePreset.qty;
 
   const cycleAfterCredit = calcAfterCredit(cycleSubtotal, cycleCredit);
   const cycleTax = calcTax(cycleAfterCredit);
@@ -91,10 +98,6 @@ export function useCycleCalculatorState() {
     setCycleUnitNonMember1v2,
     cycleQtyMember1v1,
     setCycleQtyMember1v1,
-    cycleUnitInputStr,
-    setCycleUnitInputStr,
-    cycleQtyInputStr,
-    setCycleQtyInputStr,
     cycleQtyNonMember1v1,
     setCycleQtyNonMember1v1,
     cycleQtyMember1v2,
@@ -110,6 +113,8 @@ export function useCycleCalculatorState() {
     cycleCalcMember1v2,
     cycleCalcNonMember1v2,
     cycleActiveLabel,
+    cycleActivePresetUnit,
+    cycleActivePresetQty,
     cycleSubtotal,
     cycleAfterCredit,
     cycleTax,

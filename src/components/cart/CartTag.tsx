@@ -2,16 +2,24 @@
 
 type CartTagProps = {
   label: string;
-  tone?: "cyan" | "slate" | "amber";
+  tone?: "cyan" | "slate" | "amber" | "indigo" | "emerald" | "sky" | "violet";
 };
 
 export function CartTag({ label, tone = "slate" }: CartTagProps) {
   const toneClass =
     tone === "cyan"
-      ? "border-cyan-500/20 bg-cyan-500/10 text-cyan-400"
+      ? "border-[color:var(--theme-green-soft)] bg-[color:var(--theme-green-faint)] text-[color:var(--theme-green)]"
       : tone === "amber"
-        ? "border-amber-300/30 bg-amber-500/15 text-amber-200"
-        : "border-white/10 bg-white/5 text-slate-500";
+        ? "border-amber-300/40 bg-amber-500/20 text-amber-100"
+        : tone === "indigo"
+          ? "border-indigo-400/35 bg-indigo-500/15 text-indigo-100"
+          : tone === "emerald"
+            ? "border-emerald-400/35 bg-emerald-500/15 text-emerald-100"
+            : tone === "sky"
+              ? "border-sky-400/35 bg-sky-500/15 text-sky-100"
+              : tone === "violet"
+                ? "border-violet-400/35 bg-violet-500/15 text-violet-100"
+                : "border-white/20 bg-white/12 text-slate-200";
 
   return (
     <span

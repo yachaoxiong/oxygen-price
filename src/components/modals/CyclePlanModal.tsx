@@ -25,6 +25,7 @@ type CyclePlanModalProps = {
   cycleActivePresetUnit: number;
   cycleActivePresetQty: number;
   onClose: () => void;
+  onBackdropClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
   onSetCycleStep: (step: 1 | 2 | 3) => void;
   onSelectProgramAndContinue: (row: PtRow) => void;
   onSetCycleSelectedCourses: (courses: CycleCourseSelection[]) => void;
@@ -55,6 +56,7 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
     cycleActivePresetUnit,
     cycleActivePresetQty,
     onClose,
+    onBackdropClick,
     onSetCycleStep,
     onSelectProgramAndContinue,
     onSetCycleSelectedCourses,
@@ -72,7 +74,12 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
   const selectedCycleProgramName = activeLocale === "zh" ? selectedCyclePlan.programZh : selectedCyclePlan.programEn ?? selectedCyclePlan.programZh;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--modal-backdrop)] px-3 py-4 sm:px-4 sm:py-6 backdrop-blur">
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--modal-backdrop)] px-3 py-4 sm:px-4 sm:py-6 backdrop-blur"
+      onClick={onBackdropClick}
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="glass-panel flex w-full max-w-6xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl sm:rounded-[32px] lg:rounded-[40px] shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.01] px-5 py-5 sm:px-8 sm:py-6 lg:px-10 lg:py-7">
           <div className="flex items-center gap-6">

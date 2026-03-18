@@ -10,17 +10,18 @@ import { CartTag } from "@/components/cart/CartTag";
 import { CartStatRow } from "@/components/cart/CartStatRow";
 import { CycleDetailRow } from "@/components/cart/CycleDetailRow";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { cartCopy, formatCartCopy, type CartLocale, type CartCopyValue } from "@/lib/cart/cartCopy";
 
 const categoryMeta: Record<
   CartItem["category"],
-  { label: string; icon: typeof UserRound; tone: string }
+  { label: CartCopyValue; icon: typeof UserRound; tone: string }
 > = {
-  membership: { label: "会籍", icon: UserRound, tone: "text-cyan-400" },
-  group_class: { label: "团课", icon: Dumbbell, tone: "text-indigo-300" },
-  personal_training: { label: "私教课", icon: Dumbbell, tone: "text-emerald-300" },
-  assessment: { label: "评估", icon: ClipboardList, tone: "text-amber-300" },
-  cycle_plan: { label: "周期方案", icon: Receipt, tone: "text-cyan-400" },
-  stored_value: { label: "储值卡", icon: CreditCard, tone: "text-sky-300" },
+  membership: { label: cartCopy.category.membership, icon: UserRound, tone: "text-[color:var(--theme-green)]" },
+  group_class: { label: cartCopy.category.groupClass, icon: Dumbbell, tone: "text-[color:var(--theme-green)]" },
+  personal_training: { label: cartCopy.category.personalTraining, icon: Dumbbell, tone: "text-[color:var(--theme-green)]" },
+  assessment: { label: cartCopy.category.assessment, icon: ClipboardList, tone: "text-[color:var(--theme-green)]" },
+  cycle_plan: { label: cartCopy.category.cyclePlan, icon: Receipt, tone: "text-[color:var(--theme-green)]" },
+  stored_value: { label: cartCopy.category.storedValue, icon: CreditCard, tone: "text-[color:var(--theme-green)]" },
 };
 
 const cycleDetailPattern = /^(.*?) · (.*?) · (\d+)次 · [^\d]*([\d,.]+)/;
@@ -36,8 +37,9 @@ function parseCycleDetail(line: string) {
   };
 }
 
-function formatCycleDetail(detail: { name: string; preset: string; qty: number; unitPrice: number }) {
-  return `${detail.name} · ${detail.preset} · ${detail.qty}次 · ${detail.unitPrice}`;
+function formatCycleDetail(detail: { name: string; preset: string; qty: number; unitPrice: number }, locale: CartLocale) {
+  const sessionLabel = locale === "zh" ? "次" : "sessions";
+  return `${detail.name} · ${detail.preset} · ${detail.qty} ${sessionLabel} · ${detail.unitPrice}`;
 }
 
 function parseMembershipWeeks(note?: string | null) {
@@ -71,6 +73,7 @@ export function CartQuoteModal(props: {
   onDownloadPdf: () => void;
   lastAddedId?: string | null;
   onAnimationComplete?: () => void;
+  activeLocale: CartLocale;
 }) {
   const {
     open,
@@ -88,6 +91,7 @@ export function CartQuoteModal(props: {
     onDownloadPdf,
     lastAddedId,
     onAnimationComplete,
+    activeLocale,
   } = props;
 
   const [customerOpen, setCustomerOpen] = useState(false);
@@ -95,18 +99,7 @@ export function CartQuoteModal(props: {
   useEffect(() => {
     if (!open) return;
     const { body } = document;
-    const previousOverflow = body.style.overflow;
-    const previousOverscroll = body.style.overscrollBehaviorY;
-    const previousPosition = body.style.position;
-    const previousTop = body.style.top;
-    const previousWidth = body.style.width;
-    const scrollY = window.scrollY;
-
-    body.style.overflow = "hidden";
-    body.style.overscrollBehaviorY = "none";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
+    body.setAttribute("data-modal-open", "true");
 
     const preventTouchMove = (event: TouchEvent) => {
       if (event.target instanceof HTMLElement && event.target.closest(".cart-modal-scroll")) {
@@ -119,12 +112,7 @@ export function CartQuoteModal(props: {
 
     return () => {
       document.removeEventListener("touchmove", preventTouchMove);
-      body.style.overflow = previousOverflow;
-      body.style.overscrollBehaviorY = previousOverscroll;
-      body.style.position = previousPosition;
-      body.style.top = previousTop;
-      body.style.width = previousWidth;
-      window.scrollTo(0, scrollY);
+      body.removeAttribute("data-modal-open");
     };
   }, [open]);
 
@@ -135,7 +123,7 @@ export function CartQuoteModal(props: {
     }))
     .filter((entry) => entry.membershipWeeks !== null);
 
-  const lastUpdated = new Date().toLocaleString("zh-CN", {
+  const lastUpdated = new Date().toLocaleString(activeLocale === "zh" ? "zh-CN" : "en-US", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -146,26 +134,34 @@ export function CartQuoteModal(props: {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--modal-backdrop)] px-3 py-4 sm:px-4 sm:py-6 backdrop-blur">
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--modal-backdrop)] px-3 py-4 sm:px-4 sm:py-6 backdrop-blur"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="glass-panel flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl sm:rounded-[32px] lg:rounded-[40px] shadow-2xl max-h-[80vh]">
         <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.01] px-5 py-5 sm:px-8 sm:py-6 lg:px-10 lg:py-7">
           <div className="flex items-center gap-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/20 bg-cyan-500/10">
-              <Receipt size={22} className="text-cyan-400" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[color:var(--theme-green-soft)] bg-[color:var(--theme-green-faint)]">
+              <Receipt size={22} className="text-[color:var(--theme-green)]" />
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-cyan-500">Sales Quote</span>
-                <div className="h-px w-6 bg-cyan-500/20" />
+                <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-[color:var(--theme-green)]">
+                  {cartCopy.modal.salesQuoteLabel[activeLocale]}
+                </span>
+                <div className="h-px w-6 bg-[color:var(--theme-green-soft)]" />
               </div>
-              <h2 className="mt-0.5 text-xl font-bold text-white tracking-tight">客户报价单</h2>
+              <h2 className="mt-0.5 text-xl font-bold text-white tracking-tight">
+                {cartCopy.modal.salesQuote[activeLocale]}
+              </h2>
             </div>
           </div>
           <button
             onClick={onClose}
             className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-all hover:bg-white/5 hover:text-white"
-            aria-label="关闭"
-            title="关闭"
+            aria-label={cartCopy.modal.close[activeLocale]}
+            title={cartCopy.modal.close[activeLocale]}
           >
             <X size={20} />
           </button>
@@ -177,25 +173,29 @@ export function CartQuoteModal(props: {
               <div className="lg:col-span-8 space-y-6">
                 <div className="relative flex items-center justify-between pb-3">
                   <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white/40">
-                    <span className="h-1 w-1 rounded-full bg-cyan-500" />
-                    项目明细
+                    <span className="h-1 w-1 rounded-full bg-[color:var(--theme-green)]" />
+                    {cartCopy.modal.itemsSection[activeLocale]}
                   </h3>
                 </div>
 
                 {items.length === 0 ? (
                   <div className="glass-card rounded-2xl border border-white/10 bg-black/30 p-8 text-center text-sm text-slate-400">
-                    暂无项目，请从左侧添加到购物车！
+                    {cartCopy.modal.emptyCart[activeLocale]}
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {membershipGiftItems.length > 0 && (
-                      <div className="glass-card rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-5 text-slate-100">
+                      <div className="glass-card rounded-2xl border border-[color:var(--theme-green-soft)] bg-[color:var(--theme-green-faint)] p-5 text-slate-100">
                         <div className="mb-4 flex items-center justify-between">
                           <div>
-                            <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-cyan-200/70">会员赠送</p>
-                            <h4 className="mt-1 text-lg font-bold text-white">赠送会员日期计算</h4>
+                            <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[color:var(--theme-green)]/70">
+                              {cartCopy.modal.membershipGiftLabel[activeLocale]}
+                            </p>
+                            <h4 className="mt-1 text-lg font-bold text-white">
+                              {cartCopy.modal.membershipGiftTitle[activeLocale]}
+                            </h4>
                           </div>
-                          <span className="rounded-full border border-cyan-400/40 px-2.5 py-1 text-[10px] font-semibold text-cyan-100">
+                          <span className="rounded-full border border-[color:var(--theme-green-soft)] px-2.5 py-1 text-[10px] font-semibold text-[color:var(--theme-green)]">
                             {membershipGiftItems.length} 项
                           </span>
                         </div>
@@ -213,11 +213,15 @@ export function CartQuoteModal(props: {
                                 className="grid grid-cols-1 gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-slate-200 md:grid-cols-[1.6fr_1fr_1fr_1fr]"
                               >
                                 <div className="space-y-1">
-                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">项目</p>
+                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                                    {cartCopy.modal.item[activeLocale]}
+                                  </p>
                                   <p className="text-sm font-semibold text-white">{item.name}</p>
                                 </div>
                                 <div className="space-y-1">
-                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">周数</p>
+                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                                    {cartCopy.modal.weeks[activeLocale]}
+                                  </p>
                                   <NumberInput
                                     className="input-subdued w-full rounded-xl px-3 py-2 text-center text-xs font-semibold text-white"
                                     value={totalWeeks}
@@ -227,13 +231,17 @@ export function CartQuoteModal(props: {
                                   />
                                 </div>
                                 <div className="space-y-1">
-                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">开始日期</p>
+                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                                    {cartCopy.modal.startDate[activeLocale]}
+                                  </p>
                                   <p className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-center text-sm font-semibold text-white">
                                     {formatGiftDate(startDate)}
                                   </p>
                                 </div>
                                 <div className="space-y-1">
-                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">结束日期</p>
+                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                                    {cartCopy.modal.endDate[activeLocale]}
+                                  </p>
                                   <p className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-center text-sm font-semibold text-white">
                                     {formatGiftDate(endDate)}
                                   </p>
@@ -259,7 +267,7 @@ export function CartQuoteModal(props: {
                         <article
                           key={item.id}
                           className={`glass-card group rounded-2xl border border-white/5 p-4 sm:p-5 transition-colors hover:bg-white/[0.03] ${
-                            isNew ? "border-cyan-500/30 bg-white/[0.02]" : ""
+                            isNew ? "border-[color:var(--theme-green-soft)] bg-[color:var(--theme-green-muted)]" : ""
                           }`}
                           onAnimationEnd={() => {
                             if (isNew && onAnimationComplete) onAnimationComplete();
@@ -273,24 +281,46 @@ export function CartQuoteModal(props: {
                               <div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-bold text-white">{item.name}</span>
-                                  <CartTag label={meta.label} tone={item.category === "cycle_plan" ? "cyan" : "slate"} />
+                                  <CartTag
+                                    label={meta.label[activeLocale]}
+                                    tone={
+                                      item.category === "membership"
+                                        ? "violet"
+                                        : item.category === "group_class"
+                                          ? "indigo"
+                                          : item.category === "personal_training"
+                                            ? "emerald"
+                                            : item.category === "assessment"
+                                              ? "amber"
+                                              : item.category === "cycle_plan"
+                                                ? "cyan"
+                                                : item.category === "stored_value"
+                                                  ? "sky"
+                                                  : "slate"
+                                    }
+                                  />
                                   {item.category === "stored_value" && (
-                                    <CartTag label="免税" tone="amber" />
+                                    <CartTag label={cartCopy.modal.taxExempt[activeLocale]} tone="amber" />
                                   )}
-                                  {isDiscounted && <CartTag label={`优惠 ${discountPct}%`} tone="cyan" />}
+                                  {isDiscounted && (
+                                    <CartTag
+                                      label={formatCartCopy(cartCopy.modal.discount[activeLocale], { pct: discountPct })}
+                                      tone="cyan"
+                                    />
+                                  )}
                                   {item.activationFee && item.activationFee > 0 && (
                                     <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] text-slate-500">
-                                      <span>激活费</span>
+                                      <span>{cartCopy.modal.activationFee[activeLocale]}</span>
                                       <button
                                         type="button"
                                         onClick={() => onUpdateItem(item.id, { isNewCustomer: !item.isNewCustomer })}
                                         className={`relative h-3.5 w-6 rounded-full border transition ${
                                           item.isNewCustomer
-                                            ? "border-cyan-400/40 bg-cyan-400/40"
+                                            ? "border-[color:var(--theme-green-soft)] bg-[color:var(--theme-green-soft)]"
                                             : "border-white/20 bg-white/10"
                                         }`}
-                                        aria-label="激活费"
-                                        title="激活费"
+                                        aria-label={cartCopy.modal.activationFee[activeLocale]}
+                                        title={cartCopy.modal.activationFee[activeLocale]}
                                       >
                                         <span
                                           className={`absolute left-0.5 top-0.5 h-2 w-2 rounded-full bg-white transition ${
@@ -311,7 +341,7 @@ export function CartQuoteModal(props: {
                               onClick={() => onRemoveItem(item.id)}
                               className="text-[9px] font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-red-400/80"
                             >
-                              移除项目
+                              {cartCopy.modal.removeItem[activeLocale]}
                             </button>
                           </div>
 
@@ -337,14 +367,14 @@ export function CartQuoteModal(props: {
                                         const cleaned = Number(String(value).replace(/^0+(?=\d)/, "")) || 1;
                                         const updated = { ...parsed, qty: Math.max(1, cleaned) };
                                         const nextDetails = [...(item.details ?? [])];
-                                        nextDetails[detailIndex] = formatCycleDetail(updated);
+                                        nextDetails[detailIndex] = formatCycleDetail(updated, activeLocale);
                                         onUpdateItem(item.id, { details: nextDetails });
                                       }}
                                       onUnitPriceChange={(value) => {
                                         const cleaned = Number(String(value).replace(/^0+(?=\d)/, "")) || 0;
                                         const updated = { ...parsed, unitPrice: Math.max(0, cleaned) };
                                         const nextDetails = [...(item.details ?? [])];
-                                        nextDetails[detailIndex] = formatCycleDetail(updated);
+                                        nextDetails[detailIndex] = formatCycleDetail(updated, activeLocale);
                                         onUpdateItem(item.id, { details: nextDetails });
                                       }}
                                     />
@@ -352,8 +382,10 @@ export function CartQuoteModal(props: {
                                 );
                               })}
                               <div className="mt-2 flex items-center justify-end gap-3 border-t border-white/5 pt-3">
-                                <span className="text-[10px] font-medium text-slate-600">方案总额</span>
-                                <span className="text-base font-bold text-white tracking-tight">
+                                <span className="text-[10px] font-medium text-slate-600">
+                                  {cartCopy.modal.planTotal[activeLocale]}
+                                </span>
+                                <span className="text-base font-bold text-[color:var(--theme-green)] tracking-tight">
                                   {formatMoney(
                                     item.details.reduce((sum, line) => {
                                       const parsed = parseCycleDetail(line);
@@ -366,7 +398,9 @@ export function CartQuoteModal(props: {
                           ) : (
                             <div className="grid grid-cols-1 gap-4 items-end sm:grid-cols-12">
                               <div className="sm:col-span-3 space-y-1.5">
-                                <label className="pl-1 text-[10px] font-semibold text-slate-500">数量</label>
+                                <label className="pl-1 text-[10px] font-semibold text-slate-500">
+                                  {cartCopy.modal.quantity[activeLocale]}
+                                </label>
                                 <NumberInput
                                   className="input-subdued w-full rounded-xl px-3 py-2 text-center text-xs font-semibold text-white"
                                   value={item.quantity}
@@ -376,7 +410,9 @@ export function CartQuoteModal(props: {
                                 />
                               </div>
                               <div className="sm:col-span-4 space-y-1.5">
-                                <label className="pl-1 text-[10px] font-semibold text-slate-500">单价 (CAD)</label>
+                                <label className="pl-1 text-[10px] font-semibold text-slate-500">
+                                  {cartCopy.modal.unitPrice[activeLocale]}
+                                </label>
                                 <NumberInput
                                   className="input-subdued w-full rounded-xl px-3 py-2 text-right text-xs font-mono text-white"
                                   value={item.unitPrice}
@@ -386,8 +422,10 @@ export function CartQuoteModal(props: {
                                 />
                               </div>
                               <div className="sm:col-span-5 pb-1 text-right">
-                                <span className="mb-0.5 block text-[10px] text-slate-600">项目小计</span>
-                                <span className="text-lg font-bold text-cyan-400 tracking-tight">
+                                <span className="mb-0.5 block text-[10px] text-slate-600">
+                                  {cartCopy.modal.lineSubtotal[activeLocale]}
+                                </span>
+                                <span className="text-lg font-bold text-[color:var(--theme-green)] tracking-tight">
                                   {formatMoney(item.unitPrice * item.quantity + (item.isNewCustomer ? item.activationFee ?? 0 : 0))}
                                 </span>
                               </div>
@@ -403,16 +441,18 @@ export function CartQuoteModal(props: {
 
               <div className="lg:col-span-4 flex flex-col gap-6 self-start lg:sticky lg:top-6">
                 <section>
-                  <div className="glass-card relative flex flex-col overflow-x-hidden rounded-3xl border border-cyan-500/10 bg-white/[0.01] p-6 sm:rounded-[28px] sm:p-8">
-                    <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-cyan-500/5 blur-[60px]" />
+                  <div className="glass-card relative flex flex-col overflow-x-hidden rounded-3xl border border-[color:var(--theme-green-muted)] bg-white/[0.01] p-6 sm:rounded-[28px] sm:p-8">
+                    <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[color:var(--theme-green-faint)] blur-[60px]" />
                     <div className="relative mb-8 flex items-center justify-between">
-                      <h2 className="text-lg font-bold text-white tracking-tight">报价汇总</h2>
+                      <h2 className="text-lg font-bold text-white tracking-tight">
+                        {cartCopy.modal.summaryTitle[activeLocale]}
+                      </h2>
                       <button
                         type="button"
                         onClick={() => setCustomerOpen((prev) => !prev)}
                         className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-400 transition hover:border-emerald-300/40 hover:text-emerald-200"
-                        aria-label="客户信息"
-                        title="客户信息"
+                        aria-label={cartCopy.modal.customerInfo[activeLocale]}
+                        title={cartCopy.modal.customerInfo[activeLocale]}
                       >
                         <UserCircle size={18} />
                       </button>
@@ -421,27 +461,29 @@ export function CartQuoteModal(props: {
                     {customerOpen && (
                       <div className="relative mb-5 rounded-2xl border border-white/10 bg-black/35 px-4 py-4">
                         <div className="mb-3 flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">客户信息</span>
+                          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">
+                            {cartCopy.modal.customerInfo[activeLocale]}
+                          </span>
                           <button
                             type="button"
                             onClick={() => setCustomerOpen(false)}
                             className="text-[10px] text-slate-500 hover:text-slate-300"
                           >
-                            收起
+                            {cartCopy.modal.collapse[activeLocale]}
                           </button>
                         </div>
                         <div className="grid gap-3">
                           <CartField
-                            label="客户姓名"
+                            label={cartCopy.modal.customerName[activeLocale]}
                             value={customer.name}
                             onChange={(value) => onUpdateCustomer({ name: value })}
-                            placeholder="请输入姓名"
+                            placeholder={cartCopy.modal.namePlaceholder[activeLocale]}
                           />
                           <CartField
-                            label="联系电话"
+                            label={cartCopy.modal.customerPhone[activeLocale]}
                             value={customer.phone}
                             onChange={(value) => onUpdateCustomer({ phone: value })}
-                            placeholder="请输入电话"
+                            placeholder={cartCopy.modal.phonePlaceholder[activeLocale]}
                             inputMode="tel"
                           />
                         </div>
@@ -449,14 +491,20 @@ export function CartQuoteModal(props: {
                     )}
 
                     <div className="relative mb-auto space-y-4">
-                      <CartStatRow label="项目总数" value={`${totals.itemsCount}`} />
-                      <CartStatRow label="小计金额" value={formatMoney(totals.subtotal)} />
-                      <CartStatRow label="HST (13%)" value={formatMoney(totals.tax)} />
-                      <CartStatRow label="含税合计" value={formatMoney(totals.totalBeforeCredit)} highlight />
+                      <CartStatRow label={cartCopy.modal.itemsCount[activeLocale]} value={`${totals.itemsCount}`} />
+                      <CartStatRow label={cartCopy.modal.subtotal[activeLocale]} value={formatMoney(totals.subtotal)} />
+                      <CartStatRow label={cartCopy.modal.tax[activeLocale]} value={formatMoney(totals.tax)} />
+                      <CartStatRow
+                        label={cartCopy.modal.totalBeforeCredit[activeLocale]}
+                        value={formatMoney(totals.totalBeforeCredit)}
+                        highlight
+                      />
                       <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                         <div className="flex items-center justify-between text-xs text-slate-400">
-                          <span>储值卡抵扣</span>
-                          <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">CAD</span>
+                          <span>{cartCopy.modal.creditLabel[activeLocale]}</span>
+                          <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                            {cartCopy.modal.creditUnit[activeLocale]}
+                          </span>
                         </div>
                         <NumberInput
                           className="input-subdued w-full rounded-xl px-3 py-2 text-right text-xs font-mono text-white"
@@ -467,14 +515,16 @@ export function CartQuoteModal(props: {
                         />
                         {totals.creditOverflow > 0 && (
                           <p className="text-[11px] text-amber-300">
-                            抵扣金额超过含税合计，已自动按 {formatMoney(totals.totalBeforeCredit)} 抵扣。
+                            {formatCartCopy(cartCopy.modal.creditOverflow[activeLocale], {
+                              total: formatMoney(totals.totalBeforeCredit),
+                            })}
                           </p>
                         )}
                       </div>
                       <div className="mt-2 border-t border-white/5 pt-5">
                         <div className="flex flex-col gap-1">
                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">
-                            Grand Total
+                            {cartCopy.modal.grandTotal[activeLocale]}
                           </span>
                           <span className="text-4xl font-black tracking-tighter text-white">
                             {formatMoneyWithDecimals(totals.total)}
@@ -487,9 +537,9 @@ export function CartQuoteModal(props: {
                       <button
                         type="button"
                         onClick={onCopySummary}
-                        className="w-full rounded-2xl bg-cyan-500 py-4 text-sm font-black uppercase tracking-widest text-[#04070b] shadow-xl shadow-cyan-500/10 transition-all hover:bg-cyan-400 active:scale-[0.99]"
+                        className="w-full rounded-2xl bg-[color:var(--theme-green)] py-4 text-sm font-black uppercase tracking-widest text-[#04070b] shadow-xl shadow-[color:var(--theme-green-glow-soft)] transition-all hover:bg-[color:var(--theme-green-soft)] active:scale-[0.99]"
                       >
-                        复制方案
+                        {cartCopy.modal.copyPlan[activeLocale]}
                       </button>
                       <button
                         type="button"
@@ -497,7 +547,7 @@ export function CartQuoteModal(props: {
                         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/5 bg-white/5 py-3 text-sm font-bold text-slate-200 transition-all hover:bg-white/10"
                       >
                         <Receipt size={18} />
-                        导出 PDF 报价
+                        {cartCopy.modal.exportPdf[activeLocale]}
                       </button>
                       <div className="grid grid-cols-2 gap-3 pt-3">
                         <button
@@ -505,14 +555,14 @@ export function CartQuoteModal(props: {
                           onClick={onClearCart}
                           className="rounded-xl bg-white/5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-white"
                         >
-                          清空
+                          {cartCopy.modal.clear[activeLocale]}
                         </button>
                         <button
                           type="button"
                           onClick={onClose}
                           className="rounded-xl bg-white/5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-white"
                         >
-                          关闭
+                          {cartCopy.modal.close[activeLocale]}
                         </button>
                       </div>
                     </div>
@@ -524,8 +574,8 @@ export function CartQuoteModal(props: {
         </div>
 
         <div className="flex flex-col gap-2 border-t border-white/5 bg-black/40 px-5 py-4 text-[9px] font-medium tracking-wider text-slate-700 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-5 lg:px-10">
-          <p>© 2026 Oxygen 报价系统 · 销售报价模块</p>
-          <p>最后更新: {lastUpdated}</p>
+          <p>{cartCopy.modal.footer[activeLocale]}</p>
+          <p>{formatCartCopy(cartCopy.modal.lastUpdated[activeLocale], { time: lastUpdated })}</p>
         </div>
       </div>
     </div>

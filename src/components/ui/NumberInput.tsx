@@ -111,7 +111,10 @@ export function NumberInput({
           onChange(clampValue(0, min, max));
           return;
         }
-        const cleaned = sanitizeInput(raw, allowDecimal, allowNegative);
+        let cleaned = sanitizeInput(raw, allowDecimal, allowNegative);
+        if (displayValue === "0" && /^0\d/.test(cleaned)) {
+          cleaned = cleaned.replace(/^0+/, "");
+        }
         setDisplayValue(cleaned);
         const parsed = clampValue(toNumber(cleaned, allowDecimal), min, max);
         onChange(parsed);

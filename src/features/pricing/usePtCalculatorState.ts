@@ -6,6 +6,7 @@ import {
   calcSubtotal,
   calcTax,
   calcTotalWithTax,
+  getPresetUnitAndQty,
 } from "@/lib/pricing/calculate";
 import type { PtPreset, PtRow } from "@/types/pricing";
 
@@ -38,11 +39,6 @@ export function usePtCalculatorState() {
   const ptCalcMember1v2 = calcSubtotal(ptUnitMember1v2, ptQtyMember1v2);
   const ptCalcNonMember1v2 = calcSubtotal(ptUnitNonMember1v2, ptQtyNonMember1v2);
 
-  const ptCalcMemberTotal = ptCalcMember1v1 + ptCalcMember1v2;
-  const ptCalcNonMemberTotal = ptCalcNonMember1v1 + ptCalcNonMember1v2;
-  const ptCalcGrandTotal = ptCalcMemberTotal + ptCalcNonMemberTotal;
-  const ptCalcTax = calcTax(ptCalcGrandTotal);
-  const ptCalcTotalWithTax = calcTotalWithTax(ptCalcGrandTotal);
 
   const ptActiveLabel: PtActiveLabel =
     ptPreset === "member_1v1"
@@ -53,14 +49,21 @@ export function usePtCalculatorState() {
           ? { zh: "会员 1v2", en: "Member 1v2" }
           : { zh: "非会员 1v2", en: "Non-member 1v2" };
 
-  const ptActiveSubtotal =
-    ptPreset === "member_1v1"
-      ? ptCalcMember1v1
-      : ptPreset === "non_member_1v1"
-        ? ptCalcNonMember1v1
-        : ptPreset === "member_1v2"
-          ? ptCalcMember1v2
-          : ptCalcNonMember1v2;
+  const ptActivePreset = getPresetUnitAndQty(ptPreset, {
+    member1v1Unit: ptUnitMember1v1,
+    nonMember1v1Unit: ptUnitNonMember1v1,
+    member1v2Unit: ptUnitMember1v2,
+    nonMember1v2Unit: ptUnitNonMember1v2,
+    member1v1Qty: ptQtyMember1v1,
+    nonMember1v1Qty: ptQtyNonMember1v1,
+    member1v2Qty: ptQtyMember1v2,
+    nonMember1v2Qty: ptQtyNonMember1v2,
+  });
+
+  const ptActiveSubtotal = calcSubtotal(ptActivePreset.unit, ptActivePreset.qty);
+
+  const ptActivePresetUnit = ptActivePreset.unit;
+  const ptActivePresetQty = ptActivePreset.qty;
 
   const ptTotalWithTax = calcTotalWithTax(ptActiveSubtotal);
   const ptTaxAfterAdjust = calcTax(ptActiveSubtotal);
@@ -107,12 +110,9 @@ export function usePtCalculatorState() {
     ptCalcNonMember1v1,
     ptCalcMember1v2,
     ptCalcNonMember1v2,
-    ptCalcMemberTotal,
-    ptCalcNonMemberTotal,
-    ptCalcGrandTotal,
-    ptCalcTax,
-    ptCalcTotalWithTax,
     ptActiveLabel,
+    ptActivePresetUnit,
+    ptActivePresetQty,
     ptActiveSubtotal,
     ptAfterCredit,
     ptTaxAfterAdjust,

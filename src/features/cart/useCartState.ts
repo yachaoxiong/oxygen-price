@@ -165,8 +165,6 @@ export function useCartState() {
     setCustomer((prev) => ({ ...prev, ...update }));
   };
 
-  const resetCustomer = () => setCustomer(defaultCustomer);
-
   const clearLastAdded = () => setLastAddedId(null);
 
   return {
@@ -182,7 +180,6 @@ export function useCartState() {
     removeItem,
     clearCart,
     updateCustomer,
-    resetCustomer,
     lastAddedId,
     clearLastAdded,
   };

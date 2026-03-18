@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingCart } from "lucide-react";
 import { useState } from "react";
+import { cartCopy, formatCartCopy } from "@/lib/cart/cartCopy";
 
 const NAV_ITEMS = [
   { key: "membership", labelZh: "会员&团课", labelEn: "Membership & Classes", href: "/membership" },
@@ -67,8 +68,8 @@ export function Navbar({
               className={`group relative inline-flex h-9 w-9 items-center justify-center rounded-full border text-emerald-100 transition hover:border-emerald-300/70 hover:bg-emerald-500/20 ${
                 addingItemKey ? "border-emerald-300/70 bg-emerald-500/15" : "border-emerald-300/40 bg-emerald-500/10"
               }`}
-              aria-label={`购物车，当前 ${cartCount} 项`}
-              title="购物车"
+              aria-label={formatCartCopy(cartCopy.navbar.cartLabel[activeLocale], { count: cartCount })}
+              title={cartCopy.navbar.cartTitle[activeLocale]}
             >
               <ShoppingCart size={16} />
               {cartCount > 0 && (
@@ -155,8 +156,8 @@ export function Navbar({
             className={`group relative inline-flex h-9 w-9 items-center justify-center rounded-full border text-emerald-100 transition hover:border-emerald-300/70 hover:bg-emerald-500/20 ${
               addingItemKey ? "border-emerald-300/70 bg-emerald-500/15" : "border-emerald-300/40 bg-emerald-500/10"
             }`}
-            aria-label={`购物车，当前 ${cartCount} 项`}
-            title="购物车"
+            aria-label={formatCartCopy(cartCopy.navbar.cartLabel[activeLocale], { count: cartCount })}
+            title={cartCopy.navbar.cartTitle[activeLocale]}
           >
             <ShoppingCart size={16} />
             {cartCount > 0 && (

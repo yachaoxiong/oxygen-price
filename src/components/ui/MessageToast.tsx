@@ -13,7 +13,7 @@ export function MessageToast({ title, subtitle, visible, onClose }: MessageToast
   if (!visible) return null;
 
   return (
-    <div className="fixed top-10 right-10 z-50">
+    <div className="fixed top-10 right-10 z-[70]">
       <div className="animate-slide-in notification-glow green-edge-left relative flex min-w-[260px] items-center gap-4 border border-white/10 bg-[#08090a]/95 px-6 py-4 text-white backdrop-blur-md">
         <span className="flex items-center justify-center text-[#00ff66]">
           <CheckCircle2 size={24} strokeWidth={1.4} />
