@@ -7,7 +7,7 @@ import { AuthLoginScreen } from "@/features/auth/AuthLoginScreen";
 import { InvoicePageView } from "@/components/invoice/InvoicePageView";
 import { presetItems, recentQuotations } from "@/components/invoice/mockData";
 import { InvoiceScaffold } from "@/components/invoice/InvoiceScaffold";
-import { fetchCustomerProfiles, fetchInvoices, type CustomerProfile } from "@/lib/supabase";
+import { fetchCustomerProfiles, fetchInvoices, type CustomerProfile, type InvoiceRecord } from "@/lib/supabase";
 
 export default function NewInvoicePage() {
   const {
