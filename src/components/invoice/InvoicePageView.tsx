@@ -125,7 +125,7 @@ function generateInvoiceNo(): string {
   return next;
 }
 
-type CustomerErrors = Partial<Record<keyof InvoiceCustomerInfo, string>>;
+type CustomerErrors = Partial<Record<keyof InvoiceCustomerInfo, string>> & { address?: string };
 type ItemErrors = Record<string, { name?: string; qty?: string; unitPrice?: string; discount?: string }>;
 
 type InvoiceCustomerInfo = {
@@ -218,7 +218,7 @@ function CustomerInfoPanel({
           </span>
           <input
             className={`w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] ${errors.name ? "ring-1 ring-red-500/70" : ""}`}
-            placeholder="例如：张伟 / Zhang Wei"
+            placeholder="Zhang Wei"
             value={customer.name}
             onChange={(event) => onChange({ ...customer, name: event.target.value })}
           />
