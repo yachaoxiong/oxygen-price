@@ -73,9 +73,9 @@ export default function NewInvoicePage() {
 
   return (
     <InvoiceScaffold
-      profileName={profile?.full_name}
+      profileName={profile?.full_name ?? undefined}
       profileEmail={profile?.email || email}
-      profileRole={profile?.role}
+      profileRole={profile?.role ?? undefined}
       onSignOut={handleSignOut}
     >
       <InvoicePageView
