@@ -53,12 +53,12 @@ export function CycleReportStep({
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <section className="space-y-4">
           <div>
-            <h3 className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white/40">
+            <h3 className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40">
               <span className="h-1 w-1 rounded-full bg-cyan-500" />
               {copy.pricingBreakdown}
             </h3>
-            <div className="glass-card rounded-2xl border border-white/10 bg-black/25 p-4">
-              <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr] bg-white/[0.05] px-3 py-2 text-[11px] text-slate-400">
+            <div className="glass-card rounded-2xl border border-border/70 bg-card/70 p-4">
+              <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr] bg-white/[0.05] px-3 py-2 text-[11px] text-muted-foreground">
                 <p>{copy.item}</p>
                 <p>{copy.unit}</p>
                 <p>{copy.qty}</p>
@@ -67,48 +67,48 @@ export function CycleReportStep({
               {detailCourses.map((course) => (
                 <div
                   key={course.program.key}
-                  className="grid grid-cols-[1.5fr_1fr_1fr_1fr] border-t border-white/10 px-3 py-2 text-sm"
+                  className="grid grid-cols-[1.5fr_1fr_1fr_1fr] border-t border-border/70 px-3 py-2 text-sm"
                 >
-                  <p className="text-slate-200">
+                  <p className="text-foreground/80">
                     {activeLocale === "zh" ? course.program.nameZh : course.program.nameEn ?? course.program.nameZh}
                   </p>
-                  <p className="text-slate-300">{formatMoney(course.unitPrice)}</p>
-                  <p className="text-slate-300">{course.qty}</p>
-                  <p className="font-medium text-cyan-100">{formatMoney(course.unitPrice * course.qty)}</p>
+                  <p className="text-muted-foreground">{formatMoney(course.unitPrice)}</p>
+                  <p className="text-muted-foreground">{course.qty}</p>
+                  <p className="font-medium text-foreground">{formatMoney(course.unitPrice * course.qty)}</p>
                 </div>
               ))}
             </div>
           </div>
 
           <div>
-            <h3 className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white/40">
+            <h3 className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/40">
               <span className="h-1 w-1 rounded-full bg-slate-600" />
               {activeLocale === "zh" ? "方案亮点" : "Plan Highlights"}
             </h3>
             <div className="grid gap-2 text-sm md:grid-cols-2">
-              <div className="glass-card rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                <span className="text-slate-400">{copy.weeklySessions}：</span>
-                <span className="text-cyan-100 font-medium">{selectedCyclePlan.weeklySessions}</span>
+              <div className="glass-card rounded-lg border border-white/10 bg-card/70 px-3 py-2">
+                <span className="text-muted-foreground">{copy.weeklySessions}：</span>
+                <span className="text-foreground font-medium">{selectedCyclePlan.weeklySessions}</span>
               </div>
-              <div className="glass-card rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                <span className="text-slate-400">{copy.minSessions}：</span>
-                <span className="text-cyan-100 font-medium">{selectedCyclePlan.minSessions}</span>
+              <div className="glass-card rounded-lg border border-border/70 bg-card/70 px-3 py-2">
+                <span className="text-muted-foreground">{copy.minSessions}：</span>
+                <span className="text-foreground font-medium">{selectedCyclePlan.minSessions}</span>
               </div>
-              <div className="glass-card rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                <span className="text-slate-400">{copy.followups}：</span>
-                <span className="text-cyan-100 font-medium">{selectedCyclePlan.wpdFollowups}</span>
+              <div className="glass-card rounded-lg border border-border/70 bg-card/70 px-3 py-2">
+                <span className="text-muted-foreground">{copy.followups}：</span>
+                <span className="text-foreground font-medium">{selectedCyclePlan.wpdFollowups}</span>
               </div>
-              <div className="glass-card rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                <span className="text-slate-400">{copy.assessments}：</span>
-                <span className="text-cyan-100 font-medium">{selectedCyclePlan.assessmentsReports}</span>
+              <div className="glass-card rounded-lg border border-border/70 bg-card/70 px-3 py-2">
+                <span className="text-muted-foreground">{copy.assessments}：</span>
+                <span className="text-foreground font-medium">{selectedCyclePlan.assessmentsReports}</span>
               </div>
-              <div className="glass-card rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 md:col-span-2">
-                <span className="text-emerald-100">
+              <div className="glass-card rounded-lg border border-border/70 bg-card px-3 py-2 md:col-span-2">
+                <span className="text-foreground">
                   {copy.membershipGift}：{activeLocale === "zh" ? selectedCyclePlan.membershipGiftZh : selectedCyclePlan.membershipGiftEn}
                 </span>
               </div>
-              <div className="glass-card rounded-lg border border-cyan-300/30 bg-cyan-500/10 px-3 py-2 md:col-span-2">
-                <span className="text-cyan-100">
+              <div className="glass-card rounded-lg border border-border/70 bg-card px-3 py-2 md:col-span-2">
+                <span className="text-foreground">
                   {copy.extraBenefits}：{activeLocale === "zh" ? selectedCyclePlan.extraBenefitsZh : selectedCyclePlan.extraBenefitsEn}
                 </span>
               </div>
@@ -120,8 +120,8 @@ export function CycleReportStep({
           <div className="glass-card relative flex h-full flex-col overflow-hidden rounded-[28px] border border-cyan-500/10 bg-white/[0.01] p-6">
             <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-cyan-500/5 blur-[60px]" />
             <div className="relative mb-6 flex items-center justify-between">
-              <h2 className="text-base font-bold text-white tracking-tight">{copy.total}</h2>
-              <span className="rounded-full border border-cyan-400/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-200">
+              <h2 className="text-base font-bold text-foreground tracking-tight">{copy.total}</h2>
+              <span className="rounded-full border border-cyan-400/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/80">
                 CAD
               </span>
             </div>
@@ -170,7 +170,7 @@ export function CycleReportStep({
               </div>
               <button
                 onClick={onDownloadPdf}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/5 bg-white/5 py-3 text-xs font-bold uppercase tracking-widest text-slate-200 transition-all hover:bg-white/10"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/5 bg-white/5 py-3 text-xs font-bold uppercase tracking-widest text-foreground/80 transition-all hover:bg-white/10"
               >
                 {copy.downloadPdf}
               </button>

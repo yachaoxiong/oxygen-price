@@ -5,7 +5,6 @@ import {
   calcAfterCredit,
   calcSubtotal,
   calcTax,
-  calcTotalWithTax,
   getPresetUnitAndQty,
 } from "@/lib/pricing/calculate";
 import type { CycleCourseSelection, CyclePlanRow, PtPreset, PtRow } from "@/types/pricing";
@@ -13,7 +12,7 @@ import type { CycleCourseSelection, CyclePlanRow, PtPreset, PtRow } from "@/type
 export function useCycleCalculatorState() {
   const [selectedCyclePlan, setSelectedCyclePlan] = useState<CyclePlanRow | null>(null);
   const [cyclePreviewPlan, setCyclePreviewPlan] = useState<CyclePlanRow | null>(null);
-  const [cycleStep, setCycleStep] = useState<1 | 2 | 3>(1);
+  const [cycleStep, setCycleStep] = useState<1 | 2>(1);
   const [cycleSelectedPtProgram, setCycleSelectedPtProgram] = useState<PtRow | null>(null);
   const [cycleSelectedCourses, setCycleSelectedCourses] = useState<CycleCourseSelection[]>([]);
   const [cycleClientName, setCycleClientName] = useState("");
@@ -67,9 +66,9 @@ export function useCycleCalculatorState() {
   const cycleActivePresetUnit = cycleActivePreset.unit;
   const cycleActivePresetQty = cycleActivePreset.qty;
 
-  const cycleAfterCredit = calcAfterCredit(cycleSubtotal, cycleCredit);
-  const cycleTax = calcTax(cycleAfterCredit);
-  const cycleTotal = calcTotalWithTax(cycleAfterCredit);
+  const cycleTax = calcTax(cycleSubtotal);
+  const cycleAfterCredit = calcAfterCredit(cycleSubtotal + cycleTax, cycleCredit);
+  const cycleTotal = cycleAfterCredit;
 
   return {
     selectedCyclePlan,

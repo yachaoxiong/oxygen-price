@@ -53,8 +53,19 @@ function parseMembershipWeeks(note?: string | null) {
   return null;
 }
 
-function formatGiftDate(date: Date) {
-  return date.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+function addDays(base: Date, days: number) {
+  const next = new Date(base);
+  next.setHours(12, 0, 0, 0);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function formatGiftDate(date: Date, locale: CartLocale) {
+  return date.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
 export function CartQuoteModal(props: {
@@ -152,14 +163,14 @@ export function CartQuoteModal(props: {
                 </span>
                 <div className="h-px w-6 bg-[color:var(--theme-green-soft)]" />
               </div>
-              <h2 className="mt-0.5 text-xl font-bold text-white tracking-tight">
+              <h2 className="mt-0.5 text-xl font-bold text-foreground tracking-tight">
                 {cartCopy.modal.salesQuote[activeLocale]}
               </h2>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-all hover:bg-white/5 hover:text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground"
             aria-label={cartCopy.modal.close[activeLocale]}
             title={cartCopy.modal.close[activeLocale]}
           >
@@ -172,26 +183,26 @@ export function CartQuoteModal(props: {
             <div className="grid gap-12 lg:grid-cols-12">
               <div className="lg:col-span-8 space-y-6">
                 <div className="relative flex items-center justify-between pb-3">
-                  <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-white/40">
+                  <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-foreground/80">
                     <span className="h-1 w-1 rounded-full bg-[color:var(--theme-green)]" />
                     {cartCopy.modal.itemsSection[activeLocale]}
                   </h3>
                 </div>
 
                 {items.length === 0 ? (
-                  <div className="glass-card rounded-2xl border border-white/10 bg-black/30 p-8 text-center text-sm text-slate-400">
+                  <div className="glass-card rounded-2xl border border-border/70 bg-card p-8 text-center text-sm text-muted-foreground">
                     {cartCopy.modal.emptyCart[activeLocale]}
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {membershipGiftItems.length > 0 && (
-                      <div className="glass-card rounded-2xl border border-[color:var(--theme-green-soft)] bg-[color:var(--theme-green-faint)] p-5 text-slate-100">
+                      <div className="glass-card rounded-2xl border border-[color:var(--theme-green-soft)] bg-[color:var(--theme-green-faint)] p-5 text-foreground/80">
                         <div className="mb-4 flex items-center justify-between">
                           <div>
                             <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-[color:var(--theme-green)]/70">
                               {cartCopy.modal.membershipGiftLabel[activeLocale]}
                             </p>
-                            <h4 className="mt-1 text-lg font-bold text-white">
+                            <h4 className="mt-1 text-lg font-bold text-foreground">
                               {cartCopy.modal.membershipGiftTitle[activeLocale]}
                             </h4>
                           </div>
@@ -205,21 +216,21 @@ export function CartQuoteModal(props: {
                             const bonusWeeks = 2;
                             const totalWeeks = Math.max(0, storedWeeks) + bonusWeeks;
                             const startDate = new Date();
-                            const endDate = new Date(startDate.getTime() + totalWeeks * 7 * 24 * 60 * 60 * 1000);
+                            const endDate = addDays(startDate, totalWeeks * 7);
 
                             return (
                               <div
                                 key={`membership-gift-${item.id}`}
-                                className="grid grid-cols-1 gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-slate-200 md:grid-cols-[1.6fr_1fr_1fr_1fr]"
+                                className="grid grid-cols-1 gap-3 rounded-2xl border border-border/70 bg-card/70 px-4 py-3 text-xs text-foreground/80 md:grid-cols-[1.6fr_1fr_1fr_1fr]"
                               >
                                 <div className="space-y-1">
-                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                                     {cartCopy.modal.item[activeLocale]}
                                   </p>
-                                  <p className="text-sm font-semibold text-white">{item.name}</p>
+                                  <p className="text-sm font-semibold text-foreground">{item.name}</p>
                                 </div>
                                 <div className="space-y-1">
-                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                                     {cartCopy.modal.weeks[activeLocale]}
                                   </p>
                                   <NumberInput
@@ -235,7 +246,7 @@ export function CartQuoteModal(props: {
                                     {cartCopy.modal.startDate[activeLocale]}
                                   </p>
                                   <p className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-center text-sm font-semibold text-white">
-                                    {formatGiftDate(startDate)}
+                                    {formatGiftDate(startDate, activeLocale)}
                                   </p>
                                 </div>
                                 <div className="space-y-1">
@@ -243,7 +254,7 @@ export function CartQuoteModal(props: {
                                     {cartCopy.modal.endDate[activeLocale]}
                                   </p>
                                   <p className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-center text-sm font-semibold text-white">
-                                    {formatGiftDate(endDate)}
+                                    {formatGiftDate(endDate, activeLocale)}
                                   </p>
                                 </div>
                               </div>
@@ -275,12 +286,12 @@ export function CartQuoteModal(props: {
                         >
                           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/5 bg-slate-800/50">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/70 bg-card">
                                 <CategoryIcon size={18} className={meta.tone} />
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-bold text-white">{item.name}</span>
+                                  <span className="text-sm font-bold text-foreground">{item.name}</span>
                                   <CartTag
                                     label={meta.label[activeLocale]}
                                     tone={
@@ -309,29 +320,29 @@ export function CartQuoteModal(props: {
                                     />
                                   )}
                                   {item.activationFee && item.activationFee > 0 && (
-                                    <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] text-slate-500">
+                                    <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] text-muted-foreground">
                                       <span>{cartCopy.modal.activationFee[activeLocale]}</span>
                                       <button
                                         type="button"
                                         onClick={() => onUpdateItem(item.id, { isNewCustomer: !item.isNewCustomer })}
                                         className={`relative h-3.5 w-6 rounded-full border transition ${
                                           item.isNewCustomer
-                                            ? "border-[color:var(--theme-green-soft)] bg-[color:var(--theme-green-soft)]"
-                                            : "border-white/20 bg-white/10"
+                                            ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)]"
+                                            : "border-border/70 bg-card"
                                         }`}
                                         aria-label={cartCopy.modal.activationFee[activeLocale]}
                                         title={cartCopy.modal.activationFee[activeLocale]}
                                       >
                                         <span
-                                          className={`absolute left-0.5 top-0.5 h-2 w-2 rounded-full bg-white transition ${
-                                            item.isNewCustomer ? "translate-x-2.5" : ""
+                                          className={`absolute left-0.5 top-0.5 h-2 w-2 rounded-full transition ${
+                                            item.isNewCustomer ? "translate-x-2.5 bg-[var(--color-primary-contrast)]" : "bg-foreground"
                                           }`}
                                         />
                                       </button>
                                     </div>
                                   )}
                                 </div>
-                                <p className="mt-0.5 text-[9px] font-mono tracking-tighter text-slate-600">
+                                <p className="mt-0.5 text-[9px] font-mono tracking-tighter text-muted-foreground">
                                   #{String(index + 1).padStart(3, "0")}
                                 </p>
                               </div>
@@ -444,7 +455,7 @@ export function CartQuoteModal(props: {
                   <div className="glass-card relative flex flex-col overflow-x-hidden rounded-3xl border border-[color:var(--theme-green-muted)] bg-white/[0.01] p-6 sm:rounded-[28px] sm:p-8">
                     <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-[color:var(--theme-green-faint)] blur-[60px]" />
                     <div className="relative mb-8 flex items-center justify-between">
-                      <h2 className="text-lg font-bold text-white tracking-tight">
+                      <h2 className="text-lg font-bold text-foreground tracking-tight">
                         {cartCopy.modal.summaryTitle[activeLocale]}
                       </h2>
                       <button
@@ -459,7 +470,7 @@ export function CartQuoteModal(props: {
                     </div>
 
                     {customerOpen && (
-                      <div className="relative mb-5 rounded-2xl border border-white/10 bg-black/35 px-4 py-4">
+                      <div className="relative mb-5 rounded-2xl border border-white/10 bg-card/80 px-4 py-4">
                         <div className="mb-3 flex items-center justify-between">
                           <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">
                             {cartCopy.modal.customerInfo[activeLocale]}
@@ -526,7 +537,7 @@ export function CartQuoteModal(props: {
                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">
                             {cartCopy.modal.grandTotal[activeLocale]}
                           </span>
-                          <span className="text-4xl font-black tracking-tighter text-white">
+                          <span className="text-4xl font-black tracking-tighter text-foreground">
                             {formatMoneyWithDecimals(totals.total)}
                           </span>
                         </div>
@@ -537,14 +548,14 @@ export function CartQuoteModal(props: {
                       <button
                         type="button"
                         onClick={onCopySummary}
-                        className="w-full rounded-2xl bg-[color:var(--theme-green)] py-4 text-sm font-black uppercase tracking-widest text-[#04070b] shadow-xl shadow-[color:var(--theme-green-glow-soft)] transition-all hover:bg-[color:var(--theme-green-soft)] active:scale-[0.99]"
+                        className="w-full rounded-2xl bg-[color:var(--theme-green)] py-4 text-sm font-black uppercase tracking-widest text-[#04070b] shadow-xl shadow-[color:var(--theme-green-glow-soft)] transition-all hover:bg-[color:var(--theme-green-soft)] hover:shadow-[0_0_0_1px_var(--color-primary-faint)] active:scale-[0.99]"
                       >
                         {cartCopy.modal.copyPlan[activeLocale]}
                       </button>
                       <button
                         type="button"
                         onClick={onDownloadPdf}
-                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/5 bg-white/5 py-3 text-sm font-bold text-slate-200 transition-all hover:bg-white/10"
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border/70 bg-card py-3 text-sm font-bold text-foreground transition-all hover:border-[var(--color-primary-soft)] hover:bg-[var(--color-primary-faint)]"
                       >
                         <Receipt size={18} />
                         {cartCopy.modal.exportPdf[activeLocale]}
@@ -553,14 +564,14 @@ export function CartQuoteModal(props: {
                         <button
                           type="button"
                           onClick={onClearCart}
-                          className="rounded-xl bg-white/5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-white"
+                          className="rounded-xl border border-border/70 bg-card py-2 text-[10px] font-bold uppercase tracking-wider text-foreground/80 transition-colors hover:border-[var(--color-primary-soft)] hover:bg-[var(--color-primary-faint)] hover:text-foreground"
                         >
                           {cartCopy.modal.clear[activeLocale]}
                         </button>
                         <button
                           type="button"
                           onClick={onClose}
-                          className="rounded-xl bg-white/5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-600 transition-colors hover:text-white"
+                          className="rounded-xl border border-border/70 bg-card py-2 text-[10px] font-bold uppercase tracking-wider text-foreground/80 transition-colors hover:border-[var(--color-primary-soft)] hover:bg-[var(--color-primary-faint)] hover:text-foreground"
                         >
                           {cartCopy.modal.close[activeLocale]}
                         </button>
@@ -573,7 +584,7 @@ export function CartQuoteModal(props: {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-white/5 bg-black/40 px-5 py-4 text-[9px] font-medium tracking-wider text-slate-700 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-5 lg:px-10">
+        <div className="flex flex-col gap-2 border-t border-white/5 bg-card/80 px-5 py-4 text-[9px] font-medium tracking-wider text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-5 lg:px-10">
           <p>{cartCopy.modal.footer[activeLocale]}</p>
           <p>{formatCartCopy(cartCopy.modal.lastUpdated[activeLocale], { time: lastUpdated })}</p>
         </div>

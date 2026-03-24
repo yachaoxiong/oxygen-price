@@ -39,7 +39,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#03050b",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#03050b" },
+    { media: "(prefers-color-scheme: light)", color: "#f4f7fb" },
+  ],
   viewportFit: "cover",
 };
 
@@ -49,12 +52,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap"
         />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`
+            (function() {
+              try {
+                var key = 'oxygen-theme';
+                var stored = localStorage.getItem(key);
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var theme = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-theme', theme);
+                document.documentElement.style.colorScheme = theme;
+              } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.style.colorScheme = 'dark';
+              }
+            })();
+          `}
+        </Script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansSc.variable} ${teko.variable} antialiased`}

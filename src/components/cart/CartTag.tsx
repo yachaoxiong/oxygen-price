@@ -8,18 +8,18 @@ type CartTagProps = {
 export function CartTag({ label, tone = "slate" }: CartTagProps) {
   const toneClass =
     tone === "cyan"
-      ? "border-[color:var(--theme-green-soft)] bg-[color:var(--theme-green-faint)] text-[color:var(--theme-green)]"
+      ? "border-border/70 bg-card text-foreground"
       : tone === "amber"
-        ? "border-amber-300/40 bg-amber-500/20 text-amber-100"
+        ? "border-border/70 bg-card text-foreground"
         : tone === "indigo"
-          ? "border-indigo-400/35 bg-indigo-500/15 text-indigo-100"
+          ? "border-border/70 bg-card text-foreground"
           : tone === "emerald"
-            ? "border-emerald-400/35 bg-emerald-500/15 text-emerald-100"
+            ? "border-border/70 bg-card text-foreground"
             : tone === "sky"
-              ? "border-sky-400/35 bg-sky-500/15 text-sky-100"
+              ? "border-border/70 bg-card text-foreground"
               : tone === "violet"
-                ? "border-violet-400/35 bg-violet-500/15 text-violet-100"
-                : "border-white/20 bg-white/12 text-slate-200";
+                ? "border-border/70 bg-card text-foreground"
+                : "border-border/70 bg-card text-muted-foreground";
 
   return (
     <span

@@ -15,8 +15,8 @@ import { asNumber, formatMoney } from "@/lib/formatters/number";
 import { printHtml } from "@/lib/export/print";
 import { glass } from "@/lib/pricing/constants";
 import tabCopy from "@/lib/tabCopy.json";
-import { buildCycleSummaryText, buildPtSummaryText } from "@/lib/export/quoteBuilders";
-import { buildCyclePdfHtml, buildPtPdfHtml } from "@/lib/export/pdfBuilders";
+import { buildPtSummaryText } from "@/lib/export/quoteBuilders";
+import { buildPtPdfHtml } from "@/lib/export/pdfBuilders";
 import { buildCartSummaryText } from "@/lib/cart/cartTextBuilder";
 import { buildCartPdfHtml } from "@/lib/export/cartPdfBuilder";
 import { cartCopy } from "@/lib/cart/cartCopy";
@@ -223,8 +223,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     setCycleSelectedCourses,
     cycleClientName,
     setCycleClientName,
-    cycleCopied,
-    setCycleCopied,
     cyclePtPreset,
     setCyclePtPreset,
     cycleUnitMember1v1,
@@ -553,59 +551,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     setCycleSelectedPtProgram(null);
   }
 
-  async function handleCopyCycleSummary() {
-    if (!selectedCyclePlan || !cycleSelectedPtProgram) return;
-    const summary = buildCycleSummaryText({
-      reportDate: ptReportDate,
-      clientName: cycleClientName,
-      cycleProgram: selectedCyclePlan.program,
-      courseNameZh: cycleSelectedPtProgram.nameZh,
-      courseNameEn: cycleSelectedPtProgram.nameEn,
-      activeLabel: cycleActiveLabel,
-      unit: cycleActivePresetUnit,
-      qty: cycleActivePresetQty,
-      subtotal: cycleSubtotal,
-      credit: cycleCredit,
-      afterCredit: cycleAfterCredit,
-      tax: cycleTax,
-      total: cycleTotal,
-      courses: cycleSelectedCourses,
-    });
-
-    await navigator.clipboard.writeText(summary);
-    setCycleCopied(true);
-    setTimeout(() => setCycleCopied(false), 2000);
-  }
-
-  function handleDownloadCyclePdf() {
-    if (!selectedCyclePlan || !cycleSelectedPtProgram) return;
-    const reportDate = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
-
-    const html = buildCyclePdfHtml({
-      program: selectedCyclePlan.program,
-      reportDate,
-      clientName: cycleClientName,
-      activeLabel: cycleActiveLabel[activeLocale],
-      courseNameZh: cycleSelectedPtProgram.nameZh,
-      courseNameEn: cycleSelectedPtProgram.nameEn,
-      weeklySessions: selectedCyclePlan.weeklySessions,
-      minSessions: selectedCyclePlan.minSessions,
-      wpdFollowups: selectedCyclePlan.wpdFollowups,
-      assessmentsReports: selectedCyclePlan.assessmentsReports,
-      membershipGift: selectedCyclePlan.membershipGift,
-      extraBenefits: selectedCyclePlan.extraBenefits,
-      unitPrice: cycleActivePresetUnit,
-      qty: cycleActivePresetQty,
-      subtotal: cycleSubtotal,
-      credit: cycleCredit,
-      afterCredit: cycleAfterCredit,
-      tax: cycleTax,
-      total: cycleTotal,
-      courses: cycleSelectedCourses,
-    });
-
-    printHtml(html, { width: 900, height: 700 });
-  }
 
   type StandardRow = (typeof groupedSections.standardSections)[number]["rows"][number];
   type GroupClassRow = NonNullable<typeof groupedSections.groupClassRows>[number];
@@ -798,7 +743,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
 
   return (
     <div
-      className="relative min-h-screen  bg-[#03050b] text-slate-100 pwa-screen"
+      className="relative min-h-screen bg-background text-foreground pwa-screen"
       style={{ transform: refreshPull ? `translateY(${refreshPull}px)` : undefined, transition: refreshing ? "transform 0.2s ease" : undefined }}
     >
       <div
@@ -807,7 +752,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
         style={{ height: "env(safe-area-inset-top)", opacity: refreshPull > 2 || refreshing ? 1 : 0 }}
       >
         <div
-          className="flex items-center gap-2 px-3 py-1 text-[11px] text-slate-200"
+          className="flex items-center gap-2 px-3 py-1 text-[11px] text-foreground/80"
           style={{ transform: `translateY(${Math.min(0, 10 - refreshPull / 4)}px)` }}
         >
           {refreshing ? (
@@ -884,12 +829,12 @@ function PricingShellContent({ section }: { section: PricingSection }) {
 
               return (
                 <article key={category} className={`${glass} membership-layered-shell px-4 py-10 md:px-8 lg:px-12`}>
-                  <header className="membership-layered-header flex flex-col gap-6 border-b border-white/10 pb-10 lg:flex-row lg:items-end lg:justify-between">
+                  <header className="membership-layered-header flex flex-col gap-6 border-b border-border pb-10 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                      <h3 className="membership-layered-title text-5xl font-black tracking-tight text-white md:text-6xl">
+                      <h3 className="membership-layered-title text-5xl font-black tracking-tight text-foreground md:text-6xl">
                         {getCopy(categoryMeta[category])}
                       </h3>
-                      <p className="mt-3 text-[10px] uppercase tracking-[0.6em] text-zinc-500">
+                      <p className="mt-3 text-[10px] uppercase tracking-[0.6em] text-muted-foreground">
                         {activeLocale === "zh" ? "ONYX TEAL DIGITAL INTERFACE" : "ONYX TEAL DIGITAL INTERFACE"}
                       </p>
                     </div>
@@ -936,39 +881,39 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                       return (
                         <article key={row.key} className={`membership-layered-card ${cardTone}`}>
                           <div className="membership-layered-card-head">
-                            <span className={`text-[10px] font-bold uppercase tracking-widest ${isAnnual ? "text-[var(--membership-neon)]" : "text-zinc-500"}`}>
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${isAnnual ? "text-[var(--membership-neon)]" : "text-muted-foreground"}`}>
                               {activeLocale === "zh" ? `方案 ${index + 1}` : `Plan ${index + 1}`}
                             </span>
-                            <h4 className="mt-2 text-3xl font-black text-white">
+                            <h4 className="mt-2 text-3xl font-black text-foreground">
                               {index + 1}. {activeName}
                             </h4>
-                            <p className="mt-1 text-[10px] uppercase text-zinc-500">
+                            <p className="mt-1 text-[10px] uppercase text-muted-foreground">
                               {activeLocale === "zh" ? "周期" : "Cycle"}: {cycleLabel}
                             </p>
                           </div>
 
                           <div className="membership-layered-price">
-                            <span className="text-[10px] uppercase tracking-tight text-zinc-500">
+                            <span className="text-[10px] uppercase tracking-tight text-muted-foreground">
                               {activeLocale === "zh" ? "会籍价格" : "Membership Price"}
                             </span>
                             <div className="membership-layered-price-value">
                               {formatMoney(displayPrice ?? undefined)}
                               {isAnnual && (
-                                <span className="ml-2 text-[10px] uppercase tracking-wide text-zinc-400">
+                                <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
                                   {activeLocale === "zh" ? "每月" : "Per month"}
                                 </span>
                               )}
                             </div>
-                            <div className="mt-4 text-[10px] text-zinc-600">
+                            <div className="mt-4 text-[10px] text-muted-foreground">
                               <p className="uppercase">{activeLocale === "zh" ? "激活费" : "Activation"}</p>
-                              <p className={`${isAnnual ? "text-[var(--membership-neon)]" : "text-zinc-500"} mt-1`}>
+                              <p className={`${isAnnual ? "text-[var(--membership-neon)]" : "text-muted-foreground"} mt-1`}>
                                 {activationFeeText}
                               </p>
                             </div>
                           </div>
 
                           <div className="membership-layered-benefits">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                               {activeLocale === "zh" ? "核心权益" : "Core Access"}
                             </p>
                             <ul className="membership-layered-list">
@@ -982,7 +927,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                           </div>
 
                           <div className="membership-layered-bonus">
-                            <p className="text-[9px] uppercase text-zinc-600">
+                            <p className="text-[9px] uppercase text-muted-foreground">
                               {activeLocale === "zh" ? "加赠福利" : "Bonus"}
                             </p>
                             {bonusItems.length > 0 ? (
@@ -995,7 +940,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                                   };
                                   const Icon = iconMap[item.en] ?? Gift;
                                   return (
-                                    <div key={`${row.key}-${item.en}`} className="flex items-center justify-between gap-3 text-zinc-300">
+                                    <div key={`${row.key}-${item.en}`} className="flex items-center justify-between gap-3 text-foreground/80">
                                       <span className="flex items-center gap-2">
                                         <Icon size={14} className="text-[var(--membership-neon)]" />
                                         {getCopy(item)}
@@ -1006,7 +951,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                                 })}
                               </div>
                             ) : (
-                              <p className="text-[12px] italic text-zinc-700">{getCopy(tabCopy.pages.membership.copy.bonusItems.none)}</p>
+                              <p className="text-[12px] italic text-muted-foreground">{getCopy(tabCopy.pages.membership.copy.bonusItems.none)}</p>
                             )}
                             <button
                               type="button"
@@ -1028,10 +973,10 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                   <div className="mt-12 space-y-8">
                     <section className="space-y-6">
                       <div className="flex items-end justify-between">
-                        <h4 className="text-3xl font-black tracking-tight text-white">
+                        <h4 className="text-3xl font-black tracking-tight text-foreground">
                           {getCopy(tabCopy.pages.membership.copy.newSignupTitle)}
                         </h4>
-                        <span className="text-[9px] font-black uppercase tracking-[0.35em] text-zinc-500">
+                        <span className="text-[9px] font-black uppercase tracking-[0.35em] text-muted-foreground">
                           {getCopy(tabCopy.pages.membership.copy.newSignupBadge)}
                         </span>
                       </div>
@@ -1040,7 +985,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                           <div key={benefit.en} className="membership-layered-panel">
                             <div className="flex items-center gap-3">
                               <span className="membership-layered-dot" />
-                              <p className="text-[13px] font-medium text-zinc-300">
+                              <p className="text-[13px] font-medium text-foreground/80">
                                 {getCopy(benefit)}
                               </p>
                             </div>
@@ -1050,12 +995,12 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                     </section>
 
                     <section className="space-y-5 pb-4">
-                      <div className="flex items-end justify-between border-b border-white/10 pb-4">
+                      <div className="flex items-end justify-between border-b border-border pb-4">
                         <div>
-                          <h4 className="text-3xl font-black tracking-tight text-white uppercase">
+                          <h4 className="text-3xl font-black tracking-tight text-foreground uppercase">
                             {getCopy(tabCopy.pages.membership.copy.groupClass.title)}
                           </h4>
-                          <p className="mt-1 text-[9px] uppercase tracking-[0.25em] text-zinc-600">
+                          <p className="mt-1 text-[9px] uppercase tracking-[0.25em] text-muted-foreground">
                             {activeLocale === "zh" ? "Class Pricing Structure" : "Class Pricing Structure"}
                           </p>
                         </div>
@@ -1084,10 +1029,10 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                           return (
                             <article key={row.key} className="membership-layered-class">
                               <div className="md:col-span-4">
-                                <h5 className="text-xl font-black text-white">
+                                <h5 className="text-xl font-black text-foreground">
                                   {index + 1}. {displayName}
                                 </h5>
-                                <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-1">
+                                <p className="text-[9px] text-muted-foreground uppercase tracking-widest mt-1">
                                   {activeLocale === "zh" ? "模式" : "Mode"}: {modeLabel} | {activeLocale === "zh" ? "周期" : "Duration"}: {durationLabel}
                                 </p>
                               </div>
@@ -1146,25 +1091,25 @@ function PricingShellContent({ section }: { section: PricingSection }) {
           {section === "stored_value" && (
             <article className={`${glass} stored-value-shell relative p-5 sm:p-6 lg:p-12`}>
               <div className="w-full max-w-[1400px] mx-auto flex flex-col gap-10 sm:gap-12">
-                <header className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/5 pb-8 sm:pb-10">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-border/70 pb-8 sm:pb-10">
                   <div className="space-y-1">
                     <div className="flex items-center gap-3">
                       <span className="w-12 h-px bg-gradient-to-r from-[#4D7CFF] to-[#EC4899]" />
-                      <span className="text-[10px] font-bold tracking-[0.6em] uppercase text-slate-500">
+                      <span className="text-[10px] font-bold tracking-[0.6em] uppercase text-muted-foreground">
                         {activeLocale === "zh" ? "会员计划" : "Membership Programs"}
                       </span>
                     </div>
-                    <h3 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tighter">
+                    <h3 className="text-4xl sm:text-5xl md:text-6xl font-black text-foreground tracking-tighter">
                       {getCopy(tabCopy.pages.storedValue.copy.title)}
                     </h3>
                   </div>
-                  <div className="mt-6 md:mt-0 bg-white/5 px-6 sm:px-8 py-4 sm:py-5 border border-white/10 backdrop-blur-md">
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                  <div className="mt-6 md:mt-0 bg-card/70 px-6 sm:px-8 py-4 sm:py-5 border border-border/70 backdrop-blur-md">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
                       {activeLocale === "zh" ? "当前活动" : "Active Tiers"}
                     </p>
-                    <p className="text-3xl sm:text-4xl md:text-5xl font-futuristic font-bold text-white leading-none">
+                    <p className="text-3xl sm:text-4xl md:text-5xl font-futuristic font-bold text-foreground leading-none">
                       {rechargePlans.length.toString().padStart(2, "0")}
-                      <span className="text-xs font-sans text-slate-400 align-middle ml-2">
+                      <span className="text-xs font-sans text-muted-foreground align-middle ml-2">
                         {activeLocale === "zh" ? "项活动" : "items"}
                       </span>
                     </p>
@@ -1174,7 +1119,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
                   <aside className="order-2 lg:order-1 lg:col-span-4 lg:sticky lg:top-12 text-left">
                     <div className="mb-8 sm:mb-10">
-                      <h4 className="text-xl sm:text-2xl font-bold text-white mb-1">
+                      <h4 className="text-xl sm:text-2xl font-bold text-foreground mb-1">
                         {getCopy(tabCopy.pages.storedValue.copy.promoTitle)}
                       </h4>
                     </div>
@@ -1187,19 +1132,19 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                             type="button"
                             key={`${promo.trigger}-${index}`}
                             onClick={() => setSelectedPromoTrigger(promo.trigger)}
-                            className={`benefit-item group flex w-full items-center text-left justify-between p-5 border-b border-white/5 transition-colors hover:bg-white/[0.05] hover:pl-7 ${
-                              isSelected ? "bg-white/[0.04]" : ""
+                            className={`benefit-item group flex w-full items-center text-left justify-between p-5 border-b border-border/70 transition-colors hover:bg-card/70 hover:pl-7 ${
+                              isSelected ? "bg-card/80" : ""
                             }`}
                           >
                             <div className="flex items-center gap-4">
-                              <span className={`material-symbols-outlined text-slate-500 transition-colors ${
-                                isSelected ? "text-[#4D7CFF]" : "group-hover:text-[#A855F7]"
+                              <span className={`material-symbols-outlined text-muted-foreground transition-colors ${
+                                isSelected ? "text-foreground" : "group-hover:text-foreground/80"
                               }`}>verified</span>
                               <div>
-                                <h3 className="text-[13px] font-bold text-slate-200">
+                                <h3 className="text-[13px] font-bold text-foreground">
                                   {getCopy(promo.title)}
                                 </h3>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                <p className="text-[11px] text-muted-foreground mt-0.5">
                                   {getCopy(promo.detail)}
                                 </p>
                               </div>
@@ -1244,10 +1189,10 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                             ? "shadow-[0_0_20px_rgba(168,85,247,0.4)]"
                             : "shadow-[0_0_20px_rgba(77,124,255,0.4)]";
                         const buttonTint = isTopTier
-                          ? "border-[#EC4899]/40 text-[#EC4899]"
+                          ? "border-border/80 text-foreground"
                           : isMidTier
-                            ? "border-[#A855F7]/40 text-[#A855F7]"
-                            : "border-[#4D7CFF]/40 text-[#4D7CFF]";
+                            ? "border-border/80 text-foreground"
+                            : "border-border/80 text-foreground";
                         const perkList = activeLocale === "zh"
                           ? ["专属会员卡面", "包含全场通用权限"]
                           : ["Exclusive card", "All-access"];
@@ -1262,7 +1207,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                             }`}
                           >
                             {showBadge && (
-                              <div className={`absolute top-0 right-6 sm:right-10 z-30 -translate-y-1/2 px-3 sm:px-4 py-1 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white opacity-100 pointer-events-none ${
+                              <div className={`absolute top-0 right-6 sm:right-10 z-30 -translate-y-1/2 px-3 sm:px-4 py-1 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-foreground opacity-100 pointer-events-none ${
                                 isTopTier ? "bg-[#EC4899]" : "bg-[#A855F7]"
                               }`}>
                                 {isMidTier
@@ -1276,28 +1221,28 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                                 <p className={`font-futuristic ${titleSize} tracking-[0.3em] ${meta.accentText} mb-1`}>
                                   {activeLocale === "zh" ? meta.title.zh : meta.title.en.toUpperCase()}
                                 </p>
-                                <h4 className={`font-futuristic font-bold text-white tracking-wide ${amountSize}`}>
+                                <h4 className={`font-futuristic font-bold text-foreground tracking-wide ${amountSize}`}>
                                   {amountDisplay}
                                 </h4>
                                 <div className={`mt-6 grid grid-cols-2 md:grid-cols-3 items-end ${gridGap} border-t border-white/10 ${gridPadding}`}>
                                   <div>
-                                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mb-2">
+                                    <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest mb-2">
                                       {activeLocale === "zh" ? "赠送会员" : "Membership"}
                                     </p>
-                                    <p className={`${valueClass} text-white`}>
+                                    <p className={`${valueClass} text-foreground`}>
                                       {getCopy(plan.membershipGift)}
                                     </p>
                                   </div>
                                   <div>
-                                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mb-2">
+                                    <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest mb-2">
                                       {activeLocale === "zh" ? "赠送积分" : "Bonus Credit"}
                                     </p>
-                                    <p className={`${valueClass} text-white`}>
+                                    <p className={`${valueClass} text-foreground`}>
                                       {formatMoney(plan.bonusCredit)}
                                     </p>
                                   </div>
                                   <div>
-                                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mb-2">
+                                    <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest mb-2">
                                       {activeLocale === "zh" ? "赠送价值" : "Gift Value"}
                                     </p>
                                     <p className={`${valueClass} ${meta.accentText}`}>
@@ -1308,7 +1253,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                               </div>
 
                               <div className="flex w-full md:w-auto flex-col items-start md:items-end justify-between gap-6 md:gap-8 self-stretch">
-                                <div className={`${isTopTier ? "space-y-4 text-base" : isMidTier ? "space-y-3 text-sm" : "space-y-2 text-[11px]"} text-left md:text-right text-slate-100`}>
+                                <div className={`${isTopTier ? "space-y-4 text-base" : isMidTier ? "space-y-3 text-sm" : "space-y-2 text-[11px]"} text-left md:text-right text-foreground`}>
                                   {perkList.map((perk) => (
                                     <div key={perk} className={`flex items-center justify-start md:justify-end gap-2 ${isTopTier ? "font-bold tracking-tight" : ""}`}>
                                       <span className={isTopTier ? "italic" : ""}>{perk}</span>
@@ -1324,7 +1269,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                                     event.stopPropagation();
                                     addCartStoredValue(plan);
                                   }}
-                                  className={`btn-join ${buttonPadding} font-bold tracking-widest uppercase transition-all duration-300 border-2 bg-black/40 backdrop-blur-sm ${buttonTint} ${buttonShadow} hover:brightness-110 active:scale-95`}
+                                  className={`btn-join ${buttonPadding} font-bold tracking-widest uppercase transition-all duration-300 border-2 bg-card/40 backdrop-blur-sm ${buttonTint} ${buttonShadow} hover:brightness-110 active:scale-95`}
                                   aria-label="加入报价"
                                   title="加入报价"
                                 >
@@ -1346,7 +1291,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
             <article className={`${glass} p-4`}>
               <div className="mb-4 flex items-end justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-white">{getCopy(tabCopy.pages.personalTraining.copy.title)}</h3>
+                  <h3 className="text-lg font-semibold text-foreground">{getCopy(tabCopy.pages.personalTraining.copy.title)}</h3>
                 </div>
               </div>
 
@@ -1379,7 +1324,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                     <div key={row.key}>
                       {isFirstAssessment && (
                         <div className="mb-2 mt-2 rounded-xl px-3 py-2">
-                          <p className="text-sm font-semibold text-white">{getCopy(tabCopy.pages.personalTraining.copy.assessment)}</p>
+                          <p className="text-sm font-semibold text-foreground">{getCopy(tabCopy.pages.personalTraining.copy.assessment)}</p>
                         </div>
                       )}
                       <article
@@ -1390,7 +1335,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                           }
                           handlePtCardTap(row);
                         }}
-                        className={`group relative overflow-hidden rounded-xl border bg-black px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] transition-all duration-500 ${
+                        className={`group relative overflow-hidden rounded-xl border bg-card px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)] transition-all duration-500 ${
                           isAssessmentItem ? "" : "active:scale-[0.992]"
                         } ${
                           isSelected
@@ -1410,16 +1355,16 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                                 </span>
                               )}
                               <div className="rounded-md border border-emerald-300/30 bg-emerald-500/10 p-1.5">
-                                <ProgramIcon size={14} className="text-emerald-200" />
+                                <ProgramIcon size={14} className="text-foreground/80" />
                               </div>
                             </div>
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-sm font-semibold text-white">
+                                <p className="text-sm font-semibold text-foreground">
                                   {index + 1}. {displayName}
                                 </p>
                                 {row.key.startsWith("assessment:") && (
-                                  <span className="rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2 py-0.5 text-[10px] text-cyan-100">
+                                  <span className="rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2 py-0.5 text-[10px] text-foreground">
                                     {getCopy(tabCopy.pages.personalTraining.copy.assessment)}
                                   </span>
                                 )}
@@ -1433,13 +1378,13 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                             {focusText && (
                               <div className="text-xs">
                                 <p className="text-slate-500">{getCopy(tabCopy.pages.personalTraining.copy.trainingFocus)}</p>
-                                <p className="mt-1 text-slate-300">{focusText}</p>
+                                <p className="mt-1 text-foreground/80">{focusText}</p>
                               </div>
                             )}
                             {idealForText && (
                               <div className="text-xs">
                                 <p className="text-slate-500">{getCopy(tabCopy.pages.personalTraining.copy.idealFor)}</p>
-                                <p className="mt-1 text-slate-300">{idealForText}</p>
+                                <p className="mt-1 text-foreground/80">{idealForText}</p>
                               </div>
                             )}
                           </div>
@@ -1448,20 +1393,20 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                         <div className={`relative mt-3 grid gap-2 text-xs md:grid-cols-2 ${isAssessmentItem ? "pb-7" : ""}`}>
                           <div className="border-l-2 border-emerald-300/40 pl-2">
                             <p className="text-slate-500">{getCopy(tabCopy.pages.personalTraining.copy.pricing.label1v1)}</p>
-                            <p className="text-slate-300">
-                              {getCopy(tabCopy.pages.personalTraining.copy.pricing.member)}: <span className="font-semibold text-emerald-200">{formatMoney(row.member1v1)}</span>
+                            <p className="text-foreground/80">
+                              {getCopy(tabCopy.pages.personalTraining.copy.pricing.member)}: <span className="font-semibold text-foreground/80">{formatMoney(row.member1v1)}</span>
                             </p>
-                            <p className="text-slate-300">
-                              {getCopy(tabCopy.pages.personalTraining.copy.pricing.nonMember)}: <span className="font-semibold text-amber-200">{formatMoney(row.nonMember1v1)}</span>
+                            <p className="text-foreground/80">
+                              {getCopy(tabCopy.pages.personalTraining.copy.pricing.nonMember)}: <span className="font-semibold text-foreground/80">{formatMoney(row.nonMember1v1)}</span>
                             </p>
                           </div>
                           <div className="border-l-2 border-cyan-300/40 pl-2">
                             <p className="text-slate-500">{getCopy(tabCopy.pages.personalTraining.copy.pricing.label1v2)}</p>
-                            <p className="text-slate-300">
-                              {getCopy(tabCopy.pages.personalTraining.copy.pricing.member)}: <span className="font-semibold text-emerald-200">{formatMoney(row.member1v2)}</span>
+                            <p className="text-foreground/80">
+                              {getCopy(tabCopy.pages.personalTraining.copy.pricing.member)}: <span className="font-semibold text-foreground/80">{formatMoney(row.member1v2)}</span>
                             </p>
-                            <p className="text-slate-300">
-                              {getCopy(tabCopy.pages.personalTraining.copy.pricing.nonMember)}: <span className="font-semibold text-amber-200">{formatMoney(row.nonMember1v2)}</span>
+                            <p className="text-foreground/80">
+                              {getCopy(tabCopy.pages.personalTraining.copy.pricing.nonMember)}: <span className="font-semibold text-foreground/80">{formatMoney(row.nonMember1v2)}</span>
                             </p>
                           </div>
 
@@ -1473,7 +1418,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                                   event.stopPropagation();
                                   addAssessmentToCart(row);
                                 }}
-                                className={`membership-layered-action membership-layered-action--inline membership-layered-action--compact inline-flex items-center justify-center h-6 px-2.5 text-[10px] bg-emerald-400/30 border-emerald-300/70 text-emerald-50 shadow-[0_0_16px_rgba(16,185,129,0.4)] hover:bg-emerald-400/40 hover:border-emerald-200/90 hover:text-emerald-50 ${
+                                className={`membership-layered-action membership-layered-action--inline membership-layered-action--compact inline-flex items-center justify-center h-6 px-2.5 text-[10px] bg-emerald-400/30 border-emerald-300/70 text-foreground shadow-[0_0_16px_rgba(16,185,129,0.4)] hover:bg-emerald-400/40 hover:border-emerald-200/90 hover:text-foreground ${
                                   addingItemKey === `assessment-${row.key}` ? "membership-layered-action--active" : ""
                                 }`}
                                 aria-label="加入报价"
@@ -1496,10 +1441,10 @@ function PricingShellContent({ section }: { section: PricingSection }) {
           {section === "cycle_plan" && groupedSections.cyclePlanRows && (
             <article className={`${glass} overflow-hidden p-4 md:p-5`}>
               <div className="mb-5 flex items-center justify-between gap-2">
-                <h3 className="text-xl font-bold tracking-tight text-white">
+                <h3 className="text-xl font-bold tracking-tight text-foreground">
                   {getCopy(tabCopy.pages.cyclePlan.copy.title)}
                 </h3>
-                <p className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-100">
+                <p className="rounded-full border border-violet-300/30 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-foreground">
                   {getCopy(tabCopy.pages.cyclePlan.copy.badge)}
                 </p>
               </div>
@@ -1510,75 +1455,75 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                     <button
                       type="button"
                       onClick={() => handleCyclePlanCardTap(row)}
-                      className={`group relative w-full overflow-hidden rounded-2xl border bg-[linear-gradient(135deg,#080f1d_0%,#0b1630_56%,#10142a_100%)] p-4 text-left transition-all duration-300 active:scale-[0.995] ${
+                      className={`group relative w-full overflow-hidden rounded-2xl border bg-card p-4 text-left transition-all duration-300 active:scale-[0.995] ${
                         cyclePreviewPlan?.program === row.program
-                          ? "border-violet-300/55 shadow-[0_0_28px_rgba(167,139,250,0.2)]"
-                          : "border-white/12 hover:border-violet-300/45 hover:shadow-[0_0_28px_rgba(167,139,250,0.18)]"
+                          ? "border-border shadow-[0_0_20px_rgba(124,58,237,0.12)]"
+                          : "border-border/80 hover:border-border hover:shadow-[0_0_16px_rgba(124,58,237,0.08)]"
                       }`}
                     >
-                      <div className={`pointer-events-none absolute inset-0 transition-opacity duration-300 bg-[radial-gradient(circle_at_85%_18%,rgba(167,139,250,0.2),transparent_35%)] ${cyclePreviewPlan?.program === row.program ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                      <div className={`pointer-events-none absolute inset-0 transition-opacity duration-300 bg-[radial-gradient(circle_at_85%_18%,color-mix(in_srgb,var(--color-primary-soft)_30%,transparent),transparent_40%)] ${cyclePreviewPlan?.program === row.program ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
 
                       <div className="relative grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-center">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2">
                             {cyclePreviewPlan?.program === row.program && (
                               <span className="inline-flex h-5 w-5 items-center justify-center">
-                                <span className="h-2.5 w-2.5 rounded-full bg-violet-200 shadow-[0_0_12px_rgba(196,181,253,0.95)] animate-[pulse_1.5s_ease-in-out_infinite]" />
+                                <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary-soft)] shadow-[0_0_10px_color-mix(in_srgb,var(--color-primary-soft)_45%,transparent)] animate-[pulse_1.5s_ease-in-out_infinite]" />
                               </span>
                             )}
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-300/35 bg-violet-500/15 text-sm font-bold text-violet-100">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-card text-sm font-bold text-foreground">
                               {idx + 1}
                             </div>
                           </div>
                           <div>
-                            <p className="text-[11px] uppercase tracking-[0.12em] text-violet-200/80">
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
                               {activeLocale === "zh" ? "周期方案" : "Cycle Program"}
                             </p>
-                            <p className="mt-0.5 text-[17px] font-semibold text-white">
+                            <p className="mt-0.5 text-[17px] font-semibold text-foreground">
                               {activeLocale === "zh" ? row.programZh : row.programEn ?? row.programZh}
                             </p>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-                            <p className="text-[10px] leading-tight text-slate-400">
+                          <div className="rounded-lg border border-border/70 bg-card px-2.5 py-2">
+                            <p className="text-[10px] leading-tight text-muted-foreground">
                               {cycleCopy[activeLocale].weeklySessions}
                             </p>
-                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.weeklySessions}</p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">{row.weeklySessions}</p>
                           </div>
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-                            <p className="text-[10px] leading-tight text-slate-400">
+                          <div className="rounded-lg border border-border/70 bg-card px-2.5 py-2">
+                            <p className="text-[10px] leading-tight text-muted-foreground">
                               {cycleCopy[activeLocale].minSessions}
                             </p>
-                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.minSessions}</p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">{row.minSessions}</p>
                           </div>
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-                            <p className="text-[10px] leading-tight text-slate-400">
+                          <div className="rounded-lg border border-border/70 bg-card px-2.5 py-2">
+                            <p className="text-[10px] leading-tight text-muted-foreground">
                               {cycleCopy[activeLocale].followups}
                             </p>
-                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.wpdFollowups}</p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">{row.wpdFollowups}</p>
                           </div>
-                          <div className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
-                            <p className="text-[10px] leading-tight text-slate-400">
+                          <div className="rounded-lg border border-border/70 bg-card px-2.5 py-2">
+                            <p className="text-[10px] leading-tight text-muted-foreground">
                               {cycleCopy[activeLocale].assessments}
                             </p>
-                            <p className="mt-1 text-sm font-semibold text-cyan-100">{row.assessmentsReports}</p>
+                            <p className="mt-1 text-sm font-semibold text-foreground">{row.assessmentsReports}</p>
                           </div>
                         </div>
 
                         <div className="space-y-2 lg:text-right">
                           <div className="rounded-lg border border-emerald-300/30 bg-emerald-500/10 px-3 py-2">
-                            <p className="text-[10px] leading-tight text-emerald-100/80">
+                            <p className="text-[10px] leading-tight text-muted-foreground">
                               {cycleCopy[activeLocale].membershipGift}
                             </p>
-                            <p className="mt-1 text-sm font-semibold text-emerald-50">
+                            <p className="mt-1 text-sm font-semibold text-foreground">
                               {activeLocale === "zh" ? row.membershipGiftZh : row.membershipGiftEn}
                             </p>
                           </div>
-                          <p className="text-xs text-violet-100/90">
+                          <p className="text-xs text-muted-foreground">
                             {cycleCopy[activeLocale].extraBenefits}: 
-                            <span className="font-medium text-violet-50">
+                            <span className="font-medium text-foreground/80">
                               {activeLocale === "zh" ? row.extraBenefitsZh : row.extraBenefitsEn}
                             </span>
                           </p>
@@ -1590,10 +1535,10 @@ function PricingShellContent({ section }: { section: PricingSection }) {
               </div>
 
               <div className="mt-4 rounded-xl border border-violet-300/25 bg-violet-500/10 p-4">
-                <h4 className="text-sm font-semibold text-violet-100">
+                <h4 className="text-sm font-semibold text-foreground">
                   {activeLocale === "zh" ? "课程福利" : "Program Benefits"}
                 </h4>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground">
                   {tabCopy.pages.cyclePlan.copy.programBenefits.map((benefit) => (
                     <li key={benefit.en}>{getCopy(benefit)}</li>
                   ))}
@@ -1658,7 +1603,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
             activeLocale={activeLocale}
             cycleStep={cycleStep}
             cyclePtProgramOptions={cyclePtProgramOptions}
-            cycleSelectedPtProgram={cycleSelectedPtProgram}
             cycleSelectedCourses={cycleSelectedCourses}
             cycleClientName={cycleClientName}
             onSetCycleSelectedCourses={setCycleSelectedCourses}
@@ -1668,9 +1612,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
             cycleAfterCredit={cycleAfterCredit}
             cycleTax={cycleTax}
             cycleTotal={cycleTotal}
-            cycleCopied={cycleCopied}
-            cycleActivePresetUnit={cycleActivePresetUnit}
-            cycleActivePresetQty={cycleActivePresetQty}
             onClose={closeCyclePlanCalculator}
             onBackdropClick={handleCycleBackdropClick}
             onSetCycleStep={setCycleStep}
@@ -1678,8 +1619,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
             onSetCycleClientName={setCycleClientName}
             onSetCycleCreditInputStr={setCycleCreditInputStr}
             onSetCycleCredit={setCycleCredit}
-            onCopySummary={handleCopyCycleSummary}
-            onDownloadPdf={handleDownloadCyclePdf}
             onAddToCart={handleAddCycleToCart}
           />
         )}

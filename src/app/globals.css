@@ -1,10 +1,34 @@
 @import "tailwindcss";
 
-:root {
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
   --background: #03050b;
   --foreground: #e7edf7;
   --modal-backdrop: rgba(4, 7, 11, 0.8);
-  --theme-green: #00f296;
+
+  --color-page-bg: #03050b;
+  --color-page-bg-strong: #020308;
+  --color-page-bg-soft: #0b1626;
+  --color-text-primary: #e7edf7;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #6b7280;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+  --color-surface: rgba(10, 15, 24, 0.98);
+  --color-surface-elevated: rgba(17, 25, 40, 0.55);
+  --color-surface-overlay: rgba(5, 11, 20, 0.95);
+  --color-hover: rgba(0, 242, 150, 0.1);
+  --color-shadow-lg: rgba(0, 0, 0, 0.6);
+  --color-primary: #00f296;
+  --color-primary-soft: rgba(0, 242, 150, 0.35);
+  --color-primary-faint: rgba(0, 242, 150, 0.12);
+  --color-primary-contrast: #042015;
+  --color-danger: #f87171;
+  --color-danger-soft: rgba(248, 113, 113, 0.2);
+  --color-danger-border: rgba(248, 113, 113, 0.4);
+
+  --theme-green: var(--color-primary);
   --theme-green-soft: rgba(0, 242, 150, 0.25);
   --theme-green-faint: rgba(0, 242, 150, 0.05);
   --theme-green-muted: rgba(0, 242, 150, 0.02);
@@ -13,6 +37,48 @@
   --theme-green-glow-strong: rgba(0, 242, 150, 0.8);
   --theme-green-glow-soft: rgba(0, 242, 150, 0.15);
   --theme-green-glow-mid: rgba(0, 242, 150, 0.4);
+  --invoice-brand-green: #2ecc71;
+  --invoice-dark-grey: #2d3436;
+  --invoice-light-grey: #636e72;
+  --invoice-border: #dfe6e9;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --background: #f4f7fb;
+  --foreground: #132033;
+  --modal-backdrop: rgba(18, 30, 48, 0.24);
+
+  --color-page-bg: #f4f7fb;
+  --color-page-bg-strong: #edf2f8;
+  --color-page-bg-soft: #ffffff;
+  --color-text-primary: #132033;
+  --color-text-secondary: #4c5f76;
+  --color-text-muted: #7a8ba0;
+  --color-border: rgba(15, 32, 54, 0.14);
+  --color-border-strong: rgba(15, 32, 54, 0.22);
+  --color-surface: rgba(255, 255, 255, 0.95);
+  --color-surface-elevated: rgba(255, 255, 255, 0.98);
+  --color-surface-overlay: rgba(255, 255, 255, 0.96);
+  --color-hover: rgba(0, 166, 118, 0.1);
+  --color-shadow-lg: rgba(15, 32, 54, 0.18);
+  --color-primary: #00a676;
+  --color-primary-soft: rgba(0, 166, 118, 0.28);
+  --color-primary-faint: rgba(0, 166, 118, 0.1);
+  --color-primary-contrast: #ffffff;
+  --color-danger: #dc2626;
+  --color-danger-soft: rgba(220, 38, 38, 0.12);
+  --color-danger-border: rgba(220, 38, 38, 0.34);
+
+  --theme-green: var(--color-primary);
+  --theme-green-soft: rgba(0, 166, 118, 0.25);
+  --theme-green-faint: rgba(0, 166, 118, 0.08);
+  --theme-green-muted: rgba(0, 166, 118, 0.04);
+  --theme-green-subtle: rgba(0, 166, 118, 0.14);
+  --theme-green-glow: rgba(0, 166, 118, 0.3);
+  --theme-green-glow-strong: rgba(0, 166, 118, 0.45);
+  --theme-green-glow-soft: rgba(0, 166, 118, 0.16);
+  --theme-green-glow-mid: rgba(0, 166, 118, 0.28);
 }
 
 @keyframes cart-flash {
@@ -175,6 +241,13 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--color-surface-elevated);
+  --color-popover: var(--color-surface-overlay);
+  --color-border: var(--color-border);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-primary-soft);
+  --color-muted: var(--color-page-bg-strong);
+  --color-muted-foreground: var(--color-text-muted);
   --font-sans: var(--font-noto-sans-sc);
   --font-mono: var(--font-geist-mono);
 }
@@ -251,9 +324,9 @@
 
 .membership-layered-shell {
   --membership-neon: var(--theme-green);
-  --membership-layer-1: rgba(20, 20, 20, 0.4);
-  --membership-layer-2: rgba(30, 30, 30, 0.6);
-  --membership-layer-3: rgba(45, 45, 45, 0.85);
+  --membership-layer-1: color-mix(in srgb, var(--color-surface-elevated) 86%, transparent);
+  --membership-layer-2: color-mix(in srgb, var(--color-surface-elevated) 92%, transparent);
+  --membership-layer-3: color-mix(in srgb, var(--color-surface-overlay) 95%, transparent);
   --membership-glow-strong: var(--theme-green-glow-mid);
   --membership-glow-soft: var(--theme-green-faint);
   background-image:
@@ -266,12 +339,12 @@
   align-items: center;
   padding: 0.7rem 2.5rem;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--color-border-strong);
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-text-primary);
   transition: all 0.3s ease;
 }
 
@@ -292,7 +365,7 @@
   flex-direction: column;
   gap: 2rem;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-border);
   transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -305,10 +378,10 @@
 }
 
 .membership-layered-card--featured {
-  background: rgba(50, 50, 50, 0.9);
+  background: var(--membership-layer-3);
   border-color: var(--theme-green-glow-strong);
   transform: translateZ(50px) translateY(-20px);
-  box-shadow: 0 40px 80px -15px rgba(0, 0, 0, 0.8), 0 0 60px var(--membership-glow-strong);
+  box-shadow: 0 40px 80px -15px var(--color-shadow-lg), 0 0 60px var(--membership-glow-strong);
   z-index: 20;
 }
 
@@ -345,7 +418,7 @@
   flex-direction: column;
   gap: 0.75rem;
   font-size: 0.75rem;
-  color: #a1a1aa;
+  color: var(--color-text-secondary);
 }
 
 .membership-layered-list-item {
@@ -358,14 +431,14 @@
   width: 100%;
   margin-top: 2rem;
   border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface-elevated) 72%, transparent);
   padding: 0.9rem 0;
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #f4f4f5;
+  color: var(--color-text-primary);
   transition: all 0.3s ease;
   cursor: pointer;
 }
@@ -391,8 +464,8 @@
 .membership-layered-panel {
   min-height: 0;
   border-radius: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface-elevated) 80%, transparent);
   padding: 1.1rem 1.4rem;
   display: flex;
   align-items: center;
@@ -402,7 +475,7 @@
 }
 
 .membership-layered-panel:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--color-surface-elevated) 92%, transparent);
 }
 
 .membership-layered-badge {
@@ -422,8 +495,8 @@
   gap: 1rem;
   align-items: center;
   border-radius: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface-elevated) 80%, transparent);
   padding: 1.5rem;
   backdrop-filter: blur(8px);
   transition: all 0.3s ease;
@@ -440,7 +513,7 @@
   font-size: 0.55rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #71717a;
+  color: var(--color-text-muted);
   font-weight: 700;
   margin-bottom: 0.25rem;
 }
@@ -448,7 +521,7 @@
 .membership-layered-class-price {
   font-size: 2rem;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-text-primary);
 }
 
 .membership-layered-class-price--member {
@@ -482,18 +555,30 @@
 }
 
 .glass-ink {
-  background: linear-gradient(135deg, rgba(5, 10, 31, 0.8) 0%, rgba(2, 3, 8, 0.95) 100%);
-  border-color: rgba(77, 124, 255, 0.4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-surface-elevated) 92%, transparent) 0%,
+    color-mix(in srgb, var(--color-surface-overlay) 96%, transparent) 100%
+  );
+  border-color: color-mix(in srgb, #4d7cff 45%, var(--color-border));
 }
 
 .glass-purple {
-  background: linear-gradient(135deg, rgba(26, 11, 46, 0.8) 0%, rgba(2, 3, 8, 0.95) 100%);
-  border-color: rgba(168, 85, 247, 0.4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-surface-elevated) 92%, transparent) 0%,
+    color-mix(in srgb, var(--color-surface-overlay) 96%, transparent) 100%
+  );
+  border-color: color-mix(in srgb, #a855f7 45%, var(--color-border));
 }
 
 .glass-magenta {
-  background: linear-gradient(135deg, rgba(45, 10, 36, 0.8) 0%, rgba(2, 3, 8, 0.95) 100%);
-  border-color: rgba(236, 72, 153, 0.4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-surface-elevated) 92%, transparent) 0%,
+    color-mix(in srgb, var(--color-surface-overlay) 96%, transparent) 100%
+  );
+  border-color: color-mix(in srgb, #ec4899 45%, var(--color-border));
 }
 
 * {
@@ -507,11 +592,12 @@ body {
 
 body {
   margin: 0;
-  background: #03050b;
+  background: var(--color-page-bg);
   color: var(--foreground);
   font-family: var(--font-noto-sans-sc), Inter, "Segoe UI", Arial, Helvetica, sans-serif;
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
+  transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 body,
@@ -527,9 +613,9 @@ body,
 }
 
 body.stored-value-mode {
-  --modal-backdrop: rgba(2, 3, 8, 0.86);
-  background: #020308;
-  color: #cbd5f5;
+  --modal-backdrop: color-mix(in srgb, var(--color-page-bg-strong) 74%, transparent);
+  background: var(--color-page-bg-strong);
+  color: var(--color-text-primary);
   font-family: var(--font-noto-sans-sc), Inter, "Segoe UI", Arial, Helvetica, sans-serif;
   background-image:
     radial-gradient(circle at 20% 20%, rgba(77, 124, 255, 0.05) 0%, transparent 40%),
@@ -577,8 +663,8 @@ body.stored-value-mode .stored-value-shell {
 
 body.stored-value-mode .glass-panel,
 body.stored-value-mode .glass-card {
-  background: #050712;
-  border-color: rgba(255, 255, 255, 0.08);
+  background: var(--color-surface-overlay);
+  border-color: var(--color-border);
 }
 
 body.stored-value-mode .glass-panel {
@@ -651,18 +737,30 @@ body.stored-value-mode .geometric-fill {
 }
 
 .glass-ink {
-  background: linear-gradient(135deg, rgba(5, 10, 31, 0.8) 0%, rgba(2, 3, 8, 0.95) 100%);
-  border-color: rgba(77, 124, 255, 0.4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-surface-elevated) 92%, transparent) 0%,
+    color-mix(in srgb, var(--color-surface-overlay) 96%, transparent) 100%
+  );
+  border-color: color-mix(in srgb, #4d7cff 45%, var(--color-border));
 }
 
 .glass-purple {
-  background: linear-gradient(135deg, rgba(26, 11, 46, 0.8) 0%, rgba(2, 3, 8, 0.95) 100%);
-  border-color: rgba(168, 85, 247, 0.4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-surface-elevated) 92%, transparent) 0%,
+    color-mix(in srgb, var(--color-surface-overlay) 96%, transparent) 100%
+  );
+  border-color: color-mix(in srgb, #a855f7 45%, var(--color-border));
 }
 
 .glass-magenta {
-  background: linear-gradient(135deg, rgba(45, 10, 36, 0.8) 0%, rgba(2, 3, 8, 0.95) 100%);
-  border-color: rgba(236, 72, 153, 0.4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-surface-elevated) 92%, transparent) 0%,
+    color-mix(in srgb, var(--color-surface-overlay) 96%, transparent) 100%
+  );
+  border-color: color-mix(in srgb, #ec4899 45%, var(--color-border));
 }
 
 .font-futuristic {
@@ -670,28 +768,31 @@ body.stored-value-mode .geometric-fill {
 }
 
 .glass-panel {
-  background: rgba(10, 15, 24, 0.98);
+  background: var(--color-surface);
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-border);
+  transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 .glass-card {
-  background: rgba(17, 25, 40, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
 }
 
 .input-subdued {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--color-page-bg-strong) 75%, transparent);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
   transition: all 0.2s ease;
 }
 
 .input-subdued:focus {
-  border-color: rgba(0, 209, 255, 0.3);
-  background: rgba(0, 0, 0, 0.5);
+  border-color: var(--color-primary-soft);
+  background: color-mix(in srgb, var(--color-page-bg-strong) 90%, transparent);
   outline: none;
-  box-shadow: 0 0 0 1px rgba(0, 209, 255, 0.1);
+  box-shadow: 0 0 0 1px var(--color-primary-faint);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -725,18 +826,19 @@ input[type=number] {
 
 .app-shell {
   min-height: 100vh;
-  background: radial-gradient(circle at 20% 0%, #0b1626 0%, #03050b 35%, #020308 100%);
+  background: radial-gradient(circle at 20% 0%, var(--color-page-bg-soft) 0%, var(--color-page-bg) 35%, var(--color-page-bg-strong) 100%);
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
+  transition: background 0.35s ease;
 }
 
 @supports (padding-top: env(safe-area-inset-top)) {
   body {
-    background: #020308;
+    background: var(--color-page-bg-strong);
   }
 }
 
@@ -901,7 +1003,7 @@ input[type=number] {
 }
 
 .gradient-bg-vertical {
-  background: linear-gradient(to bottom, #0a0a0a 0%, #030303 100%);
+  background: linear-gradient(to bottom, var(--color-page-bg-strong) 0%, var(--color-page-bg) 100%);
 }
 
 .pulse-layer-1 {
@@ -988,4 +1090,84 @@ input[type=number] {
 
 .stagger-10 {
   animation-delay: 1s;
+}
+
+.invoice-design .glass-panel {
+  background: color-mix(in srgb, var(--color-surface) 78%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+}
+
+.invoice-design .drag-item {
+  cursor: grab;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.invoice-design .drag-item:active {
+  cursor: grabbing;
+  scale: 0.98;
+}
+
+.invoice-design .mini-invoice-preview {
+  background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.03) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+.invoice-design .invoice-paper {
+  width: 850px;
+  height: 1202px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+.invoice-design .invoice-paper__texture {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(0, 166, 118, 0.03),
+    rgba(0, 166, 118, 0.03) 1px,
+    transparent 1px,
+    transparent 10px
+  );
+}
+
+.invoice-design .invoice-paper__total {
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.2);
+}
+
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.invoice-design ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.invoice-design ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.invoice-design ::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 10px;
+}
+
+.invoice-design ::-webkit-scrollbar-thumb:hover {
+  background: #00A676;
+}
+
+.invoice-design .invoice-table-row {
+  transition: background-color 0.15s ease;
+}
+
+.invoice-design .invoice-table-row:hover {
+  background-color: color-mix(in srgb, var(--color-hover) 75%, transparent) !important;
+}
+
+.invoice-design .quotation-row:hover .quote-actions {
+  opacity: 1;
 }

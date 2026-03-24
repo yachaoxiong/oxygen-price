@@ -5,10 +5,11 @@ import { useAuth } from "@/features/auth/useAuth";
 import { AuthLoadingScreen } from "@/features/auth/AuthLoadingScreen";
 import { AuthLoginScreen } from "@/features/auth/AuthLoginScreen";
 import { InvoicePageView } from "@/components/invoice/InvoicePageView";
+import { presetItems, recentQuotations } from "@/components/invoice/mockData";
 import { InvoiceScaffold } from "@/components/invoice/InvoiceScaffold";
-import { fetchCustomerProfiles, fetchInvoices, type CustomerProfile, type InvoiceRecord } from "@/lib/supabase";
+import { fetchCustomerProfiles, fetchInvoices, type CustomerProfile } from "@/lib/supabase";
 
-export default function InvoicePage() {
+export default function NewInvoicePage() {
   const {
     authState,
     email,
@@ -42,6 +43,8 @@ export default function InvoicePage() {
       } else {
         setInvoices([]);
       }
+
+
     }
 
     loadPageData();
@@ -76,13 +79,12 @@ export default function InvoicePage() {
       onSignOut={handleSignOut}
     >
       <InvoicePageView
-        presetItems={[]}
-        recentQuotations={[]}
+        presetItems={presetItems}
+        recentQuotations={recentQuotations}
         invoiceRows={invoices}
         customerProfilesFromDb={customers}
-        showBuilderSection={false}
-        showListSection={true}
-        showQuotationTab={false}
+        showBuilderSection={true}
+        showListSection={false}
         onRequestInvoicesRefresh={async () => {
           const next = await fetchInvoices();
           setInvoices(next);
