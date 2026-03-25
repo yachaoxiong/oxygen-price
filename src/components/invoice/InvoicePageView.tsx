@@ -375,7 +375,8 @@ function CustomerInfoModal({
 }) {
   if (!open) return null;
 
-  const copy = getInvoicePageCopy(locale).modal.customerInfo;
+  const { modal } = getInvoicePageCopy(locale);
+  const copy = modal.customerInfo;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--modal-backdrop)] backdrop-blur-[1px] px-4" onClick={onClose}>
@@ -469,13 +470,13 @@ function CustomerInfoModal({
             className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-5 py-2.5 text-sm font-semibold text-[var(--color-text-primary)] transition-all hover:bg-[var(--color-surface)]"
             onClick={onClose}
           >
-            {copy.cancel}
+            {modal.cancel}
           </button>
           <button
             className="rounded-[10px] bg-[#00A676] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#00A676]/10 transition-all hover:bg-[color-mix(in_srgb,var(--color-primary)_82%,black)]"
             onClick={onSave}
           >
-            保存客户信息
+            {copy.save}
           </button>
         </div>
       </div>

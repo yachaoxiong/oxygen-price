@@ -228,7 +228,21 @@ const zhInvoicePageCopy = {
   },
 } as const;
 
-type InvoicePageCopySchema = typeof zhInvoicePageCopy;
+/**
+ * Same keys/shape as zh copy, but string literals are widened to `string` so en (and future locales)
+ * are not forced to match Chinese wording character-for-character.
+ */
+type Widened<T> = T extends (...args: infer A) => infer R
+  ? (...args: A) => Widened<R>
+  : T extends ReadonlyArray<infer U>
+    ? Array<Widened<U>>
+    : T extends object
+      ? { [K in keyof T]: Widened<T[K]> }
+      : T extends string
+        ? string
+        : T;
+
+type InvoicePageCopySchema = Widened<typeof zhInvoicePageCopy>;
 
 const enInvoicePageCopy: InvoicePageCopySchema = {
   header: {
