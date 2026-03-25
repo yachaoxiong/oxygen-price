@@ -6,6 +6,10 @@
   --background: #03050b;
   --foreground: #e7edf7;
   --modal-backdrop: rgba(4, 7, 11, 0.8);
+  --loading-accent: #00ff41;
+  --loading-accent-soft: rgba(0, 255, 65, 0.2);
+  --loading-grid-line: rgba(0, 255, 65, 0.05);
+  --loading-vignette: rgba(5, 5, 5, 0.7);
 
   --color-page-bg: #03050b;
   --color-page-bg-strong: #020308;
@@ -48,6 +52,10 @@
   --background: #f4f7fb;
   --foreground: #132033;
   --modal-backdrop: rgba(18, 30, 48, 0.24);
+  --loading-accent: #008a5f;
+  --loading-accent-soft: rgba(0, 138, 95, 0.26);
+  --loading-grid-line: rgba(0, 138, 95, 0.14);
+  --loading-vignette: rgba(19, 32, 51, 0.12);
 
   --color-page-bg: #f4f7fb;
   --color-page-bg-strong: #edf2f8;
@@ -103,7 +111,16 @@
 }
 
 .notification-glow {
-  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.8);
+  box-shadow:
+    0 15px 35px -10px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="light"] .notification-glow {
+  box-shadow:
+    0 12px 32px -8px var(--color-shadow-lg),
+    0 4px 12px -4px rgba(15, 32, 54, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .green-edge-left {
@@ -985,8 +1002,8 @@ input[type=number] {
 .loading-stitch-grid {
   background-size: 20px 20px;
   background-image:
-    linear-gradient(to right, rgba(0, 255, 65, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 255, 65, 0.05) 1px, transparent 1px);
+    linear-gradient(to right, var(--loading-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--loading-grid-line) 1px, transparent 1px);
 }
 
 .grid-mask {
@@ -994,7 +1011,7 @@ input[type=number] {
 }
 
 .static-glow-logo {
-  filter: drop-shadow(0 0 20px rgba(0, 255, 65, 0.4));
+  filter: drop-shadow(0 0 20px color-mix(in srgb, var(--loading-accent) 55%, transparent));
 }
 
 .logo-filter {
@@ -1007,11 +1024,11 @@ input[type=number] {
 }
 
 .pulse-layer-1 {
-  background: radial-gradient(circle, rgba(0, 255, 65, 0.08) 0%, transparent 60%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--loading-accent) 24%, transparent) 0%, transparent 60%);
 }
 
 .pulse-layer-2 {
-  background: radial-gradient(circle, rgba(0, 255, 65, 0.04) 0%, transparent 80%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--loading-accent) 14%, transparent) 0%, transparent 80%);
 }
 
 .animate-logo-sway {

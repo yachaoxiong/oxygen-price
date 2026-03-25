@@ -14,8 +14,8 @@ export function MessageToast({ title, subtitle, visible, onClose }: MessageToast
 
   return (
     <div className="fixed top-10 right-10 z-[70]">
-      <div className="animate-slide-in notification-glow green-edge-left relative flex min-w-[260px] items-center gap-4 border border-white/10 bg-[#08090a]/95 px-6 py-4 text-white backdrop-blur-md">
-        <span className="flex items-center justify-center text-[#00ff66]">
+      <div className="animate-slide-in notification-glow green-edge-left relative flex min-w-[260px] items-center gap-4 border border-[var(--color-border)] bg-[var(--color-surface-overlay)] px-6 py-4 text-[var(--color-text-primary)] backdrop-blur-md">
+        <span className="flex items-center justify-center text-[var(--color-primary)]">
           <CheckCircle2 size={24} strokeWidth={1.4} />
         </span>
         <div className="flex flex-col">
@@ -23,19 +23,19 @@ export function MessageToast({ title, subtitle, visible, onClose }: MessageToast
             {title}
           </span>
           {subtitle ? (
-            <span className="mt-0.5 text-[10px] font-mono uppercase tracking-[0.18em] text-[#00ff66]/60">
+            <span className="mt-0.5 text-[10px] font-mono uppercase tracking-[0.18em] text-[var(--color-primary)] opacity-60">
               {subtitle}
             </span>
           ) : null}
         </div>
         <span className="ml-auto pl-6 opacity-20">
-          <span className="block h-1 w-1 rounded-full bg-[#00ff66]" />
+          <span className="block h-1 w-1 rounded-full bg-[var(--color-primary)]" />
         </span>
         <button
           type="button"
           aria-label="关闭"
           onClick={onClose}
-          className="absolute -top-1 -right-1 rounded-full p-2 text-white/20 transition-colors hover:text-white/50"
+          className="absolute -top-1 -right-1 rounded-full p-2 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-secondary)]"
         >
           <X size={12} />
         </button>

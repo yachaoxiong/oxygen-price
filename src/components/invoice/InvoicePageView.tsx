@@ -2,13 +2,31 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createCustomerProfile, createInvoice, deleteInvoice, fetchPricingItems, updateCustomerProfile, updateInvoiceStatus, type CustomerProfile, type InvoiceRecord } from "@/lib/supabase";
+import {
+  createCustomerProfile,
+  createInvoice,
+  deleteInvoice,
+  fetchPricingItems,
+  supabase,
+  updateCustomerProfile,
+  updateInvoiceStatus,
+  type CustomerProfile,
+  type InvoiceRecord,
+} from "@/lib/supabase";
 import { downloadInvoicePdfFromElement } from "@/lib/invoicePdf";
+import { createInvoiceEmailTemplate } from "@/lib/invoiceEmailTemplate";
 import { NumberInput } from "@/components/ui/NumberInput";
-import { InvoiceDocument, type InvoiceDocumentData } from "@/components/invoice/InvoiceDocument";
+import {
+  InvoiceDocument,
+  defaultInvoiceTemplateSettings,
+  type InvoiceDocumentData,
+  type InvoiceTemplateSettings,
+} from "@/components/invoice/InvoiceDocument";
 import { InvoiceEmailPanel } from "@/components/invoice/InvoiceEmailPanel";
 import { InvoiceEmailTrigger } from "@/components/invoice/InvoiceEmailTrigger";
+import { MessageToast } from "@/components/ui/MessageToast";
 import { useInvoiceEmailSender } from "@/hooks/useInvoiceEmailSender";
+import { getInvoicePageCopy, type InvoiceLocale } from "@/components/invoice/invoicePageCopy";
 import type { PricingItem } from "@/types/pricing";
 import type { PresetItem, RecentQuotation } from "@/components/invoice/mockData";
 
@@ -88,6 +106,25 @@ type InvoiceListRow = {
 
 const INVOICE_DRAFT_STORAGE_KEY = "invoice-builder-draft-v1";
 const INVOICE_NO_REGISTRY_STORAGE_KEY = "invoice-no-registry-v1";
+
+type InvoiceTemplateField = keyof InvoiceTemplateSettings["oxygenInfo"];
+
+type TemplateGroupKey = "header" | "company" | "terms";
+
+const TEMPLATE_GROUPS: Array<{ key: TemplateGroupKey; fields: InvoiceTemplateField[] }> = [
+  {
+    key: "header",
+    fields: ["invoiceTitle", "headerSubtitle", "dateLabel", "invoiceNoLabel", "hstLabel", "hstNumber"],
+  },
+  {
+    key: "company",
+    fields: ["fromTitle", "billToTitle", "companyName", "addressLine1", "addressLine2", "country", "email"],
+  },
+  {
+    key: "terms",
+    fields: ["paymentTermsTitle", "notesTitle", "notesTemplate", "termsTitle", "termsDescription", "thankYouMessage"],
+  },
+];
 
 function createEmptyInvoiceItem(): InvoiceLineItem {
   return { id: `line-${Date.now()}-${Math.floor(Math.random() * 1000)}`, name: "", qty: 1, unitPrice: 0, discount: 0 };
@@ -196,25 +233,29 @@ function parseCustomerAddress(address: string): Pick<InvoiceCustomerInfo, "stree
 function CustomerInfoPanel({
   customer,
   errors,
+  locale,
   onChange,
 }: {
   customer: InvoiceCustomerInfo;
   errors: CustomerErrors;
+  locale: InvoiceLocale;
   onChange: (next: InvoiceCustomerInfo) => void;
 }) {
+  const copy = getInvoicePageCopy(locale).modal.customerInfo;
+
   return (
     <div className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)]/35 p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xs font-bold tracking-wider text-[var(--color-text-secondary)] uppercase">Billing Contact</p>
-          <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">用于发票抬头、发送与结算记录</p>
+          <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">{copy.description}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <label className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 md:col-span-1">
           <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">
-            <MaterialIcon name="badge" className="text-[13px]" /> 姓名
+            <MaterialIcon name="badge" className="text-[13px]" /> {copy.name}
           </span>
           <input
             className={`w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] ${errors.name ? "ring-1 ring-red-500/70" : ""}`}
@@ -227,7 +268,7 @@ function CustomerInfoPanel({
 
         <label className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 md:col-span-1">
           <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">
-            <MaterialIcon name="alternate_email" className="text-[13px]" /> 邮箱
+            <MaterialIcon name="alternate_email" className="text-[13px]" /> {copy.email}
           </span>
           <input
             className={`w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] ${errors.email ? "ring-1 ring-red-500/70" : ""}`}
@@ -240,11 +281,11 @@ function CustomerInfoPanel({
 
         <label className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 md:col-span-2">
           <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">
-            <MaterialIcon name="location_on" className="text-[13px]" /> 地址
+            <MaterialIcon name="location_on" className="text-[13px]" /> {copy.streetAddress}
           </span>
           <input
             className={`w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] ${errors.address ? "ring-1 ring-red-500/70" : ""}`}
-            placeholder="街道门牌号"
+            placeholder={copy.streetAddressPlaceholder}
             value={customer.streetAddress}
             onChange={(event) => onChange({ ...customer, streetAddress: event.target.value })}
           />
@@ -252,17 +293,17 @@ function CustomerInfoPanel({
         </label>
 
         <label className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 md:col-span-1">
-          <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">城市</span>
+          <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">{copy.city}</span>
           <input
             className="w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
-            placeholder="例如 Toronto"
+            placeholder={copy.cityPlaceholder}
             value={customer.city}
             onChange={(event) => onChange({ ...customer, city: event.target.value })}
           />
         </label>
 
         <label className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 md:col-span-1">
-          <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">省</span>
+          <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">{copy.province}</span>
           <input
             className="w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
             value={customer.province}
@@ -271,7 +312,7 @@ function CustomerInfoPanel({
         </label>
 
         <label className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 md:col-span-1">
-          <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">Postcode</span>
+          <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">{copy.postcode}</span>
           <input
             className="w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
             placeholder="A1A 1A1"
@@ -281,7 +322,7 @@ function CustomerInfoPanel({
         </label>
 
         <label className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 md:col-span-1">
-          <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">国家</span>
+          <span className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">{copy.country}</span>
           <input
             className="w-full bg-transparent text-sm text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
             value={customer.country}
@@ -319,18 +360,22 @@ function QuotationCard({ row }: { row: RecentQuotation }) {
 
 function CustomerInfoModal({
   open,
+  locale,
   customer,
   onChange,
   onSave,
   onClose,
 }: {
   open: boolean;
+  locale: InvoiceLocale;
   customer: InvoiceCustomerInfo;
   onChange: (next: InvoiceCustomerInfo) => void;
   onSave: () => void;
   onClose: () => void;
 }) {
   if (!open) return null;
+
+  const copy = getInvoicePageCopy(locale).modal.customerInfo;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--modal-backdrop)] backdrop-blur-[1px] px-4" onClick={onClose}>
@@ -341,7 +386,7 @@ function CustomerInfoModal({
         <div className="mb-6 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-bold text-[var(--color-text-primary)]">
             <MaterialIcon name="person_add" className="text-[#00A676]" />
-            添加客户信息
+            {copy.title}
           </h3>
           <button className="rounded-md p-1 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]" onClick={onClose}>
             <MaterialIcon name="close" className="text-lg" />
@@ -350,47 +395,47 @@ function CustomerInfoModal({
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">客户姓名</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.name}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-              placeholder="请输入客户姓名"
+              placeholder={copy.namePlaceholder}
               type="text"
               value={customer.name}
               onChange={(event) => onChange({ ...customer, name: event.target.value })}
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">邮箱</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.email}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-page-bg-strong)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[#00A676] focus:ring-[#00A676]"
-              placeholder="请输入邮箱"
+              placeholder={copy.emailPlaceholder}
               type="email"
               value={customer.email}
               onChange={(event) => onChange({ ...customer, email: event.target.value })}
             />
           </label>
           <label className="block md:col-span-2">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">街道地址</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.streetAddress}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-              placeholder="请输入街道地址"
+              placeholder={copy.streetAddressPlaceholder}
               type="text"
               value={customer.streetAddress}
               onChange={(event) => onChange({ ...customer, streetAddress: event.target.value })}
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">城市</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.city}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-              placeholder="例如 Toronto"
+              placeholder={copy.cityPlaceholder}
               type="text"
               value={customer.city}
               onChange={(event) => onChange({ ...customer, city: event.target.value })}
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">省</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.province}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
               type="text"
@@ -399,17 +444,17 @@ function CustomerInfoModal({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">Postcode</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.postcode}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-              placeholder="A1A 1A1"
+              placeholder={copy.postcodePlaceholder}
               type="text"
               value={customer.postalCode}
               onChange={(event) => onChange({ ...customer, postalCode: event.target.value })}
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">国家</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.country}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
               type="text"
@@ -424,7 +469,7 @@ function CustomerInfoModal({
             className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-5 py-2.5 text-sm font-semibold text-[var(--color-text-primary)] transition-all hover:bg-[var(--color-surface)]"
             onClick={onClose}
           >
-            取消
+            {copy.cancel}
           </button>
           <button
             className="rounded-[10px] bg-[#00A676] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#00A676]/10 transition-all hover:bg-[color-mix(in_srgb,var(--color-primary)_82%,black)]"
@@ -440,12 +485,14 @@ function CustomerInfoModal({
 
 function ItemPickerModal({
   open,
+  locale,
   items,
   loading,
   onClose,
   onPick,
 }: {
   open: boolean;
+  locale: InvoiceLocale;
   items: PricingItem[];
   loading: boolean;
   onClose: () => void;
@@ -454,6 +501,8 @@ function ItemPickerModal({
   const [keyword, setKeyword] = useState("");
 
   if (!open) return null;
+
+  const copy = getInvoicePageCopy(locale).modal.itemPicker;
 
   const filteredItems = items.filter((item) => {
     const key = keyword.trim().toLowerCase();
@@ -470,11 +519,11 @@ function ItemPickerModal({
   };
 
   const sections: Array<{ key: keyof typeof grouped; title: string }> = [
-    { key: "membership", title: "会员团课" },
-    { key: "group_class", title: "团课课程" },
-    { key: "personal_training", title: "私教课程" },
-    { key: "cycle_plan", title: "周期计划" },
-    { key: "stored_value", title: "储值计划" },
+    { key: "membership", title: copy.sections.membership },
+    { key: "group_class", title: copy.sections.group_class },
+    { key: "personal_training", title: copy.sections.personal_training },
+    { key: "cycle_plan", title: copy.sections.cycle_plan },
+    { key: "stored_value", title: copy.sections.stored_value },
   ];
 
   return (
@@ -486,7 +535,7 @@ function ItemPickerModal({
         <div className="mb-5 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-bold text-[var(--color-text-primary)]">
             <MaterialIcon name="storage" className="text-[#00A676]" />
-            选择可添加项目
+            {copy.title}
           </h3>
           <button className="rounded-md p-1 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]" onClick={onClose}>
             <MaterialIcon name="close" className="text-lg" />
@@ -498,23 +547,23 @@ function ItemPickerModal({
             <MaterialIcon name="search" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-[var(--color-text-muted)]" />
             <input
               className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-3 pl-9 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-              placeholder="搜索项目（如：私教、周期、储值）"
+              placeholder={copy.searchPlaceholder}
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
             />
           </div>
 
-          {loading ? <div className="text-sm text-[var(--color-text-secondary)]">正在加载项目...</div> : null}
+          {loading ? <div className="text-sm text-[var(--color-text-secondary)]">{copy.loading}</div> : null}
 
           {!loading && items.length === 0 ? (
             <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-elevated)]/45 p-4 text-sm text-[var(--color-text-secondary)]">
-              暂无可选项目，请检查数据库配置。
+              {copy.noItems}
             </div>
           ) : null}
 
           {!loading && items.length > 0 && filteredItems.length === 0 ? (
             <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-elevated)]/45 p-4 text-sm text-[var(--color-text-secondary)]">
-              未找到匹配项目，请尝试其他关键词。
+              {copy.noMatch}
             </div>
           ) : null}
 
@@ -524,7 +573,7 @@ function ItemPickerModal({
                   <div className="mb-2 text-xs font-bold tracking-wide text-[#00A676]">{section.title}</div>
                   <div className="space-y-2">
                     {grouped[section.key].length === 0 ? (
-                      <div className="text-xs text-[var(--color-text-muted)]">暂无项目</div>
+                      <div className="text-xs text-[var(--color-text-muted)]">{copy.noSectionItems}</div>
                     ) : (
                       grouped[section.key].map((item) => (
                         <button
@@ -533,7 +582,7 @@ function ItemPickerModal({
                           onClick={() => onPick(item)}
                         >
                           <div className="text-sm font-medium text-[var(--color-text-primary)]">{item.name_zh}</div>
-                          <div className="text-xs text-[var(--color-text-secondary)]">{item.price ? `$ ${item.price}` : "价格待定"}</div>
+                          <div className="text-xs text-[var(--color-text-secondary)]">{item.price ? `$ ${item.price}` : copy.pricePending}</div>
                         </button>
                       ))
                     )}
@@ -549,11 +598,13 @@ function ItemPickerModal({
 
 function CustomerDatabaseModal({
   open,
+  locale,
   customers,
   onClose,
   onSelect,
 }: {
   open: boolean;
+  locale: InvoiceLocale;
   customers: CustomerRecord[];
   onClose: () => void;
   onSelect: (customer: InvoiceCustomerInfo) => void;
@@ -561,6 +612,8 @@ function CustomerDatabaseModal({
   const [keyword, setKeyword] = useState("");
 
   if (!open) return null;
+
+  const copy = getInvoicePageCopy(locale).modal.customerDb;
 
   const normalizedKeyword = keyword.trim().toLowerCase();
   const filteredCustomers = customers.filter((row) => {
@@ -578,7 +631,7 @@ function CustomerDatabaseModal({
         <div className="mb-5 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-bold text-[var(--color-text-primary)]">
             <MaterialIcon name="storage" className="text-[#00A676]" />
-            从数据库选择客户
+            {copy.title}
           </h3>
           <button className="rounded-md p-1 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]" onClick={onClose}>
             <MaterialIcon name="close" className="text-lg" />
@@ -589,7 +642,7 @@ function CustomerDatabaseModal({
           <MaterialIcon name="search" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-[var(--color-text-muted)]" />
           <input
             className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-3 pl-9 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-            placeholder="筛选客户（姓名 / 邮箱 / 地址）"
+            placeholder={copy.searchPlaceholder}
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
           />
@@ -630,6 +683,7 @@ function CustomerDatabaseModal({
 
 function ConfirmModal({
   open,
+  locale,
   title,
   description,
   confirmLabel,
@@ -638,6 +692,7 @@ function ConfirmModal({
   onClose,
 }: {
   open: boolean;
+  locale: InvoiceLocale;
   title: string;
   description: string;
   confirmLabel?: string;
@@ -646,6 +701,8 @@ function ConfirmModal({
   onClose: () => void;
 }) {
   if (!open) return null;
+
+  const copy = getInvoicePageCopy(locale).modal;
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[var(--modal-backdrop)] px-4" onClick={onClose}>
@@ -669,7 +726,7 @@ function ConfirmModal({
             onClick={onConfirm}
             disabled={confirming}
           >
-            {confirming ? "删除中..." : confirmLabel ?? "确认"}
+            {confirming ? copy.confirmDelete.deleting : confirmLabel ?? copy.confirm}
           </button>
         </div>
       </div>
@@ -679,6 +736,7 @@ function ConfirmModal({
 
 function CustomerProfileModal({
   open,
+  locale,
   customer,
   errors,
   saving,
@@ -689,6 +747,7 @@ function CustomerProfileModal({
   onClose,
 }: {
   open: boolean;
+  locale: InvoiceLocale;
   customer: InvoiceCustomerInfo;
   errors: CustomerErrors;
   saving: boolean;
@@ -700,6 +759,8 @@ function CustomerProfileModal({
 }) {
   if (!open) return null;
 
+  const copy = getInvoicePageCopy(locale).modal;
+
   return (
     <div className="fixed inset-0 z-[102] flex items-center justify-center bg-[var(--modal-backdrop)] px-4" onClick={onClose}>
       <div
@@ -709,7 +770,7 @@ function CustomerProfileModal({
         <div className="mb-6 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-bold text-[var(--color-text-primary)]">
             <MaterialIcon name="person_add" className="text-[#00A676]" />
-            {editing ? "编辑客户档案" : "添加客户档案"}
+            {editing ? copy.customerProfile.titleEdit : copy.customerProfile.titleCreate}
           </h3>
           <button className="rounded-md p-1 text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]" onClick={onClose}>
             <MaterialIcon name="close" className="text-lg" />
@@ -718,21 +779,21 @@ function CustomerProfileModal({
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">客户姓名</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.name}</span>
             <input
               className={`w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676] ${errors.name ? "ring-1 ring-red-500/70" : ""}`}
-              placeholder="请输入客户姓名"
+              placeholder={copy.customerInfo.namePlaceholder}
               type="text"
               value={customer.name}
               onChange={(event) => onChange({ ...customer, name: event.target.value })}
             />
             {errors.name ? <div className="mt-1 text-[10px] text-red-500">{errors.name}</div> : null}
           </label>
-          <label className="block md:col-span-2">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">邮箱</span>
+          <label className="block">
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.email}</span>
             <input
               className={`w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676] ${errors.email ? "ring-1 ring-red-500/70" : ""}`}
-              placeholder="请输入邮箱"
+              placeholder={copy.customerInfo.emailPlaceholder}
               type="email"
               value={customer.email}
               onChange={(event) => onChange({ ...customer, email: event.target.value })}
@@ -740,10 +801,10 @@ function CustomerProfileModal({
             {errors.email ? <div className="mt-1 text-[10px] text-red-500">{errors.email}</div> : null}
           </label>
           <label className="block md:col-span-2">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">街道地址</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.streetAddress}</span>
             <input
               className={`w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676] ${errors.address ? "ring-1 ring-red-500/70" : ""}`}
-              placeholder="请输入街道地址"
+              placeholder={copy.customerInfo.streetAddressPlaceholder}
               type="text"
               value={customer.streetAddress}
               onChange={(event) => onChange({ ...customer, streetAddress: event.target.value })}
@@ -751,17 +812,17 @@ function CustomerProfileModal({
             {errors.address ? <div className="mt-1 text-[10px] text-red-500">{errors.address}</div> : null}
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">城市</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.city}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-              placeholder="例如 Toronto"
+              placeholder={copy.customerInfo.cityPlaceholder}
               type="text"
               value={customer.city}
               onChange={(event) => onChange({ ...customer, city: event.target.value })}
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">省</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.province}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
               type="text"
@@ -770,17 +831,17 @@ function CustomerProfileModal({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">Postcode</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.postcode}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-              placeholder="A1A 1A1"
+              placeholder={copy.customerInfo.postcodePlaceholder}
               type="text"
               value={customer.postalCode}
               onChange={(event) => onChange({ ...customer, postalCode: event.target.value })}
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">国家</span>
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.country}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
               type="text"
@@ -805,7 +866,7 @@ function CustomerProfileModal({
             onClick={onSave}
             disabled={saving}
           >
-            {saving ? "保存中..." : editing ? "保存修改" : "保存客户档案"}
+            {saving ? copy.customerProfile.saving : editing ? copy.customerProfile.saveEdit : copy.customerProfile.saveCreate}
           </button>
         </div>
       </div>
@@ -817,12 +878,14 @@ function InvoiceTableRow({
   row,
   onView,
   onDownload,
+  onSendEmail,
   onDelete,
   deleting,
 }: {
   row: InvoiceListRow;
   onView: (row: InvoiceListRow) => void;
   onDownload: (row: InvoiceListRow) => void;
+  onSendEmail: (row: InvoiceListRow) => void;
   onDelete: (row: InvoiceListRow) => void;
   deleting: boolean;
 }) {
@@ -865,6 +928,12 @@ function InvoiceTableRow({
             <MaterialIcon name="picture_as_pdf" className="text-[16px]" />
           </button>
           <button
+            className="rounded-md bg-[var(--color-surface-elevated)] p-1.5 text-[var(--color-text-secondary)] transition-all hover:bg-[#00A676] hover:text-[var(--color-text-primary)]"
+            onClick={() => onSendEmail(row)}
+          >
+            <MaterialIcon name="mail" className="text-[16px]" />
+          </button>
+          <button
             className="rounded-md bg-[var(--color-surface-elevated)] p-1.5 text-[var(--color-text-secondary)] transition-all hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => onDelete(row)}
             disabled={deleting}
@@ -882,6 +951,7 @@ export function InvoicePageView({
   recentQuotations,
   invoiceRows,
   customerProfilesFromDb,
+  activeLocale = "en",
   showBuilderSection = true,
   showListSection = true,
   showQuotationTab = true,
@@ -891,6 +961,7 @@ export function InvoicePageView({
   recentQuotations: RecentQuotation[];
   invoiceRows: InvoiceRecord[];
   customerProfilesFromDb: CustomerProfile[];
+  activeLocale?: "zh" | "en";
   showBuilderSection?: boolean;
   showListSection?: boolean;
   showQuotationTab?: boolean;
@@ -936,6 +1007,42 @@ export function InvoicePageView({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pendingDeleteInvoice, setPendingDeleteInvoice] = useState<InvoiceRecord | null>(null);
   const [emailPanelOpen, setEmailPanelOpen] = useState(false);
+  const [templateSettings, setTemplateSettings] = useState<InvoiceTemplateSettings>(defaultInvoiceTemplateSettings);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [templateError, setTemplateError] = useState<string | null>(null);
+  const [templateMessage, setTemplateMessage] = useState<string | null>(null);
+  const [templateActiveGroup, setTemplateActiveGroup] = useState(0);
+  const [messageToast, setMessageToast] = useState<{ title: string; subtitle?: string } | null>(null);
+  const copy = getInvoicePageCopy(activeLocale as InvoiceLocale);
+
+  const showMessageToast = (title: string, subtitle?: string) => {
+    setMessageToast({ title, subtitle });
+    window.setTimeout(() => setMessageToast(null), 2200);
+  };
+
+  useEffect(() => {
+    if (!templateModalOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [templateModalOpen]);
+
+  const getAccessToken = async (): Promise<string | null> => {
+    if (!supabase) return null;
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error) return null;
+    return session?.access_token ?? null;
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -985,6 +1092,60 @@ export function InvoicePageView({
   useEffect(() => {
     invoiceEmail.setField("to", invoiceCustomer.email || "");
   }, [invoiceCustomer.email]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadTemplateSettings() {
+      setTemplateLoading(true);
+      setTemplateError(null);
+
+      try {
+        const accessToken = await getAccessToken();
+        const response = await fetch("/api/invoice-template-settings", {
+          cache: "no-store",
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        });
+        const result = (await response.json()) as {
+          ok?: boolean;
+          message?: string;
+          data?: { default?: { settings_json?: unknown } | null };
+        };
+
+        if (!mounted) return;
+
+        if (!response.ok || !result?.ok) {
+          throw new Error(result?.message || copy.feedback.templateLoadFailed);
+        }
+
+        const saved = result.data?.default?.settings_json;
+        if (!saved || typeof saved !== "object") {
+          return;
+        }
+
+        setTemplateSettings((prev) => ({
+          ...defaultInvoiceTemplateSettings,
+          ...prev,
+          ...(saved as Partial<InvoiceTemplateSettings>),
+          oxygenInfo: {
+            ...defaultInvoiceTemplateSettings.oxygenInfo,
+            ...(saved as Partial<InvoiceTemplateSettings>).oxygenInfo,
+          },
+        }));
+      } catch (error) {
+        if (!mounted) return;
+        setTemplateError(error instanceof Error ? error.message : copy.feedback.templateLoadFailed);
+      } finally {
+        if (mounted) setTemplateLoading(false);
+      }
+    }
+
+    loadTemplateSettings();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const validateCustomer = (value: InvoiceCustomerInfo): CustomerErrors => {
     const errors: CustomerErrors = {};
@@ -1212,6 +1373,7 @@ export function InvoicePageView({
   };
 
   const invoicePaperRef = useRef<HTMLDivElement | null>(null);
+  const emailRenderRef = useRef<HTMLDivElement | null>(null);
   const viewingInvoiceRef = useRef<HTMLDivElement | null>(null);
   const hiddenDownloadRef = useRef<HTMLDivElement | null>(null);
 
@@ -1219,7 +1381,9 @@ export function InvoicePageView({
     invoiceNo,
     customerName: invoiceCustomer.name,
     defaultEmail: invoiceCustomer.email,
-    getInvoiceElement: () => invoicePaperRef.current,
+    // In list-only mode, the visible builder preview is not mounted.
+    // Keep a hidden document node as a stable source for PDF generation.
+    getInvoiceElement: () => invoicePaperRef.current ?? emailRenderRef.current,
     onSent: async () => {
       const matchingInvoice = invoiceRows.find((row) => row.invoice_no === invoiceNo);
       if (!matchingInvoice) return;
@@ -1364,12 +1528,12 @@ export function InvoicePageView({
     setItemErrors(nextItemErrors);
 
     if (Object.keys(nextCustomerErrors).length > 0 || Object.keys(nextItemErrors).length > 0) {
-      setSaveError("请先完整填写客户信息与发票项目，再保存。");
+      setSaveError(copy.feedback.saveInvoiceRequired);
       return;
     }
 
     if (!paymentMethod.trim()) {
-      setSaveError("请先选择付款方式。");
+      setSaveError(copy.feedback.paymentRequired);
       return;
     }
 
@@ -1401,12 +1565,61 @@ export function InvoicePageView({
         await onRequestInvoicesRefresh();
       }
 
-      setSaveMessage("发票已成功保存到数据库。");
+      setSaveMessage(copy.feedback.invoiceSaved);
       resetInvoiceForm();
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "保存失败，请稍后重试");
+      setSaveError(error instanceof Error ? error.message : copy.feedback.saveFailed);
     } finally {
       setSaveSubmitting(false);
+    }
+  };
+
+  const updateTemplateField = (field: InvoiceTemplateField, value: string) => {
+    setTemplateSettings((prev) => ({
+      ...prev,
+      oxygenInfo: {
+        ...prev.oxygenInfo,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSaveTemplateSettings = async () => {
+    setTemplateSaving(true);
+    setTemplateError(null);
+    setTemplateMessage(null);
+
+    try {
+      const accessToken = await getAccessToken();
+      const response = await fetch("/api/invoice-template-settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ settings: templateSettings }),
+      });
+
+      const result = (await response.json()) as { ok?: boolean; message?: string };
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || copy.feedback.templateSaveFailed);
+      }
+
+      setTemplateMessage(copy.feedback.templateSaved);
+      setTemplateModalOpen(false);
+    } catch (error) {
+      const rawMessage = error instanceof Error ? error.message : copy.feedback.templateSaveFailed;
+      const normalized = rawMessage.toLowerCase();
+      const isPermissionError =
+        normalized.includes("permission") ||
+        normalized.includes("not allowed") ||
+        normalized.includes("violates row-level security") ||
+        normalized.includes("new row violates row-level security");
+
+      setTemplateError(isPermissionError ? copy.feedback.noTemplatePermission : rawMessage);
+    } finally {
+      setTemplateSaving(false);
     }
   };
 
@@ -1414,6 +1627,7 @@ export function InvoicePageView({
     <div className="invoice-design min-h-screen bg-background font-sans text-[var(--color-text-primary)] antialiased">
       <CustomerInfoModal
         open={customerModalOpen}
+        locale={activeLocale}
         customer={customerDraft}
         onChange={setCustomerDraft}
         onSave={() => {
@@ -1427,6 +1641,7 @@ export function InvoicePageView({
       />
       <CustomerDatabaseModal
         open={customerDbModalOpen}
+        locale={activeLocale}
         customers={customerRecords}
         onClose={() => setCustomerDbModalOpen(false)}
         onSelect={(customer) => {
@@ -1436,6 +1651,7 @@ export function InvoicePageView({
       />
       <CustomerProfileModal
         open={customerProfileModalOpen}
+        locale={activeLocale}
         customer={customerProfileDraft}
         errors={customerProfileErrors}
         saving={customerProfileSaving}
@@ -1499,7 +1715,7 @@ export function InvoicePageView({
             setCustomerProfileErrors({});
             setCustomerProfileModalOpen(false);
           } catch (error) {
-            setCustomerProfileSubmitError(error instanceof Error ? error.message : "保存失败，请稍后重试");
+            setCustomerProfileSubmitError(error instanceof Error ? error.message : copy.feedback.customerSaveFailed);
           } finally {
             setCustomerProfileSaving(false);
           }
@@ -1514,6 +1730,7 @@ export function InvoicePageView({
       />
       <ItemPickerModal
         open={itemPickerOpen}
+        locale={activeLocale}
         items={catalogItems}
         loading={catalogLoading}
         onClose={() => setItemPickerOpen(false)}
@@ -1522,9 +1739,10 @@ export function InvoicePageView({
 
       <ConfirmModal
         open={Boolean(pendingDeleteInvoice)}
-        title="删除发票"
-        description={pendingDeleteInvoice ? `确定要删除发票 ${pendingDeleteInvoice.invoice_no} 吗？此操作不可恢复。` : ""}
-        confirmLabel="确认删除"
+        locale={activeLocale}
+        title={copy.modal.confirmDelete.title}
+        description={pendingDeleteInvoice ? copy.modal.confirmDelete.description(pendingDeleteInvoice.invoice_no) : ""}
+        confirmLabel={copy.modal.confirmDelete.confirmLabel}
         confirming={Boolean(deletingInvoiceId)}
         onClose={() => {
           if (deletingInvoiceId) return;
@@ -1542,12 +1760,148 @@ export function InvoicePageView({
             }
             setPendingDeleteInvoice(null);
           } catch (error) {
-            setDeleteError(error instanceof Error ? error.message : "删除失败，请稍后重试");
+            setDeleteError(error instanceof Error ? error.message : copy.feedback.deleteFailed);
           } finally {
             setDeletingInvoiceId(null);
           }
         }}
       />
+
+      {templateModalOpen ? (
+        <div className="fixed inset-0 z-[125] flex items-center justify-center bg-black/45 px-3 py-4 backdrop-blur-[2px] sm:px-4 sm:py-6">
+          <div className="relative grid h-[82vh] w-full max-w-5xl grid-cols-1 overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-popover)] shadow-2xl lg:max-h-[860px] lg:grid-cols-[240px_1fr]">
+            <aside className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/60 p-4 lg:border-r lg:border-b-0">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-base font-bold text-[var(--color-text-primary)]">{copy.template.title}</h3>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+                  <div className="mb-2 h-1.5 w-14 rounded-full" style={{ backgroundColor: templateSettings.brandColor }} />
+                  <p className="text-sm font-bold text-[var(--color-text-primary)]">{templateSettings.oxygenInfo.companyName || copy.template.previewFallbackCompany}</p>
+                  <p className="mt-1 text-xs text-[var(--color-text-secondary)]">{templateSettings.oxygenInfo.headerSubtitle || copy.template.previewFallbackSubtitle}</p>
+                </div>
+
+                <div className="space-y-1">
+                  {TEMPLATE_GROUPS.map((group, index) => (
+                    <button
+                      key={group.key}
+                      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${
+                        templateActiveGroup === index
+                          ? "border-[#00A676]/45 bg-[#00A676]/10 text-[#00A676]"
+                          : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-secondary)] hover:border-[#00A676]/25 hover:text-[var(--color-text-primary)]"
+                      }`}
+                      onClick={() => setTemplateActiveGroup(index)}
+                    >
+                      <span>{copy.template.groups[group.key]}</span>
+                      <span className="opacity-80">{group.fields.length}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {templateLoading ? <p className="text-xs text-[var(--color-text-secondary)]">{copy.template.loading}</p> : null}
+                {templateError ? <p className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-400">{templateError}</p> : null}
+                {templateMessage ? <p className="rounded-md bg-emerald-500/10 px-2 py-1 text-xs text-emerald-500">{templateMessage}</p> : null}
+              </div>
+            </aside>
+
+            <section className="relative flex min-h-0 flex-col">
+              <button
+                className="absolute top-3 right-3 z-20   p-2 text-[var(--color-text-secondary)] transition-colors  hover:text-[var(--color-text-primary)]"
+                onClick={() => setTemplateModalOpen(false)}
+                aria-label={copy.template.closeAria}
+              >
+                <MaterialIcon name="close" className="text-lg" />
+              </button>
+
+              <div className="flex-1 overflow-y-auto px-4 py-4 pt-14 sm:px-6 sm:py-5 sm:pt-14">
+                <div className="mb-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                  <p className="mb-3 text-xs font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">{copy.template.brandColor}</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[84px_1fr]">
+                    <input
+                      className="h-11 w-full cursor-pointer rounded-lg border border-[var(--color-border)] bg-transparent"
+                      type="color"
+                      value={templateSettings.brandColor}
+                      onChange={(event) => setTemplateSettings((prev) => ({ ...prev, brandColor: event.target.value }))}
+                    />
+                    <input
+                      className="h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-page-bg-strong)] px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[#00A676]/50"
+                      value={templateSettings.brandColor}
+                      onChange={(event) => setTemplateSettings((prev) => ({ ...prev, brandColor: event.target.value }))}
+                      placeholder="#00A676"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4 pb-6">
+                  <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold tracking-wide text-[var(--color-text-secondary)] uppercase">{copy.template.groups[TEMPLATE_GROUPS[templateActiveGroup]?.key ?? "header"]}</p>
+                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">{copy.template.sectionHint}</p>
+                      </div>
+                      <span className="rounded-full bg-[var(--color-page-bg-strong)] px-2 py-1 text-[10px] font-semibold text-[var(--color-text-secondary)]">
+                        {templateActiveGroup + 1} / {TEMPLATE_GROUPS.length}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      {(TEMPLATE_GROUPS[templateActiveGroup]?.fields ?? []).map((field) => {
+                        const isLongTextField = field === "termsDescription";
+
+                        return (
+                          <label
+                            key={field}
+                            className={`block rounded-lg border border-[var(--color-border)] bg-[var(--color-page-bg-strong)]/60 p-3 transition-colors hover:border-[#00A676]/35 ${
+                              isLongTextField ? "md:col-span-2" : ""
+                            }`}
+                          >
+                            <span className="mb-1.5 block text-[11px] font-semibold text-[var(--color-text-secondary)]">{copy.template.fieldLabels[field]}</span>
+                            {isLongTextField ? (
+                              <textarea
+                                className="min-h-[88px] w-full rounded-md border border-[var(--color-border)] bg-[var(--color-popover)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none focus:border-[#00A676]/50"
+                                value={templateSettings.oxygenInfo[field]}
+                                onChange={(event) => updateTemplateField(field, event.target.value)}
+                              />
+                            ) : (
+                              <input
+                                className="h-10 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-popover)] px-3 text-sm text-[var(--color-text-primary)] outline-none focus:border-[#00A676]/50"
+                                value={templateSettings.oxygenInfo[field]}
+                                onChange={(event) => updateTemplateField(field, event.target.value)}
+                              />
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] bg-[var(--color-popover)] px-4 py-3 sm:px-6">
+                <p className="text-xs text-[var(--color-text-secondary)]">{copy.template.footerHint}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-surface-elevated)]"
+                    onClick={() => {
+                      setTemplateSettings(defaultInvoiceTemplateSettings);
+                    }}
+                  >
+                    {copy.template.resetDefault}
+                  </button>
+                  <button
+                    className="rounded-lg bg-[#00A676] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#00855e] disabled:cursor-not-allowed disabled:opacity-70"
+                    onClick={handleSaveTemplateSettings}
+                    disabled={templateSaving}
+                  >
+                    {templateSaving ? copy.template.saving : copy.template.save}
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      ) : null}
 
       <InvoiceEmailPanel
         open={emailPanelOpen}
@@ -1556,7 +1910,6 @@ export function InvoicePageView({
         form={invoiceEmail.form}
         sending={invoiceEmail.sending}
         error={invoiceEmail.error}
-        success={invoiceEmail.success}
         onClose={() => {
           if (invoiceEmail.sending) return;
           setEmailPanelOpen(false);
@@ -1567,15 +1920,23 @@ export function InvoicePageView({
           const sent = await invoiceEmail.send();
           if (sent) {
             setEmailPanelOpen(false);
+            showMessageToast(activeLocale === "zh" ? "邮件发送成功" : "Email sent successfully", invoiceNo || undefined);
           }
         }}
+      />
+
+      <MessageToast
+        visible={Boolean(messageToast)}
+        title={messageToast?.title ?? ""}
+        subtitle={messageToast?.subtitle}
+        onClose={() => setMessageToast(null)}
       />
 
       {viewingInvoice && selectedInvoiceDocumentData ? (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--modal-backdrop)] p-4" onClick={() => setViewingInvoice(null)}>
           <div className="relative max-h-[96vh] w-full max-w-[1100px] overflow-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-popover)] p-4 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-[var(--color-text-primary)]">发票详情 · {viewingInvoice.invoice_no}</h3>
+              <h3 className="text-sm font-bold text-[var(--color-text-primary)]">{copy.modal.invoicePreview.titlePrefix}{viewingInvoice.invoice_no}</h3>
               <div className="flex items-center gap-2">
                 <button
                   className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] transition-all hover:bg-[var(--color-surface-elevated)]"
@@ -1587,26 +1948,30 @@ export function InvoicePageView({
                     });
                   }}
                 >
-                  下载 PDF
+                  {copy.modal.invoicePreview.downloadPdf}
                 </button>
                 <button
                   className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] transition-all hover:bg-[var(--color-surface-elevated)]"
                   onClick={() => setViewingInvoice(null)}
                 >
-                  关闭
+                  {copy.modal.close}
                 </button>
               </div>
             </div>
-            <InvoiceDocument data={selectedInvoiceDocumentData} paperRef={viewingInvoiceRef} />
+            <InvoiceDocument data={selectedInvoiceDocumentData} settings={templateSettings} locale={activeLocale} paperRef={viewingInvoiceRef} />
           </div>
         </div>
       ) : null}
 
       {downloadingInvoice && downloadingInvoiceDocumentData ? (
         <div className="pointer-events-none fixed top-0 left-[-12000px] opacity-0" aria-hidden>
-          <InvoiceDocument data={downloadingInvoiceDocumentData} paperRef={hiddenDownloadRef} />
+          <InvoiceDocument data={downloadingInvoiceDocumentData} settings={templateSettings} locale={activeLocale} paperRef={hiddenDownloadRef} />
         </div>
       ) : null}
+
+      <div className="pointer-events-none fixed top-0 left-[-12000px] opacity-0" aria-hidden>
+        <InvoiceDocument data={builderDocumentData} settings={templateSettings} locale={activeLocale} paperRef={emailRenderRef} />
+      </div>
 
       <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-10">
         <header className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-center">
@@ -1615,11 +1980,11 @@ export function InvoicePageView({
               <span className="rounded-lg bg-[#00A676]/10 p-2">
                 <MaterialIcon name="receipt_long" className="text-[#00A676]" />
               </span>
-              <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">健身房发票与报价管理</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">{copy.header.title}</h1>
             </div>
             <div className="flex flex-col">
-              <p className="text-sm text-[var(--color-text-secondary)]">Gym Invoice &amp; Quotation Management</p>
-              <p className="mt-1 text-xs font-medium tracking-wide text-[var(--color-primary)]/85">高效管理，财务无忧</p>
+              <p className="text-sm text-[var(--color-text-secondary)]">{copy.header.subtitle}</p>
+              <p className="mt-1 text-xs font-medium tracking-wide text-[var(--color-primary)]/85">{copy.header.tagline}</p>
             </div>
           </div>
 
@@ -1629,14 +1994,14 @@ export function InvoicePageView({
                 className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-5 py-2.5 text-sm font-semibold text-[var(--color-text-primary)] transition-all hover:bg-[var(--color-surface)]"
                 onClick={() => router.push("/invoice")}
               >
-                返回发票列表
+                {copy.header.backToList}
               </button>
             ) : null}
 
             <div className="group relative">
               <button className="flex items-center gap-2 rounded-[10px] bg-[#00A676] px-6 py-2.5 font-bold text-white shadow-lg shadow-[#00A676]/10 transition-all duration-300 hover:bg-[#00855e]">
                 <MaterialIcon name="add" />
-                <span>操作菜单</span>
+                <span>{copy.header.actions}</span>
                 <MaterialIcon name="expand_more" className="text-sm" />
               </button>
               <div className="invisible absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-popover)] opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
@@ -1645,11 +2010,14 @@ export function InvoicePageView({
                     className="flex w-full items-center gap-3 border-b border-[var(--color-border)] px-4 py-3 text-left text-sm text-[var(--color-text-primary)] hover:bg-[#00A676]/10"
                     onClick={goToNewInvoice}
                   >
-                    <MaterialIcon name="post_add" className="text-lg" /> 生成新发票
+                    <MaterialIcon name="post_add" className="text-lg" /> {copy.header.createInvoice}
                   </button>
                 ) : null}
-                <button className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-[var(--color-text-primary)] hover:bg-[#00A676]/10">
-                  <MaterialIcon name="settings" className="text-lg" /> 模板设置
+                <button
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-[var(--color-text-primary)] hover:bg-[#00A676]/10"
+                  onClick={() => setTemplateModalOpen(true)}
+                >
+                  <MaterialIcon name="settings" className="text-lg" /> {copy.header.templateSettings}
                 </button>
               </div>
             </div>
@@ -1663,14 +2031,14 @@ export function InvoicePageView({
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <h2 className="flex items-center gap-3 text-lg font-semibold text-[var(--color-text-primary)]">
                     <MaterialIcon name="person_add" className="text-[#00A676]" />
-                    Customer Information
+                    {copy.builder.customerInfoTitle}
                   </h2>
                   <div className="flex items-center gap-2">
                     <button
                       className="flex items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface-elevated)] px-4 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition-all hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-border-strong)]"
                       onClick={() => setCustomerDbModalOpen(true)}
                     >
-                      <MaterialIcon name="storage" className="text-sm text-[var(--color-primary)]" /> 从客户档案选择
+                      <MaterialIcon name="storage" className="text-sm text-[var(--color-primary)]" /> {copy.builder.pickCustomerFromDb}
                     </button>
                     <button
                       className="flex items-center gap-2 rounded-md border border-[#00A676]/40 bg-[#00A676]/10 px-4 py-2 text-xs font-semibold text-[#00A676] transition-colors hover:bg-[#00A676]/20"
@@ -1679,13 +2047,14 @@ export function InvoicePageView({
                         setCustomerModalOpen(true);
                       }}
                     >
-                      <MaterialIcon name="person_add" className="text-sm" /> 新建客户档案
+                      <MaterialIcon name="person_add" className="text-sm" /> {copy.builder.createCustomerProfile}
                     </button>
                   </div>
                 </div>
                 <CustomerInfoPanel
                   customer={invoiceCustomer}
                   errors={customerErrors}
+                  locale={activeLocale}
                   onChange={(next) => {
                     setInvoiceCustomer(next);
                     setCustomerErrors(validateCustomer(next));
@@ -1697,7 +2066,7 @@ export function InvoicePageView({
                 <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/35 p-6">
                   <h2 className="flex items-center gap-3 text-lg font-semibold text-[var(--color-text-primary)]">
                     <MaterialIcon name="edit_note" className="text-[#00A676]" />
-                    Interactive Quote Builder
+                    {copy.builder.quoteBuilderTitle}
                   </h2>
                 </div>
 
@@ -1705,26 +2074,26 @@ export function InvoicePageView({
                   <div className="space-y-5">
                     {invoiceItems.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]/50 p-6 text-center">
-                        <p className="text-sm font-semibold text-[var(--color-text-primary)]">当前还没有项目</p>
-                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">请先从数据库选择项目，或添加一个自定义空白项目</p>
+                        <p className="text-sm font-semibold text-[var(--color-text-primary)]">{copy.builder.emptyItemsTitle}</p>
+                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">{copy.builder.emptyItemsHint}</p>
                       </div>
                     ) : null}
 
                     {invoiceItems.map((line) => (
                       <div key={line.id} className="group relative grid grid-cols-12 items-end gap-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)]/25 p-5">
                         <div className="col-span-5">
-                          <label className="mb-2 block text-[10px] font-bold uppercase text-[var(--color-text-muted)]">项目名称 (Manual Entry)</label>
+                          <label className="mb-2 block text-[10px] font-bold uppercase text-[var(--color-text-muted)]">{copy.builder.labels.itemName}</label>
                           <input
                             className={`w-full rounded-md border-[var(--color-border)] bg-[var(--color-page-bg-strong)] py-2 text-sm text-[var(--color-text-primary)] shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] focus:border-[#00A676] focus:ring-[#00A676] ${itemErrors[line.id]?.name ? "ring-1 ring-red-500/70" : ""}`}
                             type="text"
                             value={line.name}
                             onChange={(event) => updateInvoiceItem(line.id, { name: event.target.value })}
                           />
-                          {line.sourceCategory === "stored_value" ? <div className="mt-1 text-[10px] font-semibold uppercase text-[var(--color-primary)]/80">Non-taxable</div> : null}
+                          {line.sourceCategory === "stored_value" ? <div className="mt-1 text-[10px] font-semibold uppercase text-[var(--color-primary)]/80">{copy.builder.labels.nonTaxable}</div> : null}
                           {itemErrors[line.id]?.name ? <div className="mt-1 text-[10px] text-red-500">{itemErrors[line.id]?.name}</div> : null}
                         </div>
                         <div className="col-span-2">
-                          <label className="mb-2 block text-center text-[10px] font-bold uppercase text-[var(--color-text-muted)]">数量</label>
+                          <label className="mb-2 block text-center text-[10px] font-bold uppercase text-[var(--color-text-muted)]">{copy.builder.labels.qty}</label>
                           <NumberInput
                             className={`w-full rounded-md border-[var(--color-border)] bg-[var(--color-page-bg-strong)] py-2 text-center text-sm text-[var(--color-text-primary)] shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] focus:border-[#00A676] focus:ring-[#00A676] ${itemErrors[line.id]?.qty ? "ring-1 ring-red-500/70" : ""}`}
                             min={1}
@@ -1735,7 +2104,7 @@ export function InvoicePageView({
                           {itemErrors[line.id]?.qty ? <div className="mt-1 text-[10px] text-red-500">{itemErrors[line.id]?.qty}</div> : null}
                         </div>
                         <div className="col-span-2">
-                          <label className="mb-2 block text-[10px] font-bold uppercase text-[var(--color-text-muted)]">单价 ($)</label>
+                          <label className="mb-2 block text-[10px] font-bold uppercase text-[var(--color-text-muted)]">{copy.builder.labels.unitPrice}</label>
                           <NumberInput
                             className={`w-full rounded-md border-[var(--color-border)] bg-[var(--color-page-bg-strong)] py-2 text-sm text-[var(--color-text-primary)] shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] focus:border-[#00A676] focus:ring-[#00A676] ${itemErrors[line.id]?.unitPrice ? "ring-1 ring-red-500/70" : ""}`}
                             min={0}
@@ -1745,7 +2114,7 @@ export function InvoicePageView({
                           {itemErrors[line.id]?.unitPrice ? <div className="mt-1 text-[10px] text-red-500">{itemErrors[line.id]?.unitPrice}</div> : null}
                         </div>
                         <div className="col-span-2">
-                          <label className="mb-2 block text-[10px] font-bold uppercase text-[var(--color-text-muted)]">Discount ($)</label>
+                          <label className="mb-2 block text-[10px] font-bold uppercase text-[var(--color-text-muted)]">{copy.builder.labels.discount}</label>
                           <NumberInput
                             className={`w-full rounded-md border-[var(--color-border)] bg-[var(--color-page-bg-strong)] py-2 text-sm text-[var(--color-text-primary)] shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] focus:border-[#00A676] focus:ring-[#00A676] ${itemErrors[line.id]?.discount ? "ring-1 ring-red-500/70" : ""}`}
                             min={0}
@@ -1768,7 +2137,7 @@ export function InvoicePageView({
                         onClick={() => setItemPickerOpen(true)}
                       >
                         <MaterialIcon name="storage" className="text-xl" />
-                        <span className="text-xs font-medium tracking-wide">添加新的项目（从数据库选择）</span>
+                        <span className="text-xs font-medium tracking-wide">{copy.builder.addFromDb}</span>
                       </button>
 
                       <button
@@ -1776,7 +2145,7 @@ export function InvoicePageView({
                         onClick={addCustomLineItem}
                       >
                         <MaterialIcon name="add" className="text-xl" />
-                        <span className="text-xs font-medium tracking-wide">自定义添加空白项目</span>
+                        <span className="text-xs font-medium tracking-wide">{copy.builder.addCustom}</span>
                       </button>
                     </div>
                   </div>
@@ -1785,19 +2154,19 @@ export function InvoicePageView({
                 <div className="flex items-center justify-between border-t border-[var(--color-border)] bg-[var(--color-surface-elevated)]/20 p-6">
                   <div className="flex items-center gap-8">
                     <div>
-                      <span className="mb-1 block text-[10px] font-bold uppercase text-[var(--color-text-muted)]">合计金额</span>
+                      <span className="mb-1 block text-[10px] font-bold uppercase text-[var(--color-text-muted)]">{copy.builder.totalAmount}</span>
                       <span className="font-mono text-2xl font-bold text-[var(--color-text-primary)]">$ {totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      <span className="mt-1 block text-[10px] text-[var(--color-text-secondary)]">Includes 13% tax (stored value excluded)</span>
+                      <span className="mt-1 block text-[10px] text-[var(--color-text-secondary)]">{copy.builder.taxHint}</span>
                     </div>
                     <div className="h-10 w-px bg-[var(--color-border)]" />
                     <div>
-                      <span className="mb-1 block text-[10px] font-bold uppercase text-[var(--color-text-muted)]">项目总数</span>
-                      <span className="text-sm font-semibold text-[var(--color-text-secondary)]">{invoiceItems.length} Items</span>
+                      <span className="mb-1 block text-[10px] font-bold uppercase text-[var(--color-text-muted)]">{copy.builder.totalItems}</span>
+                      <span className="text-sm font-semibold text-[var(--color-text-secondary)]">{invoiceItems.length} {copy.builder.itemsSuffix}</span>
                     </div>
                   </div>
                   <div className="flex items-end gap-3">
                     <div className="min-w-[220px] rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5">
-                      <p className="mb-1 text-[10px] font-bold tracking-widest text-[var(--color-text-secondary)] uppercase">付款方式</p>
+                      <p className="mb-1 text-[10px] font-bold tracking-widest text-[var(--color-text-secondary)] uppercase">{copy.builder.paymentMethod}</p>
                       <select
                         className="w-full rounded border border-[var(--color-border)] bg-[var(--color-page-bg-strong)] px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] outline-none"
                         value={paymentMethodType}
@@ -1814,7 +2183,7 @@ export function InvoicePageView({
                           className="mt-1.5 w-full rounded border border-[var(--color-border)] bg-[var(--color-page-bg-strong)] px-2 py-1.5 text-xs font-semibold text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)]"
                           value={customPaymentMethod}
                           onChange={(event) => setCustomPaymentMethod(event.target.value)}
-                          placeholder="输入自定义付款方式"
+                          placeholder={copy.builder.customPaymentPlaceholder}
                         />
                       ) : null}
                     </div>
@@ -1823,7 +2192,7 @@ export function InvoicePageView({
                       onClick={handleSaveInvoice}
                       disabled={saveSubmitting}
                     >
-                      {saveSubmitting ? "保存中..." : "保存发票"}
+                      {saveSubmitting ? copy.builder.saving : copy.builder.save}
                     </button>
                   </div>
                 </div>
@@ -1834,13 +2203,13 @@ export function InvoicePageView({
 
             <div className="flex flex-col gap-6 xl:col-span-4">
               <div className="glass-panel mini-invoice-preview flex flex-col overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)]/60 p-6">
-                <h2 className="mb-4 text-[11px] font-bold tracking-widest text-[var(--color-text-muted)] uppercase">LIVE INVOICE PREVIEW</h2>
+                <h2 className="mb-4 text-[11px] font-bold tracking-widest text-[var(--color-text-muted)] uppercase">{copy.builder.livePreview}</h2>
 
                 <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]/70 p-2">
                   <div className="flex justify-center p-2">
                     <div className="relative h-[553px] w-[391px] overflow-hidden">
                       <div className="absolute top-0 left-0 origin-top-left" style={{ width: 850, transform: "scale(0.46)" }}>
-                        <InvoiceDocument data={builderDocumentData} paperRef={invoicePaperRef} />
+                        <InvoiceDocument data={builderDocumentData} settings={templateSettings} locale={activeLocale} paperRef={invoicePaperRef} />
                     </div>
                   </div>
                 </div>
@@ -1852,10 +2221,11 @@ export function InvoicePageView({
                   className="flex items-center justify-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] py-3 text-xs font-semibold text-[var(--color-text-primary)] transition-all hover:bg-[var(--color-surface-elevated)]"
                   onClick={handleDownloadPdf}
                 >
-                  <MaterialIcon name="picture_as_pdf" className="text-sm text-[var(--color-primary)]" /> Download PDF
+                  <MaterialIcon name="picture_as_pdf" className="text-sm text-[var(--color-primary)]" /> {copy.builder.downloadPdf}
                 </button>
                 <InvoiceEmailTrigger
                   onClick={() => {
+                    invoiceEmail.clearFeedback();
                     invoiceEmail.resetTemplate();
                     setEmailPanelOpen(true);
                   }}
@@ -1876,7 +2246,7 @@ export function InvoicePageView({
                 }`}
                 onClick={() => setActiveListTab("invoice")}
               >
-                <MaterialIcon name="description" className="text-lg" /> 发票列表
+                <MaterialIcon name="description" className="text-lg" /> {copy.table.tabs.invoiceList}
               </button>
               {showQuotationTab ? (
                 <button
@@ -1887,7 +2257,7 @@ export function InvoicePageView({
                   }`}
                   onClick={() => setActiveListTab("quotation")}
                 >
-                  <MaterialIcon name="list_alt" className="text-lg" /> 报价列表
+                  <MaterialIcon name="list_alt" className="text-lg" /> {copy.table.tabs.quotationList}
                 </button>
               ) : null}
               <button
@@ -1898,20 +2268,30 @@ export function InvoicePageView({
                 }`}
                 onClick={() => setActiveListTab("customer")}
               >
-                <MaterialIcon name="person_search" className="text-lg" /> 客户档案
+                <MaterialIcon name="person_search" className="text-lg" /> {copy.table.tabs.customerList}
               </button>
             </div>
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <h2 className="flex items-center gap-2 text-xl font-bold text-[var(--color-text-primary)]">
-                {activeListTab === "invoice" ? "发票管理" : activeListTab === "quotation" ? "报价管理" : "客户档案"}
-                <span className="ml-2 rounded bg-[var(--color-surface-elevated)] px-2 py-0.5 text-xs font-normal text-[var(--color-text-muted)]">实时筛选</span>
+                {activeListTab === "invoice"
+                  ? copy.table.management.invoice
+                  : activeListTab === "quotation"
+                    ? copy.table.management.quotation
+                    : copy.table.management.customer}
+                <span className="ml-2 rounded bg-[var(--color-surface-elevated)] px-2 py-0.5 text-xs font-normal text-[var(--color-text-muted)]">{copy.table.management.realtime}</span>
               </h2>
               <div className="relative">
                 <MaterialIcon name="search" className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-[var(--color-text-muted)]" />
                 <input
                   className="w-72 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-4 pl-10 text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-                  placeholder={activeListTab === "invoice" ? "搜索发票编号 / 客户 / 状态" : activeListTab === "quotation" ? "搜索报价单 / 客户 / 方案" : "搜索客户姓名 / 联系方式"}
+                  placeholder={
+                    activeListTab === "invoice"
+                      ? copy.table.searchPlaceholder.invoice
+                      : activeListTab === "quotation"
+                        ? copy.table.searchPlaceholder.quotation
+                        : copy.table.searchPlaceholder.customer
+                  }
                   type="text"
                   value={listSearch}
                   onChange={(event) => setListSearch(event.target.value)}
@@ -1931,12 +2311,12 @@ export function InvoicePageView({
                     onClick={goToNewInvoice}
                   >
                     <MaterialIcon name="add" className="mb-2 text-3xl text-[var(--color-primary)]" />
-                    <p className="text-xs font-bold uppercase tracking-wider">创建新报价单</p>
+                    <p className="text-xs font-bold uppercase tracking-wider">{copy.table.quotation.create}</p>
                   </div>
                 </div>
 
                 {filteredQuotations.length === 0 ? (
-                  <div className="mt-6 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-elevated)]/35 p-5 text-sm text-[var(--color-text-muted)]">未找到匹配报价单。</div>
+                  <div className="mt-6 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-elevated)]/35 p-5 text-sm text-[var(--color-text-muted)]">{copy.table.quotation.noMatch}</div>
                 ) : null}
               </div>
             ) : null}
@@ -1945,7 +2325,7 @@ export function InvoicePageView({
               <div className="glass-panel overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-card)]">
                 <div className="flex flex-wrap items-center justify-between gap-6 border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/30 p-6">
                   <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-bold text-[var(--color-text-primary)]">所有发票</h2>
+                    <h2 className="text-xl font-bold text-[var(--color-text-primary)]">{copy.table.invoice.all}</h2>
                     <div className="flex rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-1">
                       <button
                         className={`rounded-md px-5 py-1.5 text-xs font-semibold transition-colors ${
@@ -1953,7 +2333,7 @@ export function InvoicePageView({
                         }`}
                         onClick={() => setInvoiceStatusFilter("ALL")}
                       >
-                        全部
+                        {copy.table.invoice.statusFilter.all}
                       </button>
                       <button
                         className={`rounded-md px-5 py-1.5 text-xs font-semibold transition-colors ${
@@ -1961,7 +2341,7 @@ export function InvoicePageView({
                         }`}
                         onClick={() => setInvoiceStatusFilter("SENT")}
                       >
-                        Sent
+                        {copy.table.invoice.statusFilter.sent}
                       </button>
                       <button
                         className={`rounded-md px-5 py-1.5 text-xs font-semibold transition-colors ${
@@ -1969,7 +2349,7 @@ export function InvoicePageView({
                         }`}
                         onClick={() => setInvoiceStatusFilter("NOT SENT")}
                       >
-                        Not Sent
+                        {copy.table.invoice.statusFilter.notSent}
                       </button>
                     </div>
                   </div>
@@ -1984,12 +2364,12 @@ export function InvoicePageView({
                 </div>
 
                 {customerProfilesLoading ? (
-                  <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/20 px-6 py-3 text-xs text-[var(--color-text-secondary)]">正在加载客户档案...</div>
+                  <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/20 px-6 py-3 text-xs text-[var(--color-text-secondary)]">{copy.table.invoice.loadingCustomers}</div>
                 ) : null}
                 {deleteError ? <div className="border-b border-red-500/30 bg-red-500/10 px-6 py-2 text-xs text-red-700">{deleteError}</div> : null}
                 {duplicateCustomerEmails.length > 0 ? (
                   <div className="mx-6 mt-4 rounded-[10px] border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-800">
-                    检测到重复客户邮箱（{duplicateCustomerEmails.length}）: {duplicateCustomerEmails.join("，")}。建议合并重复档案，避免编辑误操作。
+                    {copy.table.invoice.duplicateWarning(duplicateCustomerEmails.length, duplicateCustomerEmails.join("，"))}
                   </div>
                 ) : null}
 
@@ -1997,12 +2377,12 @@ export function InvoicePageView({
                   <table className="w-full text-left">
                     <thead>
                       <tr className="bg-[var(--color-surface-elevated)]/45 text-[10px] uppercase tracking-widest text-[var(--color-text-secondary)]">
-                        <th className="px-6 py-4 font-bold">发票编号</th>
-                        <th className="px-6 py-4 font-bold">客户名称</th>
-                        <th className="px-6 py-4 text-right font-bold">总金额</th>
-                        <th className="px-6 py-4 font-bold">结算日期</th>
-                        <th className="px-6 py-4 font-bold">状态</th>
-                        <th className="px-6 py-4 text-right font-bold">操作</th>
+                        <th className="px-6 py-4 font-bold">{copy.table.invoice.headers.invoiceNo}</th>
+                        <th className="px-6 py-4 font-bold">{copy.table.invoice.headers.customerName}</th>
+                        <th className="px-6 py-4 text-right font-bold">{copy.table.invoice.headers.total}</th>
+                        <th className="px-6 py-4 font-bold">{copy.table.invoice.headers.date}</th>
+                        <th className="px-6 py-4 font-bold">{copy.table.invoice.headers.status}</th>
+                        <th className="px-6 py-4 text-right font-bold">{copy.table.invoice.headers.action}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-border)]">
@@ -2018,6 +2398,45 @@ export function InvoicePageView({
                             onDownload={(target) => {
                               setDownloadingInvoice(target.raw);
                             }}
+                            onSendEmail={(target) => {
+                              const source = target.raw;
+                              const parsed = parseCustomerAddress(source.customer_address ?? "");
+                              const nextInvoiceNo = source.invoice_no || generateInvoiceNo();
+                              const normalizedCustomer: InvoiceCustomerInfo = {
+                                name: source.customer_name,
+                                email: source.customer_email,
+                                streetAddress: parsed.streetAddress,
+                                city: parsed.city,
+                                province: parsed.province,
+                                postalCode: parsed.postalCode,
+                                country: parsed.country,
+                              };
+                              const normalizedItems = normalizeInvoiceItemsFromRecord(source);
+                              setInvoiceNo(nextInvoiceNo);
+                              setIssueDate(source.issue_date || new Date().toLocaleDateString("en-CA"));
+                              setInvoiceCustomer(normalizedCustomer);
+                              setCustomerErrors(validateCustomer(normalizedCustomer));
+                              setInvoiceItems(normalizedItems);
+                              setItemErrors(validateItems(normalizedItems));
+
+                              if (paymentOptions.includes(source.payment_method as (typeof paymentOptions)[number])) {
+                                setPaymentMethodType(source.payment_method as (typeof paymentOptions)[number]);
+                                setCustomPaymentMethod("");
+                              } else {
+                                setPaymentMethodType("Custom");
+                                setCustomPaymentMethod(source.payment_method || "");
+                              }
+
+                              const nextTemplate = createInvoiceEmailTemplate({
+                                customerName: normalizedCustomer.name,
+                                invoiceNo: nextInvoiceNo,
+                              });
+                              invoiceEmail.clearFeedback();
+                              invoiceEmail.setField("to", source.customer_email || "");
+                              invoiceEmail.setField("subject", nextTemplate.subject);
+                              invoiceEmail.setField("body", nextTemplate.body);
+                              setEmailPanelOpen(true);
+                            }}
                             onDelete={(target) => {
                               setDeleteError(null);
                               setPendingDeleteInvoice(target.raw);
@@ -2027,7 +2446,7 @@ export function InvoicePageView({
                       ) : (
                         <tr>
                           <td colSpan={6} className="px-6 py-10 text-center text-sm text-[var(--color-text-secondary)]">
-                            暂时没有发票数据
+                            {copy.table.invoice.empty}
                           </td>
                         </tr>
                       )}
@@ -2037,7 +2456,7 @@ export function InvoicePageView({
 
                 <div className="flex items-center justify-between border-t border-[var(--color-border)] bg-[var(--color-surface-elevated)]/20 p-6">
                   <div className="text-[11px] font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
-                    showing {filteredInvoices.length} records
+                    {copy.table.invoice.showing(filteredInvoices.length)}
                   </div>
                   <button
                     className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]"
@@ -2047,7 +2466,7 @@ export function InvoicePageView({
                       setInvoiceDateFilter("");
                     }}
                   >
-                    重置筛选
+                    {copy.table.invoice.resetFilter}
                   </button>
                 </div>
               </div>
@@ -2056,7 +2475,7 @@ export function InvoicePageView({
             {activeListTab === "customer" ? (
               <div className="glass-panel overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-card)]">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface-elevated)]/20 px-6 py-4">
-                  <h3 className="text-lg font-bold text-[var(--color-text-primary)]">客户档案总览</h3>
+                  <h3 className="text-lg font-bold text-[var(--color-text-primary)]">{copy.table.customer.overview}</h3>
                   <button
                     className="flex items-center gap-2 rounded-[10px] bg-[#00A676] px-4 py-2 text-xs font-bold text-white shadow-lg shadow-[#00A676]/10 transition-all hover:bg-[#00855e]"
                     onClick={() => {
@@ -2067,18 +2486,18 @@ export function InvoicePageView({
                     }}
                   >
                     <MaterialIcon name="person_add" className="text-sm" />
-                    添加客户档案
+                    {copy.table.customer.add}
                   </button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
                       <tr className="bg-[var(--color-surface-elevated)]/45 text-[10px] uppercase tracking-widest text-[var(--color-text-secondary)]">
-                        <th className="px-6 py-4 font-bold">客户</th>
-                        <th className="px-6 py-4 font-bold">联系方式</th>
-                        <th className="px-6 py-4 text-right font-bold">累计金额</th>
-                        <th className="px-6 py-4 font-bold">最近交易</th>
-                        <th className="px-6 py-4 text-right font-bold">操作</th>
+                        <th className="px-6 py-4 font-bold">{copy.table.customer.headers.customer}</th>
+                        <th className="px-6 py-4 font-bold">{copy.table.customer.headers.contact}</th>
+                        <th className="px-6 py-4 text-right font-bold">{copy.table.customer.headers.totalAmount}</th>
+                        <th className="px-6 py-4 font-bold">{copy.table.customer.headers.latest}</th>
+                        <th className="px-6 py-4 text-right font-bold">{copy.table.customer.headers.action}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-border)]">
@@ -2117,7 +2536,7 @@ export function InvoicePageView({
                                   setCustomerProfileModalOpen(true);
                                 }}
                               >
-                                编辑
+                                {copy.table.customer.edit}
                               </button>
                             </td>
                           </tr>
@@ -2128,7 +2547,7 @@ export function InvoicePageView({
                 </div>
 
                 {customerOverviewRows.length === 0 ? (
-                  <div className="border-t border-[var(--color-border)] p-6 text-sm text-[var(--color-text-secondary)]">未找到匹配客户。</div>
+                  <div className="border-t border-[var(--color-border)] p-6 text-sm text-[var(--color-text-secondary)]">{copy.table.customer.empty}</div>
                 ) : null}
               </div>
             ) : null}

@@ -208,7 +208,7 @@ export function Navbar({
               {avatarInitial}
             </button>
             {avatarMenuOpen && (
-              <div className="absolute left-0 right-0 z-[60] mt-3 w-[min(92vw,20rem)] sm:left-auto sm:right-0 sm:w-64 overflow-hidden rounded-2xl border border-border/70 bg-[var(--color-surface-overlay)]/98 shadow-[0_24px_40px_rgba(0,0,0,0.22)] backdrop-blur">
+              <div className="absolute left-0 right-0 z-[60] mt-3 w-[min(92vw,20rem)] sm:left-auto sm:right-0 sm:w-64 overflow-hidden rounded-2xl border border-border/70 bg-[var(--color-page-bg-soft)] shadow-[0_24px_40px_rgba(0,0,0,0.32)]">
                 <div className="border-b border-[var(--color-primary-faint)] bg-gradient-to-r from-emerald-500/10 via-transparent to-transparent px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-sm font-semibold text-foreground">

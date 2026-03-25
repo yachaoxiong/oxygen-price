@@ -71,6 +71,16 @@ export type CreateInvoiceInput = {
   }>;
 };
 
+export type InvoiceTemplateSettingsRecord = {
+  id: string;
+  user_id: string;
+  name: string;
+  settings_json: Record<string, unknown>;
+  is_default: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -335,6 +345,68 @@ export async function deleteInvoice(invoiceId: string): Promise<void> {
 
   const { error: deleteError } = await supabase.from("invoices").delete().eq("id", invoiceId);
   if (deleteError) throw new Error(deleteError.message);
+}
+
+export async function fetchInvoiceTemplateSettings(): Promise<InvoiceTemplateSettingsRecord[]> {
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("invoice_template_settings")
+    .select("id, user_id, name, settings_json, is_default, created_at, updated_at")
+    .order("updated_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as InvoiceTemplateSettingsRecord[];
+}
+
+export async function saveDefaultInvoiceTemplateSettings(settingsJson: Record<string, unknown>): Promise<InvoiceTemplateSettingsRecord> {
+  if (!supabase) throw new Error("Supabase 未配置");
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) throw new Error(userError.message);
+  if (!user) throw new Error("请先登录后再保存模板设置");
+
+  const { data: existing, error: findError } = await supabase
+    .from("invoice_template_settings")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("is_default", true)
+    .maybeSingle();
+
+  if (findError) throw new Error(findError.message);
+
+  if (existing?.id) {
+    const { data, error } = await supabase
+      .from("invoice_template_settings")
+      .update({
+        settings_json: settingsJson,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id)
+      .select("id, user_id, name, settings_json, is_default, created_at, updated_at")
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data as InvoiceTemplateSettingsRecord;
+  }
+
+  const { data, error } = await supabase
+    .from("invoice_template_settings")
+    .insert({
+      user_id: user.id,
+      name: "默认模板",
+      settings_json: settingsJson,
+      is_default: true,
+    })
+    .select("id, user_id, name, settings_json, is_default, created_at, updated_at")
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data as InvoiceTemplateSettingsRecord;
 }
 
 export async function getCurrentUser() {

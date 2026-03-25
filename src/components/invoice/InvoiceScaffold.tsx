@@ -14,17 +14,22 @@ type InvoiceScaffoldProps = {
   profileName?: string;
   profileEmail?: string;
   profileRole?: string;
+  activeLocale: "zh" | "en";
+  onToggleLocale: () => void;
   onSignOut: () => Promise<void> | void;
 };
 
-export function InvoiceScaffold({ children, profileName, profileEmail, profileRole, onSignOut }: InvoiceScaffoldProps) {
+export function InvoiceScaffold({
+  children,
+  profileName,
+  profileEmail,
+  profileRole,
+  activeLocale,
+  onToggleLocale,
+  onSignOut,
+}: InvoiceScaffoldProps) {
   const router = useRouter();
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-  const [activeLocale, setActiveLocale] = useState<"zh" | "en">(() => {
-    if (typeof window === "undefined") return "en";
-    const saved = window.localStorage.getItem("oxygen-pricing-locale");
-    return saved === "zh" || saved === "en" ? saved : "en";
-  });
 
   const {
     items: cartItems,
@@ -70,15 +75,7 @@ export function InvoiceScaffold({ children, profileName, profileEmail, profileRo
         onSelectCategory={(category) => {
           router.push(`/?category=${category}`);
         }}
-        onToggleLocale={() => {
-          setActiveLocale((prev) => {
-            const next = prev === "zh" ? "en" : "zh";
-            if (typeof window !== "undefined") {
-              window.localStorage.setItem("oxygen-pricing-locale", next);
-            }
-            return next;
-          });
-        }}
+        onToggleLocale={onToggleLocale}
         cartCount={cartTotals.itemsCount}
         onOpenCart={() => setCartOpen(true)}
         addingItemKey={null}

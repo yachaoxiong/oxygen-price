@@ -6,12 +6,26 @@ type InvoicePdfInput = {
   invoiceNo: string;
 };
 
+async function preloadImage(src: string): Promise<void> {
+  await new Promise<void>((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => resolve(); // logo 失败不影响导出其余内容
+    // 同源图片无需 CORS，但这里保留设置以防未来改成 CDN
+    img.crossOrigin = "anonymous";
+    img.src = src;
+  });
+}
+
 async function renderInvoicePdfBlob({ invoiceElement }: { invoiceElement: HTMLDivElement }): Promise<Blob> {
   try {
     await document.fonts.ready;
   } catch {
     // ignore font readiness failures
   }
+
+  // 避免 html2canvas 截图时 logo 还没加载完成
+  await preloadImage("/logo.png");
 
   const exportHost = document.createElement("div");
   exportHost.style.position = "fixed";

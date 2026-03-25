@@ -66,6 +66,7 @@ export async function POST(request: Request) {
       to: [payload.to.trim()],
       subject: payload.subject.trim(),
       text: payload.body.trim(),
+      html: payload.html?.trim() || undefined,
       attachments: [
         {
           filename,

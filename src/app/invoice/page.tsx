@@ -23,6 +23,11 @@ export default function InvoicePage() {
 
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  const [activeLocale, setActiveLocale] = useState<"zh" | "en">(() => {
+    if (typeof window === "undefined") return "en";
+    const saved = window.localStorage.getItem("oxygen-pricing-locale");
+    return saved === "zh" || saved === "en" ? saved : "en";
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -73,6 +78,16 @@ export default function InvoicePage() {
       profileName={profile?.full_name ?? undefined}
       profileEmail={profile?.email || email}
       profileRole={profile?.role ?? undefined}
+      activeLocale={activeLocale}
+      onToggleLocale={() => {
+        setActiveLocale((prev) => {
+          const next = prev === "zh" ? "en" : "zh";
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem("oxygen-pricing-locale", next);
+          }
+          return next;
+        });
+      }}
       onSignOut={handleSignOut}
     >
       <InvoicePageView
@@ -80,6 +95,7 @@ export default function InvoicePage() {
         recentQuotations={[]}
         invoiceRows={invoices}
         customerProfilesFromDb={customers}
+        activeLocale={activeLocale}
         showBuilderSection={false}
         showListSection={true}
         showQuotationTab={false}

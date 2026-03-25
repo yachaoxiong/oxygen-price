@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { blobToBase64, generateInvoicePdfBlob } from "@/lib/invoicePdf";
-import { createInvoiceEmailTemplate } from "@/lib/invoiceEmailTemplate";
+import { createInvoiceEmailHtmlTemplate, createInvoiceEmailTemplate } from "@/lib/invoiceEmailTemplate";
 import { sendInvoiceEmail } from "@/lib/invoiceEmailService";
 import { isValidEmail } from "@/lib/emailValidation";
 
@@ -34,12 +34,14 @@ export function useInvoiceEmailSender(params: {
   });
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+
+  const clearFeedback = () => {
+    setError(null);
+  };
 
   const setField = (field: keyof InvoiceEmailFormValue, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (error) setError(null);
-    if (success) setSuccess(null);
   };
 
   const resetTemplate = () => {
@@ -65,7 +67,6 @@ export function useInvoiceEmailSender(params: {
 
   const send = async () => {
     setError(null);
-    setSuccess(null);
 
     const validationError = validate();
     if (validationError) {
@@ -91,6 +92,11 @@ export function useInvoiceEmailSender(params: {
         to: form.to.trim(),
         subject: form.subject.trim(),
         body: form.body.trim(),
+        html: createInvoiceEmailHtmlTemplate({
+          customerName: params.customerName,
+          invoiceNo: params.invoiceNo,
+          body: form.body.trim(),
+        }),
         pdfBase64,
         invoiceNo: params.invoiceNo,
         filename: `${params.invoiceNo || "invoice"}.pdf`,
@@ -100,7 +106,6 @@ export function useInvoiceEmailSender(params: {
         await params.onSent();
       }
 
-      setSuccess("Invoice email sent successfully.");
       return true;
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Failed to send invoice email.");
@@ -114,9 +119,9 @@ export function useInvoiceEmailSender(params: {
     form,
     sending,
     error,
-    success,
     setField,
     resetTemplate,
     send,
+    clearFeedback,
   };
 }
