@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Moon, ShoppingCart, Sun } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { cartCopy, formatCartCopy } from "@/lib/cart/cartCopy";
 
 const NAV_ITEMS = [
@@ -50,6 +50,9 @@ export function Navbar({
 }: NavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const headerRef = useRef<HTMLElement | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const maxHeaderHeightRef = useRef(0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") return "dark";
@@ -61,6 +64,44 @@ export function Navbar({
   });
   const isInvoiceRoute = pathname === "/invoice" || pathname === "/new-invoice";
 
+  const measureHeaderHeight = useCallback(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const raw = el.getBoundingClientRect().height;
+    if (!Number.isFinite(raw)) return;
+    // Prevent 0.5px/1px-level measurement noise from causing visible layout shifts.
+    const next = Math.round(raw);
+    if (next > maxHeaderHeightRef.current) {
+      maxHeaderHeightRef.current = next;
+      setHeaderHeight(next);
+    } else if (maxHeaderHeightRef.current > 0) {
+      // Ensure initial placeholder gets a reasonable height before first resize tick.
+      setHeaderHeight((prev) => (prev === 0 ? maxHeaderHeightRef.current : prev));
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    measureHeaderHeight();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() => measureHeaderHeight());
+      if (headerRef.current) ro.observe(headerRef.current);
+      return () => ro.disconnect();
+    }
+
+    // Fallback: window resize is enough for most cases
+    const onResize = () => measureHeaderHeight();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [measureHeaderHeight]);
+
+  useLayoutEffect(() => {
+    // Language switch changes label lengths, which can change navbar height.
+    // Measure in layout phase to avoid 1-frame "squeezing".
+    // Keep placeholder height stable to avoid push/pull during locale/theme changes.
+    measureHeaderHeight();
+  }, [activeLocale, mobileNavOpen, avatarMenuOpen, measureHeaderHeight]);
+
   const toggleTheme = () => {
     const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
@@ -70,11 +111,18 @@ export function Navbar({
   };
 
   return (
-    <header
-      className="sticky top-0 z-[60] w-full border-b border-[var(--color-border)] bg-[var(--color-surface-overlay)]/95 backdrop-blur"
-      style={{ paddingTop: "env(safe-area-inset-top)", paddingLeft: "1rem", paddingRight: "1rem" }}
-    >
-      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-3 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-6 md:px-6 md:py-4">
+    <>
+      <header
+        ref={headerRef}
+        className="fixed left-0 right-0 z-[60] w-full border-b border-[var(--color-border)] bg-[var(--color-surface-overlay)]/95 backdrop-blur"
+        style={{
+          top: "0px",
+          paddingTop: "env(safe-area-inset-top)",
+          paddingLeft: "1rem",
+          paddingRight: "1rem",
+        }}
+      >
+      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-1.5 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-6 md:px-6 md:py-4">
         <div className="flex flex-1 items-center justify-between gap-3">
           <div className="flex items-center gap-1">
             <span className="text-xl font-black tracking-tighter text-[var(--color-text-primary)] sm:text-2xl md:text-3xl">Oxygen</span>
@@ -162,17 +210,8 @@ export function Navbar({
         </nav>
         <div className="hidden flex-wrap items-center justify-start gap-2 md:flex md:justify-end">
           <button
-            onClick={toggleTheme}
-            className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface-elevated)] px-3 text-[11px] font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary-soft)] hover:bg-[var(--color-hover)]"
-            aria-label={theme === "dark" ? "切换到亮色模式" : "切换到暗色模式"}
-            title={theme === "dark" ? "Switch to Light" : "Switch to Dark"}
-          >
-            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-            <span>{theme === "dark" ? "Light" : "Dark"}</span>
-          </button>
-          <button
             onClick={onToggleLocale}
-            className="btn-border-animate group relative overflow-hidden border border-border bg-card/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary-soft)] hover:text-[var(--color-text-primary)]"
+            className="btn-border-animate group relative inline-flex whitespace-nowrap overflow-hidden border border-border bg-card/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--color-text-secondary)] transition hover:border-[var(--color-primary-soft)] hover:text-[var(--color-text-primary)]"
           >
             <svg aria-hidden="true">
               <rect width="100%" height="100%" x="0" y="0" />
@@ -233,8 +272,17 @@ export function Navbar({
                     <span className="text-[10px] text-muted-foreground">Open</span>
                   </Link>
                   <button
+                    onClick={toggleTheme}
+                    className="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary-soft)] hover:bg-[var(--color-hover)]"
+                    aria-label={theme === "dark" ? "切换到亮色模式" : "切换到暗色模式"}
+                    title={theme === "dark" ? "Switch to Light" : "Switch to Dark"}
+                  >
+                    {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+                    <span>{theme === "dark" ? "Light" : "Dark"}</span>
+                  </button>
+                  <button
                     onClick={onSignOut}
-                    className="w-full rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-foreground transition hover:border-rose-300/60 hover:bg-rose-500/16"
+                    className="mt-2 w-full rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-foreground transition hover:border-rose-300/60 hover:bg-rose-500/16"
                   >
                     {activeLocale === "zh" ? "退出登录" : "Sign out"}
                   </button>
@@ -275,12 +323,12 @@ export function Navbar({
                       : "border-border/70 text-[var(--color-text-secondary)] hover:border-border hover:bg-[var(--color-hover)]"
                   }`}
                 >
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+                  <div className="min-w-0">
+                    <p className="truncate whitespace-nowrap text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
                       {activeLocale === "zh" ? item.labelZh : item.labelEn}
                     </p>
                   </div>
-                  <span className="text-[10px] text-emerald-200/70">
+                  <span className="whitespace-nowrap text-[10px] text-emerald-200/70">
                     {isActive ? (activeLocale === "zh" ? "当前" : "Active") : ""}
                   </span>
                 </button>
@@ -290,16 +338,8 @@ export function Navbar({
 
           <div className="mt-4 flex items-center gap-2">
             <button
-              onClick={toggleTheme}
-              className="inline-flex h-12 items-center gap-2 rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface-elevated)] px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-primary)] transition hover:border-[var(--color-primary-soft)] hover:bg-[var(--color-hover)]"
-              aria-label={theme === "dark" ? "切换到亮色模式" : "切换到暗色模式"}
-            >
-              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-              <span>{theme === "dark" ? "Light" : "Dark"}</span>
-            </button>
-            <button
               onClick={onToggleLocale}
-              className="btn-border-animate group relative inline-flex h-12 items-center justify-between overflow-hidden rounded-xl border border-border bg-card/70 px-4 text-[11px] font-semibold uppercase tracking-[0.25em] text-[var(--color-text-secondary)] transition hover:border-emerald-300/50 hover:text-[var(--color-text-primary)]"
+              className="btn-border-animate group relative inline-flex h-12 items-center justify-between overflow-hidden rounded-xl border border-border bg-card/70 px-4 text-[11px] font-semibold uppercase tracking-[0.25em] text-[var(--color-text-secondary)] transition hover:border-emerald-300/50 hover:text-[var(--color-text-primary)] whitespace-nowrap"
             >
               <svg aria-hidden="true">
                 <rect width="100%" height="100%" x="0" y="0" />
@@ -309,45 +349,54 @@ export function Navbar({
             </button>
           </div>
 
-          <div className="mt-4 rounded-xl border border-border/70 bg-[var(--color-surface-overlay)]/90" data-avatar-menu>
+          <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-overlay)]/90" data-avatar-menu>
             <button
               onClick={onToggleAvatarMenu}
               className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
               aria-label={activeLocale === "zh" ? "用户菜单" : "User menu"}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-500/10 text-xs font-semibold text-emerald-100">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border-strong)] bg-[var(--color-primary-faint)] text-xs font-semibold text-[var(--color-text-primary)]">
                   {avatarInitial}
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">{avatarName}</p>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/70">{avatarRole}</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-text-muted)]">{avatarRole}</p>
                 </div>
               </div>
-              <span className={`material-symbols-outlined text-base text-emerald-200/70 transition-transform ${
+              <span className={`material-symbols-outlined text-base text-[var(--color-text-secondary)] transition-transform ${
                 avatarMenuOpen ? "rotate-180" : ""
               }`}>expand_more</span>
             </button>
             {avatarMenuOpen && (
-              <div className="border-t border-emerald-300/15 px-4 py-3">
+              <div className="border-t border-[var(--color-border)] px-4 py-3">
+                <button
+                  onClick={toggleTheme}
+                  className="mb-2 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary-soft)] hover:bg-[var(--color-hover)]"
+                  aria-label={theme === "dark" ? "切换到亮色模式" : "切换到暗色模式"}
+                  title={theme === "dark" ? "Switch to Light" : "Switch to Dark"}
+                >
+                  {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+                  <span>{theme === "dark" ? "Light" : "Dark"}</span>
+                </button>
                 <Link
                   href="/invoice"
                   className={`mb-2 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-xs font-semibold transition ${
                     isInvoiceRoute
-                      ? "border-emerald-300/60 bg-emerald-500/20 text-emerald-100"
-                      : "border-emerald-300/20 bg-emerald-500/10 text-emerald-100 hover:border-emerald-300/50 hover:bg-emerald-500/20"
+                      ? "border-[var(--color-primary-soft)] bg-[var(--color-primary-faint)] text-[var(--color-text-primary)]"
+                      : "border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text-primary)] hover:border-[var(--color-primary-soft)] hover:bg-[var(--color-hover)]"
                   }`}
                   onClick={() => setMobileNavOpen(false)}
                 >
                   <span>{activeLocale === "zh" ? "发票中心" : "Invoice Center"}</span>
-                  <span className="text-[10px] text-emerald-200/70">Open</span>
+                  <span className="text-[10px] text-[var(--color-text-muted)]">Open</span>
                 </Link>
                 <button
                   onClick={() => {
                     onSignOut();
                     setMobileNavOpen(false);
                   }}
-                  className="w-full rounded-lg border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100 transition hover:border-rose-300/50 hover:bg-rose-500/20"
+                  className="w-full rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:border-rose-500/55 hover:bg-rose-500/15 dark:text-rose-200"
                 >
                   {activeLocale === "zh" ? "退出登录" : "Sign out"}
                 </button>
@@ -357,6 +406,8 @@ export function Navbar({
         </nav>
       </div>
       <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-emerald-300/50 to-transparent" />
-    </header>
+      </header>
+      <div aria-hidden style={{ height: headerHeight }} />
+    </>
   );
 }

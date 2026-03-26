@@ -882,6 +882,7 @@ function InvoiceTableRow({
   onSendEmail,
   onDelete,
   deleting,
+  supportsHoverActions,
 }: {
   row: InvoiceListRow;
   onView: (row: InvoiceListRow) => void;
@@ -889,6 +890,7 @@ function InvoiceTableRow({
   onSendEmail: (row: InvoiceListRow) => void;
   onDelete: (row: InvoiceListRow) => void;
   deleting: boolean;
+  supportsHoverActions: boolean;
 }) {
   return (
     <tr className="invoice-table-row group">
@@ -915,7 +917,11 @@ function InvoiceTableRow({
         </span>
       </td>
       <td className="px-6 py-2.5 text-right">
-        <div className="flex justify-end gap-1.5 opacity-0 transition-all group-hover:opacity-100">
+        <div
+          className={`flex justify-end gap-1.5 transition-all ${
+            supportsHoverActions ? "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" : "opacity-100"
+          }`}
+        >
           <button
             className="rounded-md bg-[var(--color-surface-elevated)] p-1.5 text-[var(--color-text-secondary)] transition-all hover:bg-[#00A676] hover:text-[var(--color-text-primary)]"
             onClick={() => onView(row)}
@@ -1016,6 +1022,9 @@ export function InvoicePageView({
   const [templateMessage, setTemplateMessage] = useState<string | null>(null);
   const [templateActiveGroup, setTemplateActiveGroup] = useState(0);
   const [messageToast, setMessageToast] = useState<{ title: string; subtitle?: string } | null>(null);
+  const [supportsHoverActions, setSupportsHoverActions] = useState(false);
+  const [headerActionsOpen, setHeaderActionsOpen] = useState(false);
+  const headerActionsRef = useRef<HTMLDivElement | null>(null);
   const copy = getInvoicePageCopy(activeLocale as InvoiceLocale);
 
   const showMessageToast = (title: string, subtitle?: string) => {
@@ -1033,6 +1042,45 @@ export function InvoicePageView({
       document.body.style.overflow = previousOverflow;
     };
   }, [templateModalOpen]);
+
+  useEffect(() => {
+    if (!viewingInvoice) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [viewingInvoice]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const sync = () => {
+      const nextSupportsHover = media.matches;
+      setSupportsHoverActions(nextSupportsHover);
+      if (nextSupportsHover) setHeaderActionsOpen(false);
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (supportsHoverActions || !headerActionsOpen) return;
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!headerActionsRef.current) return;
+      if (headerActionsRef.current.contains(event.target as Node)) return;
+      setHeaderActionsOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [headerActionsOpen, supportsHoverActions]);
 
   const getAccessToken = async (): Promise<string | null> => {
     if (!supabase) return null;
@@ -1934,8 +1982,14 @@ export function InvoicePageView({
       />
 
       {viewingInvoice && selectedInvoiceDocumentData ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--modal-backdrop)] p-4" onClick={() => setViewingInvoice(null)}>
-          <div className="relative max-h-[96vh] w-full max-w-[1100px] overflow-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-popover)] p-4 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--modal-backdrop)] p-2 sm:p-4"
+          onClick={() => setViewingInvoice(null)}
+        >
+          <div
+            className="relative max-h-[86vh] w-full max-w-[1100px] overflow-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-popover)] p-3 sm:p-4 shadow-2xl sm:max-h-[96vh]"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold text-[var(--color-text-primary)]">{copy.modal.invoicePreview.titlePrefix}{viewingInvoice.invoice_no}</h3>
               <div className="flex items-center gap-2">
@@ -1999,24 +2053,46 @@ export function InvoicePageView({
               </button>
             ) : null}
 
-            <div className="group relative">
-              <button className="flex items-center gap-2 rounded-[10px] bg-[#00A676] px-6 py-2.5 font-bold text-white shadow-lg shadow-[#00A676]/10 transition-all duration-300 hover:bg-[#00855e]">
+            <div className="group relative" ref={headerActionsRef}>
+              <button
+                className="flex items-center gap-2 rounded-[10px] bg-[#00A676] px-6 py-2.5 font-bold text-white shadow-lg shadow-[#00A676]/10 transition-all duration-300 hover:bg-[#00855e]"
+                onClick={() => {
+                  if (!supportsHoverActions) setHeaderActionsOpen((prev) => !prev);
+                }}
+                aria-haspopup="menu"
+                aria-expanded={supportsHoverActions ? undefined : headerActionsOpen}
+              >
                 <MaterialIcon name="add" />
                 <span>{copy.header.actions}</span>
                 <MaterialIcon name="expand_more" className="text-sm" />
               </button>
-              <div className="invisible absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-popover)] opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
+              <div
+                className={`absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-popover)] shadow-2xl transition-all ${
+                  supportsHoverActions
+                    ? "invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+                    : headerActionsOpen
+                      ? "visible opacity-100"
+                      : "invisible pointer-events-none opacity-0"
+                }`}
+                role="menu"
+              >
                 {showListSection ? (
                   <button
                     className="flex w-full items-center gap-3 border-b border-[var(--color-border)] px-4 py-3 text-left text-sm text-[var(--color-text-primary)] hover:bg-[#00A676]/10"
-                    onClick={goToNewInvoice}
+                    onClick={() => {
+                      setHeaderActionsOpen(false);
+                      goToNewInvoice();
+                    }}
                   >
                     <MaterialIcon name="post_add" className="text-lg" /> {copy.header.createInvoice}
                   </button>
                 ) : null}
                 <button
                   className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-[var(--color-text-primary)] hover:bg-[#00A676]/10"
-                  onClick={() => setTemplateModalOpen(true)}
+                  onClick={() => {
+                    setHeaderActionsOpen(false);
+                    setTemplateModalOpen(true);
+                  }}
                 >
                   <MaterialIcon name="settings" className="text-lg" /> {copy.header.templateSettings}
                 </button>
@@ -2393,6 +2469,7 @@ export function InvoicePageView({
                             key={row.id}
                             row={row}
                             deleting={deletingInvoiceId === row.raw.id}
+                            supportsHoverActions={supportsHoverActions}
                             onView={(target) => {
                               setViewingInvoice(target.raw);
                             }}
