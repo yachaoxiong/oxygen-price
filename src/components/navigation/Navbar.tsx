@@ -338,6 +338,15 @@ export function Navbar({
 
           <div className="mt-4 flex items-center gap-2">
             <button
+              onClick={toggleTheme}
+              className="inline-flex h-12 items-center gap-2 rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface-elevated)] px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-primary)] transition hover:border-[var(--color-primary-soft)] hover:bg-[var(--color-hover)]"
+              aria-label={theme === "dark" ? "切换到亮色模式" : "切换到暗色模式"}
+              title={theme === "dark" ? "Switch to Light" : "Switch to Dark"}
+            >
+              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+              <span>{theme === "dark" ? "Light" : "Dark"}</span>
+            </button>
+            <button
               onClick={onToggleLocale}
               className="btn-border-animate group relative inline-flex h-12 items-center justify-between overflow-hidden rounded-xl border border-border bg-card/70 px-4 text-[11px] font-semibold uppercase tracking-[0.25em] text-[var(--color-text-secondary)] transition hover:border-emerald-300/50 hover:text-[var(--color-text-primary)] whitespace-nowrap"
             >
