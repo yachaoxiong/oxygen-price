@@ -62,12 +62,12 @@ export function CyclePlanModal(props: CyclePlanModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--modal-backdrop)] px-3 py-4 sm:px-4 sm:py-6 backdrop-blur"
+      className="fixed inset-0 z-[80] flex items-start justify-center bg-[var(--modal-backdrop)] px-3 sm:px-4 backdrop-blur pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] sm:py-6 sm:items-center"
       onClick={onBackdropClick}
       role="dialog"
       aria-modal="true"
     >
-      <div className="glass-panel flex w-full max-w-6xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl sm:rounded-[32px] lg:rounded-[40px] shadow-2xl">
+      <div className="glass-panel flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl sm:rounded-[32px] lg:rounded-[40px] shadow-2xl max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] sm:max-h-[calc(100dvh-3rem)]">
         <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.01] px-5 py-5 sm:px-8 sm:py-6 lg:px-10 lg:py-7">
           <div className="flex items-center gap-6">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/20 bg-cyan-500/10">

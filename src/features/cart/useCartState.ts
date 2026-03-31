@@ -6,7 +6,7 @@ import type { PricingCategory } from "@/types/pricing";
 
 const createId = () => `cart-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 
-const cycleDetailPattern = /^(.*?) · (.*?) · (\d+)次 · [^\d]*([\d,.]+)/;
+const cycleDetailPattern = /^(.*?) · (.*?) · (\d+)\s*(次|sessions?) · [^\d]*([\d,.]+)/i;
 
 const parseCycleDetail = (line: string) => {
   const match = line.match(cycleDetailPattern);
@@ -15,7 +15,7 @@ const parseCycleDetail = (line: string) => {
     name: match[1],
     preset: match[2],
     qty: Number(match[3]) || 1,
-    unitPrice: Number(match[4].replace(/,/g, "")) || 0,
+    unitPrice: Number(match[5].replace(/,/g, "")) || 0,
   };
 };
 

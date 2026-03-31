@@ -25,6 +25,7 @@ import {
 import { InvoiceEmailPanel } from "@/components/invoice/InvoiceEmailPanel";
 import { InvoiceEmailTrigger } from "@/components/invoice/InvoiceEmailTrigger";
 import { MessageToast } from "@/components/ui/MessageToast";
+import { DualImageUploader } from "@/components/uploads/DualImageUploader";
 import { useInvoiceEmailSender } from "@/hooks/useInvoiceEmailSender";
 import { getInvoicePageCopy, type InvoiceLocale } from "@/components/invoice/invoicePageCopy";
 import type { PricingItem } from "@/types/pricing";
@@ -59,7 +60,8 @@ type IconName =
   | "badge"
   | "alternate_email"
   | "location_on"
-  | "storage";
+  | "storage"
+  | "image";
 
 function MaterialIcon({ name, className }: { name: IconName; className?: string }) {
   return <span className={`material-symbols-outlined ${className ?? ""}`}>{name}</span>;
@@ -193,7 +195,7 @@ type CustomerCreateInput = {
   address: string;
 };
 
-type ListTab = "invoice" | "quotation" | "customer";
+type ListTab = "invoice" | "quotation" | "customer" | "images";
 
 function normalizeText(value: string): string {
   return value.trim().toLowerCase();
@@ -758,17 +760,63 @@ function CustomerProfileModal({
   onSave: () => void;
   onClose: () => void;
 }) {
-  if (!open) return null;
-
   const copy = getInvoicePageCopy(locale).modal;
 
+  useEffect(() => {
+    if (!open) return;
+    const { body } = document;
+    const { documentElement } = document;
+    const prevOverflow = body.style.overflow;
+    const prevPosition = body.style.position;
+    const prevTop = body.style.top;
+    const prevWidth = body.style.width;
+    const prevHtmlOverflow = documentElement.style.overflow;
+    const prevHtmlOverscroll = documentElement.style.overscrollBehavior;
+    const scrollY = window.scrollY;
+
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    documentElement.style.overflow = "hidden";
+    documentElement.style.overscrollBehavior = "none";
+    body.setAttribute("data-modal-open", "true");
+
+    const preventTouchMove = (event: TouchEvent) => {
+      if (event.target instanceof HTMLElement && event.target.closest(".customer-profile-modal-scroll")) {
+        return;
+      }
+      event.preventDefault();
+    };
+    document.addEventListener("touchmove", preventTouchMove, { passive: false });
+
+    return () => {
+      document.removeEventListener("touchmove", preventTouchMove);
+      body.style.overflow = prevOverflow;
+      body.style.position = prevPosition;
+      body.style.top = prevTop;
+      body.style.width = prevWidth;
+      documentElement.style.overflow = prevHtmlOverflow;
+      documentElement.style.overscrollBehavior = prevHtmlOverscroll;
+      body.removeAttribute("data-modal-open");
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
+  if (!open) return null;
+
   return (
-    <div className="fixed inset-0 z-[102] flex items-center justify-center bg-[var(--modal-backdrop)] px-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[102] flex items-start justify-center bg-[rgba(3,8,17,0.48)] px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-[2px]"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
       <div
-        className="w-full max-w-xl rounded-[12px] border border-[var(--color-border)] bg-[var(--color-popover)] p-6 shadow-2xl"
+        className="customer-profile-modal-scroll flex w-full max-w-xl flex-col overflow-hidden rounded-[12px] border border-[var(--color-border)] bg-[var(--color-popover)] shadow-2xl max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-5">
           <h3 className="flex items-center gap-2 text-lg font-bold text-[var(--color-text-primary)]">
             <MaterialIcon name="person_add" className="text-[#00A676]" />
             {editing ? copy.customerProfile.titleEdit : copy.customerProfile.titleCreate}
@@ -778,8 +826,9 @@ function CustomerProfileModal({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <label className="block">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="block">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.name}</span>
             <input
               className={`w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676] ${errors.name ? "ring-1 ring-red-500/70" : ""}`}
@@ -789,8 +838,8 @@ function CustomerProfileModal({
               onChange={(event) => onChange({ ...customer, name: event.target.value })}
             />
             {errors.name ? <div className="mt-1 text-[10px] text-red-500">{errors.name}</div> : null}
-          </label>
-          <label className="block">
+            </label>
+            <label className="block">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.email}</span>
             <input
               className={`w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676] ${errors.email ? "ring-1 ring-red-500/70" : ""}`}
@@ -800,8 +849,8 @@ function CustomerProfileModal({
               onChange={(event) => onChange({ ...customer, email: event.target.value })}
             />
             {errors.email ? <div className="mt-1 text-[10px] text-red-500">{errors.email}</div> : null}
-          </label>
-          <label className="block md:col-span-2">
+            </label>
+            <label className="block md:col-span-2">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.streetAddress}</span>
             <input
               className={`w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676] ${errors.address ? "ring-1 ring-red-500/70" : ""}`}
@@ -811,8 +860,8 @@ function CustomerProfileModal({
               onChange={(event) => onChange({ ...customer, streetAddress: event.target.value })}
             />
             {errors.address ? <div className="mt-1 text-[10px] text-red-500">{errors.address}</div> : null}
-          </label>
-          <label className="block">
+            </label>
+            <label className="block">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.city}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
@@ -821,8 +870,8 @@ function CustomerProfileModal({
               value={customer.city}
               onChange={(event) => onChange({ ...customer, city: event.target.value })}
             />
-          </label>
-          <label className="block">
+            </label>
+            <label className="block">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.province}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
@@ -830,8 +879,8 @@ function CustomerProfileModal({
               value={customer.province}
               onChange={(event) => onChange({ ...customer, province: event.target.value })}
             />
-          </label>
-          <label className="block">
+            </label>
+            <label className="block">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.postcode}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
@@ -840,8 +889,8 @@ function CustomerProfileModal({
               value={customer.postalCode}
               onChange={(event) => onChange({ ...customer, postalCode: event.target.value })}
             />
-          </label>
-          <label className="block">
+            </label>
+            <label className="block">
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{copy.customerInfo.country}</span>
             <input
               className="w-full rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
@@ -849,12 +898,13 @@ function CustomerProfileModal({
               value={customer.country}
               onChange={(event) => onChange({ ...customer, country: event.target.value })}
             />
-          </label>
+            </label>
+          </div>
+
+          {submitError ? <div className="mt-4 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700">{submitError}</div> : null}
         </div>
 
-        {submitError ? <div className="mt-4 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-700">{submitError}</div> : null}
-
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="flex justify-end gap-3 border-t border-[var(--color-border)] bg-[var(--color-popover)] px-6 py-4">
           <button
             className="rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-5 py-2.5 text-sm font-semibold text-[var(--color-text-primary)] transition-all hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={onClose}
@@ -2347,6 +2397,16 @@ export function InvoicePageView({
               >
                 <MaterialIcon name="person_search" className="text-lg" /> {copy.table.tabs.customerList}
               </button>
+              <button
+                className={`flex items-center gap-2 rounded-md px-6 py-3 text-sm whitespace-nowrap transition-all ${
+                  activeListTab === "images"
+                    ? "bg-[#00A676]/12 font-bold text-[#00A676] shadow-sm"
+                    : "font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
+                }`}
+                onClick={() => setActiveListTab("images")}
+              >
+                <MaterialIcon name="image" className="text-lg" /> {copy.table.tabs.imageUpload}
+              </button>
             </div>
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -2355,25 +2415,29 @@ export function InvoicePageView({
                   ? copy.table.management.invoice
                   : activeListTab === "quotation"
                     ? copy.table.management.quotation
-                    : copy.table.management.customer}
+                    : activeListTab === "customer"
+                      ? copy.table.management.customer
+                      : copy.table.management.images}
                 <span className="ml-2 rounded bg-[var(--color-surface-elevated)] px-2 py-0.5 text-xs font-normal text-[var(--color-text-muted)]">{copy.table.management.realtime}</span>
               </h2>
-              <div className="relative">
-                <MaterialIcon name="search" className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-[var(--color-text-muted)]" />
-                <input
-                  className="w-72 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-4 pl-10 text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-                  placeholder={
-                    activeListTab === "invoice"
-                      ? copy.table.searchPlaceholder.invoice
-                      : activeListTab === "quotation"
-                        ? copy.table.searchPlaceholder.quotation
-                        : copy.table.searchPlaceholder.customer
-                  }
-                  type="text"
-                  value={listSearch}
-                  onChange={(event) => setListSearch(event.target.value)}
-                />
-              </div>
+              {activeListTab !== "images" ? (
+                <div className="relative">
+                  <MaterialIcon name="search" className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-[var(--color-text-muted)]" />
+                  <input
+                    className="w-72 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-4 pl-10 text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
+                    placeholder={
+                      activeListTab === "invoice"
+                        ? copy.table.searchPlaceholder.invoice
+                        : activeListTab === "quotation"
+                          ? copy.table.searchPlaceholder.quotation
+                          : copy.table.searchPlaceholder.customer
+                    }
+                    type="text"
+                    value={listSearch}
+                    onChange={(event) => setListSearch(event.target.value)}
+                  />
+                </div>
+              ) : null}
             </div>
 
             {activeListTab === "quotation" ? (
@@ -2627,6 +2691,12 @@ export function InvoicePageView({
                 {customerOverviewRows.length === 0 ? (
                   <div className="border-t border-[var(--color-border)] p-6 text-sm text-[var(--color-text-secondary)]">{copy.table.customer.empty}</div>
                 ) : null}
+              </div>
+            ) : null}
+
+            {activeListTab === "images" ? (
+              <div className="glass-panel overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-card)] p-6">
+                <DualImageUploader />
               </div>
             ) : null}
           </section>

@@ -9,7 +9,7 @@ export function buildCartPdfHtml(params: {
 }) {
   const { customer, items, totals, reportDate } = params;
 
-  const cycleDetailPattern = /^(.*?) · (.*?) · (\d+)次 · [^\d]*([\d,.]+)/;
+  const cycleDetailPattern = /^(.*?) · (.*?) · (\d+)\s*(次|sessions?) · [^\d]*([\d,.]+)/i;
 
   const itemCards = items.length
     ? items
@@ -24,7 +24,7 @@ export function buildCartPdfHtml(params: {
                     return `<tr><td colspan="5">${detail}</td></tr>`;
                   }
                   const qty = Number(match[3]) || 1;
-                  const unitPrice = Number(match[4].replace(/,/g, "")) || 0;
+                  const unitPrice = Number(match[5].replace(/,/g, "")) || 0;
                   return `<tr><td>${match[1]}</td><td>${match[2]}</td><td>${qty}</td><td>${formatMoney(unitPrice)}</td><td>${formatMoney(unitPrice * qty)}</td></tr>`;
                 })
                 .join("")}</tbody></table></div>`

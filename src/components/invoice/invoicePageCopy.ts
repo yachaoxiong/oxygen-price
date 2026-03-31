@@ -175,17 +175,20 @@ const zhInvoicePageCopy = {
       invoiceList: "发票列表",
       quotationList: "报价列表",
       customerList: "客户档案",
+      imageUpload: "上传图片",
     },
     management: {
       invoice: "发票管理",
       quotation: "报价管理",
       customer: "客户档案",
+      images: "图片上传",
       realtime: "实时筛选",
     },
     searchPlaceholder: {
       invoice: "搜索发票编号 / 客户 / 状态",
       quotation: "搜索报价单 / 客户 / 方案",
       customer: "搜索客户姓名 / 联系方式",
+      images: "搜索图片文件名",
     },
     quotation: {
       create: "创建新报价单",
@@ -419,17 +422,20 @@ const enInvoicePageCopy: InvoicePageCopySchema = {
       invoiceList: "Invoice List",
       quotationList: "Quotation List",
       customerList: "Customer Profiles",
+      imageUpload: "Upload Images",
     },
     management: {
       invoice: "Invoice Management",
       quotation: "Quotation Management",
       customer: "Customer Profiles",
+      images: "Image Upload",
       realtime: "Realtime Filter",
     },
     searchPlaceholder: {
       invoice: "Search invoice no / customer / status",
       quotation: "Search quotation / customer / plan",
       customer: "Search customer name / contact",
+      images: "Search image file name",
     },
     quotation: {
       create: "Create New Quotation",
