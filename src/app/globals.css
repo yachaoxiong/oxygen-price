@@ -45,6 +45,9 @@
   --invoice-dark-grey: #2d3436;
   --invoice-light-grey: #636e72;
   --invoice-border: #dfe6e9;
+  --stored-tier-blue: #4d7cff;
+  --stored-tier-purple: #a855f7;
+  --stored-tier-magenta: #ec4899;
 }
 
 :root[data-theme="light"] {
@@ -87,6 +90,9 @@
   --theme-green-glow-strong: rgba(0, 166, 118, 0.45);
   --theme-green-glow-soft: rgba(0, 166, 118, 0.16);
   --theme-green-glow-mid: rgba(0, 166, 118, 0.28);
+  --stored-tier-blue: #2f63ff;
+  --stored-tier-purple: #8f4cf0;
+  --stored-tier-magenta: #d83d8b;
 }
 
 @keyframes cart-flash {
@@ -596,6 +602,48 @@
     color-mix(in srgb, var(--color-surface-overlay) 96%, transparent) 100%
   );
   border-color: color-mix(in srgb, #ec4899 45%, var(--color-border));
+}
+
+.stored-tier-card {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--stored-tier-accent) 16%, var(--color-surface-elevated)) 0%,
+    color-mix(in srgb, var(--stored-tier-accent) 7%, var(--color-surface-overlay)) 100%
+  );
+  border-color: color-mix(in srgb, var(--stored-tier-accent) 46%, var(--color-border));
+}
+
+.stored-tier-card--blue {
+  --stored-tier-accent: var(--stored-tier-blue);
+}
+
+.stored-tier-card--purple {
+  --stored-tier-accent: var(--stored-tier-purple);
+}
+
+.stored-tier-card--magenta {
+  --stored-tier-accent: var(--stored-tier-magenta);
+}
+
+.stored-tier-accent {
+  color: var(--stored-tier-accent);
+}
+
+.stored-tier-indicator {
+  background: var(--stored-tier-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--stored-tier-accent) 60%, transparent);
+}
+
+.stored-tier-badge {
+  background: var(--stored-tier-accent);
+}
+
+.stored-tier-button-shadow {
+  box-shadow: 0 0 20px color-mix(in srgb, var(--stored-tier-accent) 42%, transparent);
+}
+
+.stored-tier-top-shadow {
+  box-shadow: 0 20px 60px -15px color-mix(in srgb, var(--stored-tier-accent) 24%, transparent);
 }
 
 * {

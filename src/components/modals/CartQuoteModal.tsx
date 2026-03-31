@@ -60,6 +60,21 @@ function addDays(base: Date, days: number) {
   return next;
 }
 
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateInputValue(value?: string) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = new Date(`${trimmed}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function formatGiftDate(date: Date, locale: CartLocale) {
   return date.toLocaleDateString(locale === "zh" ? "zh-CN" : "en-CA", {
     year: "numeric",
@@ -215,7 +230,8 @@ export function CartQuoteModal(props: {
                             const storedWeeks = item.membershipWeeks ?? membershipWeeks ?? 0;
                             const bonusWeeks = 2;
                             const totalWeeks = Math.max(0, storedWeeks) + bonusWeeks;
-                            const startDate = new Date();
+                            const startDate = parseDateInputValue(item.membershipStartDate) ?? new Date();
+                            const startDateInput = toDateInputValue(startDate);
                             const endDate = addDays(startDate, totalWeeks * 7);
 
                             return (
@@ -245,9 +261,14 @@ export function CartQuoteModal(props: {
                                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                                     {cartCopy.modal.startDate[activeLocale]}
                                   </p>
-                                  <p className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-center text-sm font-semibold text-white">
-                                    {formatGiftDate(startDate, activeLocale)}
-                                  </p>
+                                  <input
+                                    type="date"
+                                    value={startDateInput}
+                                    onChange={(event) => {
+                                      onUpdateItem(item.id, { membershipStartDate: event.target.value });
+                                    }}
+                                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-center text-sm font-semibold text-white outline-none transition focus:border-[var(--theme-green-soft)]"
+                                  />
                                 </div>
                                 <div className="space-y-1">
                                   <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">

@@ -38,7 +38,7 @@ export function AuthLoginScreen(props: AuthLoginScreenProps) {
   }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[var(--background)] text-[var(--color-text-secondary)]">
+    <div className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto bg-[var(--background)] text-[var(--color-text-secondary)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_12%,color-mix(in_srgb,var(--color-text-primary)_18%,transparent),transparent_32%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-size:3px_3px] [background-image:radial-gradient(color-mix(in_srgb,var(--color-text-primary)_28%,transparent)_0.4px,transparent_0.4px)]" />
 
@@ -55,18 +55,18 @@ export function AuthLoginScreen(props: AuthLoginScreenProps) {
         {themeMode === "dark" ? "Light" : "Dark"}
       </button>
 
-      <div className="absolute inset-0 flex h-full w-full">
-        <div className="grid h-full w-full min-h-0 grid-cols-1 gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-stretch">
+      <div className="relative z-10 flex w-full">
+        <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] lg:items-stretch">
           <style>{`@keyframes scanline {0%{transform:translateY(0);opacity:0;}5%{opacity:1;}95%{opacity:1;}100%{transform:translateY(100vh);opacity:0;}}`}</style>
-          <section className="relative flex h-full flex-col justify-between overflow-hidden p-8 md:p-16">
+          <section className="relative flex flex-col justify-between overflow-hidden p-6 sm:p-8 md:p-12 lg:p-16">
             <div className="relative z-10 flex flex-col gap-12">
-              <div className="flex items-end gap-6">
-                <div className={`relative h-32 w-32 overflow-hidden rounded-3xl ring-1 ${isLight ? "bg-white ring-slate-300/70 shadow-[0_10px_30px_rgba(15,32,54,0.16)]" : "bg-black/40 ring-white/10"}`}>
+              <div className="flex items-end gap-4 sm:gap-6">
+                <div className={`relative h-20 w-20 overflow-hidden rounded-3xl ring-1 sm:h-24 sm:w-24 md:h-32 md:w-32 ${isLight ? "bg-white ring-slate-300/70 shadow-[0_10px_30px_rgba(15,32,54,0.16)]" : "bg-black/40 ring-white/10"}`}>
                   <Image src="/logo.png" alt="Oxygen logo" fill className="object-cover" sizes="128px" priority />
                 </div>
                 <div className="space-y-2">
                   <h2 className={`text-xs font-semibold uppercase tracking-[0.4em] ${isLight ? "text-cyan-700/90" : "text-cyan-300/70"}`}>Powering Internal Systems</h2>
-                  <h1 className="text-4xl font-black tracking-tight text-[var(--color-text-primary)] sm:text-5xl">
+                  <h1 className="text-3xl font-black tracking-tight text-[var(--color-text-primary)] sm:text-4xl md:text-5xl">
                     OXYGEN
                     <span className=" pl-2 text-[var(--theme-green)]">PRO</span>
                   </h1>
@@ -123,7 +123,7 @@ export function AuthLoginScreen(props: AuthLoginScreenProps) {
               </div>
             </div>
 
-            <div className="relative z-10 flex items-center gap-12">
+            <div className="relative z-10 mt-8 hidden items-center gap-12 lg:flex">
               <div className="flex flex-col">
                 <span className={`text-[10px] uppercase tracking-[0.2em] ${isLight ? "text-slate-600" : "text-slate-600"}`}>当前活跃管理员</span>
                 <div className="mt-2 flex -space-x-2">
@@ -140,11 +140,11 @@ export function AuthLoginScreen(props: AuthLoginScreenProps) {
             </div>
           </section>
 
-          <section className={`relative flex h-full items-center justify-center border-l p-8 ${isLight ? "border-slate-300/70 bg-[#f8fbff]" : "border-white/5 bg-[color-mix(in_srgb,var(--color-page-bg-strong)_80%,black)]"}`}>
+          <section className={`relative flex items-start justify-center border-t p-6 sm:p-8 md:p-12 lg:items-center lg:border-l lg:border-t-0 ${isLight ? "border-slate-300/70 bg-[#f8fbff]" : "border-white/5 bg-[color-mix(in_srgb,var(--color-page-bg-strong)_80%,black)]"}`}>
             <div className="absolute bottom-0 right-0 h-1/2 w-1/2 bg-violet-500/5 blur-[120px]" />
-            <div className="relative z-10 w-full max-w-sm">
-              <div className="mb-10 space-y-2">
-                <h2 className="text-4xl font-black italic tracking-tight text-[var(--color-text-primary)]">控制台验证</h2>
+            <div className="relative z-10 w-full max-w-sm md:max-w-md">
+              <div className="mb-8 space-y-2 md:mb-10">
+                <h2 className="text-3xl font-black italic tracking-tight text-[var(--color-text-primary)] sm:text-4xl">控制台验证</h2>
                 <p className={`text-sm font-medium ${isLight ? "text-slate-600" : "text-slate-500"}`}>需要完成身份验证流程</p>
               </div>
 
@@ -214,7 +214,7 @@ export function AuthLoginScreen(props: AuthLoginScreenProps) {
                 </button>
               </div>
 
-              <div className="mt-16 grid grid-cols-2 gap-4">
+              <div className="mt-10 grid grid-cols-2 gap-4 md:mt-16">
                 <div className={`flex items-center gap-3 rounded-xl border p-4 grayscale transition-all hover:grayscale-0 ${isLight ? "border-slate-300 bg-white" : "border-white/5"}`}>
                   <Receipt size={18} className="text-[var(--theme-green)]" />
                   <div className="flex flex-col">
@@ -231,7 +231,7 @@ export function AuthLoginScreen(props: AuthLoginScreenProps) {
                 </div>
               </div>
 
-              <div className={`mt-12 flex flex-col gap-4 border-t pt-8 text-center ${isLight ? "border-slate-300/70" : "border-white/5"}`}>
+              <div className={`mt-10 flex flex-col gap-4 border-t pt-6 text-center md:mt-12 md:pt-8 ${isLight ? "border-slate-300/70" : "border-white/5"}`}>
                 <p className={`text-[10px] uppercase tracking-[0.2em] ${isLight ? "text-slate-600" : "text-slate-600"}`}>OXYGEN 管理生态系统 © 2026</p>
                 <p className={`text-[10px] uppercase tracking-[0.2em] ${isLight ? "text-slate-600" : "text-slate-600"}`}>系统设计团队</p>
                 <div className={`flex justify-center gap-6 text-[9px] font-bold ${isLight ? "text-slate-600" : "text-slate-500"}`}>

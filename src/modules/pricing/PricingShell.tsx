@@ -16,7 +16,6 @@ import { printHtml } from "@/lib/export/print";
 import { glass } from "@/lib/pricing/constants";
 import tabCopy from "@/lib/tabCopy.json";
 import { buildPtSummaryText } from "@/lib/export/quoteBuilders";
-import { buildPtPdfHtml } from "@/lib/export/pdfBuilders";
 import { buildCartSummaryText } from "@/lib/cart/cartTextBuilder";
 import { buildCartPdfHtml } from "@/lib/export/cartPdfBuilder";
 import { cartCopy } from "@/lib/cart/cartCopy";
@@ -344,23 +343,29 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     {
       key: "foundation",
       title: { zh: "基础选择", en: "Foundation" },
-      tone: "glow-blue",
-      cardClass: "glass-ink",
-      accentText: "text-[#4D7CFF]",
+      cardClass: "stored-tier-card stored-tier-card--blue",
+      accentText: "stored-tier-accent",
+      indicatorClass: "stored-tier-card--blue",
+      badgeClass: "stored-tier-card--blue",
+      shadowClass: "stored-tier-card--blue",
     },
     {
       key: "signature",
       title: { zh: "核心推荐", en: "Signature" },
-      tone: "glow-purple",
-      cardClass: "glass-purple",
-      accentText: "text-[#A855F7]",
+      cardClass: "stored-tier-card stored-tier-card--purple",
+      accentText: "stored-tier-accent",
+      indicatorClass: "stored-tier-card--purple",
+      badgeClass: "stored-tier-card--purple",
+      shadowClass: "stored-tier-card--purple",
     },
     {
       key: "prestige",
       title: { zh: "极致尊享", en: "Prestige" },
-      tone: "glow-magenta",
-      cardClass: "glass-magenta",
-      accentText: "text-[#EC4899]",
+      cardClass: "stored-tier-card stored-tier-card--magenta",
+      accentText: "stored-tier-accent",
+      indicatorClass: "stored-tier-card--magenta",
+      badgeClass: "stored-tier-card--magenta",
+      shadowClass: "stored-tier-card--magenta",
     },
   ];
 
@@ -439,27 +444,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     } catch {
       setPtCopySuccess(false);
     }
-  }
-
-  function handleDownloadQuotePdf() {
-    if (!selectedPtRow) return;
-
-    const html = buildPtPdfHtml({
-      courseNameZh: selectedPtRow.nameZh,
-      courseNameEn: selectedPtRow.nameEn,
-      reportDate: ptReportDate,
-      clientName: ptClientName,
-      activeLabel: ptActiveLabel[activeLocale],
-      unit: ptActivePresetUnit,
-      qty: ptActivePresetQty,
-      subtotal: ptActiveSubtotal,
-      credit: ptCredit,
-      afterCredit: ptAfterCredit,
-      tax: ptTaxAfterAdjust,
-      total: ptFinalTotal,
-    });
-
-    printHtml(html, { width: 980, height: 760, delayMs: 250 });
   }
 
   function openCyclePlanCalculator(row: CyclePlanRow) {
@@ -1150,9 +1134,12 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <div className="indicator-square bg-[#4D7CFF] shadow-[0_0_10px_rgba(77,124,255,0.5)]" />
-                              <div className="indicator-square bg-[#A855F7] shadow-[0_0_10px_rgba(168,85,247,0.5)]" />
-                              <div className="indicator-square bg-[#EC4899] shadow-[0_0_10px_rgba(236,72,153,0.5)]" />
+                              {storedValueTierMeta.map((tier) => (
+                                <div
+                                  key={tier.key}
+                                  className={`indicator-square stored-tier-indicator ${tier.indicatorClass}`}
+                                />
+                              ))}
                             </div>
                           </button>
                         );
@@ -1183,11 +1170,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                         const pointsSize = isFirst ? "text-xl sm:text-2xl" : isMidTier ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl";
                         const valueClass = `font-futuristic leading-none ${pointsSize}`;
                         const buttonPadding = isTopTier ? "px-7 sm:px-10 py-3 text-sm sm:text-base" : "px-5 sm:px-6 py-2 text-xs sm:text-sm";
-                        const buttonShadow = isTopTier
-                          ? "shadow-[0_0_20px_rgba(236,72,153,0.4)]"
-                          : isMidTier
-                            ? "shadow-[0_0_20px_rgba(168,85,247,0.4)]"
-                            : "shadow-[0_0_20px_rgba(77,124,255,0.4)]";
+                        const buttonShadow = `stored-tier-button-shadow ${meta.shadowClass}`;
                         const buttonTint = isTopTier
                           ? "border-border/80 text-foreground"
                           : isMidTier
@@ -1203,12 +1186,12 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                             tabIndex={0}
                             key={`${plan.id}-tier`}
                             className={`relative tier-card ${cardWidth} ${paddingSize} mb-2 sm:mb-[-2px] ${meta.cardClass} border-l-2 transition-all duration-500 ease-out hover:scale-[1.02] hover:-translate-y-1 hover:shadow-2xl ${
-                              isTopTier ? "shadow-[0_20px_60px_-15px_rgba(236,72,153,0.15)]" : ""
+                              isTopTier ? `stored-tier-top-shadow ${meta.shadowClass}` : ""
                             }`}
                           >
                             {showBadge && (
-                              <div className={`absolute top-0 right-6 sm:right-10 z-30 -translate-y-1/2 px-3 sm:px-4 py-1 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-foreground opacity-100 pointer-events-none ${
-                                isTopTier ? "bg-[#EC4899]" : "bg-[#A855F7]"
+                              <div className={`absolute top-0 right-6 sm:right-10 z-30 -translate-y-1/2 px-3 sm:px-4 py-1 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-foreground opacity-100 pointer-events-none stored-tier-badge ${
+                                isTopTier ? "stored-tier-card--magenta" : "stored-tier-card--purple"
                               }`}>
                                 {isMidTier
                                   ? getCopy(tabCopy.pages.storedValue.copy.badges.mostPopular)
@@ -1572,7 +1555,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
             ptAfterCredit={ptAfterCredit}
             ptTaxAfterAdjust={ptTaxAfterAdjust}
             ptFinalTotal={ptFinalTotal}
-            ptReportDate={ptReportDate}
             ptClientName={ptClientName}
             onSetPtClientName={setPtClientName}
             ptCopySuccess={ptCopySuccess}
@@ -1592,7 +1574,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
             onSetPtQtyNonMember1v2={setPtQtyNonMember1v2}
             onSetPtCredit={setPtCredit}
             onCopySummary={handleCopyQuoteSummary}
-            onDownloadPdf={handleDownloadQuotePdf}
             onAddToCart={handleAddPtToCart}
           />
         )}

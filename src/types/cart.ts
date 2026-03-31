@@ -16,6 +16,7 @@ export type CartItem = {
   note?: string;
   details?: string[];
   membershipWeeks?: number;
+  membershipStartDate?: string;
   isNewCustomer?: boolean;
   activationFee?: number;
 };

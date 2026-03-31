@@ -28,7 +28,6 @@ type PtCalculatorModalProps = {
   ptAfterCredit: number;
   ptTaxAfterAdjust: number;
   ptFinalTotal: number;
-  ptReportDate: string;
   ptClientName: string;
   onSetPtClientName: (value: string) => void;
   ptCopySuccess: boolean;
@@ -48,7 +47,6 @@ type PtCalculatorModalProps = {
   onSetPtQtyNonMember1v2: (value: number) => void;
   onSetPtCredit: (value: number) => void;
   onCopySummary: () => void;
-  onDownloadPdf: () => void;
   onAddToCart: () => void;
 };
 
@@ -75,7 +73,6 @@ export function PtCalculatorModal({
   ptAfterCredit,
   ptTaxAfterAdjust,
   ptFinalTotal,
-  ptReportDate,
   ptClientName,
   onSetPtClientName,
   ptCopySuccess,
@@ -95,7 +92,6 @@ export function PtCalculatorModal({
   onSetPtQtyNonMember1v2,
   onSetPtCredit,
   onCopySummary,
-  onDownloadPdf,
   onAddToCart,
 }: PtCalculatorModalProps) {
   const copy = ptCalculatorCopy[activeLocale];
@@ -381,12 +377,6 @@ export function PtCalculatorModal({
                         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border/70 bg-card py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-all hover:bg-[var(--color-hover)]"
                       >
                         {reportCopy.copySummary}
-                      </button>
-                      <button
-                        onClick={onDownloadPdf}
-                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border/70 bg-card py-3 text-xs font-bold uppercase tracking-widest text-foreground transition-all hover:bg-[var(--color-hover)]"
-                      >
-                        {reportCopy.downloadPdf}
                       </button>
                       {ptCopySuccess && (
                         <span className="inline-flex rounded-md border border-border bg-[var(--color-primary-faint)] px-2 py-1 text-[11px] text-foreground">
