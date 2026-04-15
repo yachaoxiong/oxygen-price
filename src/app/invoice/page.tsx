@@ -1,64 +1,50 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/features/auth/useAuth";
-import { AuthLoadingScreen } from "@/features/auth/AuthLoadingScreen";
-import { AuthLoginScreen } from "@/features/auth/AuthLoginScreen";
 import { InvoicePageView } from "@/components/invoice/InvoicePageView";
 import { InvoiceScaffold } from "@/components/invoice/InvoiceScaffold";
+import { AuthLoadingScreen } from "@/features/auth/AuthLoadingScreen";
+import { AuthLoginScreen } from "@/features/auth/AuthLoginScreen";
+import { useAuth } from "@/features/auth/useAuth";
+import { getInitialLocale, persistLocale, type AppLocale } from "@/lib/locale";
 import { fetchCustomerProfiles, fetchInvoices, type CustomerProfile, type InvoiceRecord } from "@/lib/supabase";
 
+// cspell:ignore supabase
+
 export default function InvoicePage() {
-  const {
-    authState,
-    email,
-    setEmail,
-    password,
-    setPassword,
-    authError,
-    profile,
-    handleSignIn,
-    handleSignOut,
-  } = useAuth();
+  const { authState, email, setEmail, password, setPassword, authError, profile, handleSignIn, handleSignOut } = useAuth();
 
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
-  const [activeLocale, setActiveLocale] = useState<"zh" | "en">(() => {
-    if (typeof window === "undefined") return "en";
-    const saved = window.localStorage.getItem("oxygen-pricing-locale");
-    return saved === "zh" || saved === "en" ? saved : "en";
-  });
+  const [activeLocale, setActiveLocale] = useState<AppLocale>(() => getInitialLocale());
 
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
 
-    async function loadPageData() {
+    const loadPageData = async () => {
       const [customersResult, invoicesResult] = await Promise.allSettled([fetchCustomerProfiles(), fetchInvoices()]);
-      if (!mounted) return;
+      if (!isMounted) return;
 
-      if (customersResult.status === "fulfilled") {
-        setCustomers(customersResult.value);
-      } else {
-        setCustomers([]);
-      }
+      setCustomers(customersResult.status === "fulfilled" ? customersResult.value : []);
+      setInvoices(invoicesResult.status === "fulfilled" ? invoicesResult.value : []);
+    };
 
-      if (invoicesResult.status === "fulfilled") {
-        setInvoices(invoicesResult.value);
-      } else {
-        setInvoices([]);
-      }
-    }
-
-    loadPageData();
+    void loadPageData();
 
     return () => {
-      mounted = false;
+      isMounted = false;
     };
   }, []);
 
-  if (authState === "loading") {
-    return <AuthLoadingScreen />;
-  }
+  const handleToggleLocale = () => {
+    setActiveLocale((prev) => {
+      const next = prev === "zh" ? "en" : "zh";
+      persistLocale(next);
+      return next;
+    });
+  };
+
+  if (authState === "loading") return <AuthLoadingScreen />;
 
   if (authState !== "authed") {
     return (
@@ -79,15 +65,7 @@ export default function InvoicePage() {
       profileEmail={profile?.email || email}
       profileRole={profile?.role ?? undefined}
       activeLocale={activeLocale}
-      onToggleLocale={() => {
-        setActiveLocale((prev) => {
-          const next = prev === "zh" ? "en" : "zh";
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem("oxygen-pricing-locale", next);
-          }
-          return next;
-        });
-      }}
+      onToggleLocale={handleToggleLocale}
       onSignOut={handleSignOut}
     >
       <InvoicePageView
@@ -97,7 +75,7 @@ export default function InvoicePage() {
         customerProfilesFromDb={customers}
         activeLocale={activeLocale}
         showBuilderSection={false}
-        showListSection={true}
+        showListSection
         showQuotationTab={false}
         onRequestInvoicesRefresh={async () => {
           const next = await fetchInvoices();

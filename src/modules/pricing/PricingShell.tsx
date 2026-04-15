@@ -19,14 +19,15 @@ import { buildPtSummaryText } from "@/lib/export/quoteBuilders";
 import { buildCartSummaryText } from "@/lib/cart/cartTextBuilder";
 import { buildCartPdfHtml } from "@/lib/export/cartPdfBuilder";
 import { cartCopy } from "@/lib/cart/cartCopy";
+import { getInitialLocale, persistLocale, type AppLocale } from "@/lib/locale";
 import { PwaInstallHint } from "@/components/PwaInstallHint";
 import { Navbar } from "@/components/navigation/Navbar";
 import { CyclePlanModal } from "@/components/modals/CyclePlanModal";
 import { PtCalculatorModal } from "@/components/modals/PtCalculatorModal";
 import { CartQuoteModal } from "@/components/modals/CartQuoteModal";
 import { LoadingStitch } from "@/components/ui/LoadingStitch";
-import { MessageToast } from "@/components/ui/MessageToast";
 import { useCartState } from "@/features/cart/useCartState";
+import { toastAddSuccess, toastFailed, toastSuccess } from "@/lib/toast";
 import type { CyclePlanRow, PricingCategory, PtPreset, PtRow } from "@/types/pricing";
 
 type CategoryFilter = PricingCategory;
@@ -46,14 +47,9 @@ function PricingShellContent({ section }: { section: PricingSection }) {
   const [selectedPromoTrigger, setSelectedPromoTrigger] = useState(
     tabCopy.pages.storedValue.copy.promotionHighlights[0]?.trigger ?? "",
   );
-  const [activeLocale, setActiveLocale] = useState<"zh" | "en">(() => {
-    if (typeof window === "undefined") return "zh";
-    const saved = window.localStorage.getItem("oxygen-pricing-locale");
-    return saved === "zh" || saved === "en" ? saved : "zh";
-  });
+  const [activeLocale, setActiveLocale] = useState<AppLocale>(() => getInitialLocale("zh"));
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [addingItemKey, setAddingItemKey] = useState<string | null>(null);
-  const [messageToast, setMessageToast] = useState<{ title: string; subtitle?: string } | null>(null);
   const [refreshPull, setRefreshPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const pullStartY = useRef<number | null>(null);
@@ -71,8 +67,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
   }, [categoryFilter]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("oxygen-pricing-locale", activeLocale);
+    persistLocale(activeLocale);
   }, [activeLocale]);
 
   useEffect(() => {
@@ -369,14 +364,10 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     },
   ];
 
-  const { groupedSections, cyclePtProgramOptions, getGroupClassDays } = usePricingPresentation(
-    pricingItems,
-    categoryFilter,
-  );
+  const { groupedSections, cyclePtProgramOptions, getGroupClassDays } = usePricingPresentation(pricingItems, categoryFilter);
   const { deferredInstallPrompt, showInstallHint, handleInstallApp, handleDismissInstallHint } = usePwaInstallPrompt();
 
-
-  function openPtCalculator(row: PtRow) {
+  const openPtCalculator = (row: PtRow) => {
     setSelectedPtRow(row);
     setPtUnitMember1v1(row.member1v1 ?? 0);
     setPtUnitNonMember1v1(row.nonMember1v1 ?? 0);
@@ -389,20 +380,20 @@ function PricingShellContent({ section }: { section: PricingSection }) {
     setPtPreset("member_1v1");
   }
 
-  function handlePtCardTap(row: PtRow) {
+  const handlePtCardTap = (row: PtRow) => {
     if (ptPreviewRow?.key === row.key) {
       openPtCalculator(row);
       return;
     }
     setPtPreviewRow(row);
-  }
+  };
 
-  function handlePtBackdropClick(event: React.MouseEvent<HTMLDivElement>) {
+  const handlePtBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
     closePtCalculator();
-  }
+  };
 
-  function handleAddPtToCart() {
+  const handleAddPtToCart = () => {
     if (!selectedPtRow) return;
     const courseName = activeLocale === "zh" ? selectedPtRow.nameZh : selectedPtRow.nameEn ?? selectedPtRow.nameZh;
     addCartItem({
@@ -412,14 +403,15 @@ function PricingShellContent({ section }: { section: PricingSection }) {
       quantity: ptActivePresetQty,
       note: ptCredit > 0 ? `${cartCopy.modal.creditLabel[activeLocale]} ${formatMoney(ptCredit)}` : undefined,
     });
+    toastAddSuccess(activeLocale === "zh" ? "私教课程已加入报价" : "Personal training added to quote");
     setSelectedPtRow(null);
-  }
+  };
 
-  function closePtCalculator() {
+  const closePtCalculator = () => {
     setSelectedPtRow(null);
-  }
+  };
 
-  async function handleCopyQuoteSummary() {
+  const handleCopyQuoteSummary = async () => {
     if (!selectedPtRow) return;
     setPtCopySuccess(false);
     const summary = buildPtSummaryText({
@@ -530,6 +522,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
                   : cycleSelectedPtProgram.nameZh} · ${cycleActiveLabel[activeLocale]} · ${cycleActivePresetQty}${activeLocale === "zh" ? "次" : " sessions"} · ${formatMoney(cycleActivePresetUnit)}`,
             ],
     });
+    toastAddSuccess(activeLocale === "zh" ? "周期计划已加入报价" : "Cycle plan added to quote");
     setSelectedCyclePlan(null);
     setCycleStep(1);
     setCycleSelectedPtProgram(null);
@@ -543,11 +536,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
   function runAddAnimation(key: string) {
     setAddingItemKey(key);
     window.setTimeout(() => setAddingItemKey((prev) => (prev === key ? null : prev)), 850);
-  }
-
-  function showMessageToast(title: string, subtitle?: string) {
-    setMessageToast({ title, subtitle });
-    window.setTimeout(() => setMessageToast(null), 2000);
   }
 
   function addCartMembership(row: StandardRow) {
@@ -565,10 +553,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
       activationFee,
     });
     runAddAnimation(`membership-${row.key}`);
-    showMessageToast(
-      activeLocale === "zh" ? "已加入报价" : "Added to Quote",
-      activeLocale === "zh" ? "会籍已添加" : "Membership Added",
-    );
+    toastAddSuccess(activeLocale === "zh" ? "会籍已添加" : "Membership Added");
   }
 
   function addCartGroupClass(row: GroupClassRow, priceType: "member" | "non_member") {
@@ -582,10 +567,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
       unitPrice: price,
     });
     runAddAnimation(`group-${priceType}-${row.key}`);
-    showMessageToast(
-      activeLocale === "zh" ? "已加入报价" : "Added to Quote",
-      activeLocale === "zh" ? "团课已添加" : "Class Added",
-    );
+    toastAddSuccess(activeLocale === "zh" ? "团课已添加" : "Class Added");
   }
 
   function addCartStoredValue(plan: StoredValuePlan) {
@@ -596,10 +578,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
       note: plan.membershipGift.zh,
     });
     runAddAnimation(`stored-${plan.id}`);
-    showMessageToast(
-      activeLocale === "zh" ? "已加入报价" : "Added to Quote",
-      activeLocale === "zh" ? "储值已添加" : "Stored Value Added",
-    );
+    toastAddSuccess(activeLocale === "zh" ? "储值已添加" : "Stored Value Added");
   }
 
   function addAssessmentToCart(row: PtRow) {
@@ -611,10 +590,7 @@ function PricingShellContent({ section }: { section: PricingSection }) {
       quantity: 1,
     });
     runAddAnimation(`assessment-${row.key}`);
-    showMessageToast(
-      activeLocale === "zh" ? "已加入报价" : "Added to Quote",
-      activeLocale === "zh" ? "评估已添加" : "Assessment Added",
-    );
+    toastAddSuccess(activeLocale === "zh" ? "评估已添加" : "Assessment Added");
   }
 
   async function handleCopyCartSummary() {
@@ -628,15 +604,9 @@ function PricingShellContent({ section }: { section: PricingSection }) {
 
     try {
       await navigator.clipboard.writeText(summary);
-      showMessageToast(
-        cartCopy.toast.copySuccessTitle[activeLocale],
-        cartCopy.toast.copySuccessSubtitle[activeLocale],
-      );
+      toastSuccess(cartCopy.toast.copySuccessTitle[activeLocale], cartCopy.toast.copySuccessSubtitle[activeLocale]);
     } catch {
-      showMessageToast(
-        cartCopy.toast.copyFailedTitle[activeLocale],
-        cartCopy.toast.copyFailedSubtitle[activeLocale],
-      );
+      toastFailed(cartCopy.toast.copyFailedTitle[activeLocale]);
     }
   }
 
@@ -747,13 +717,6 @@ function PricingShellContent({ section }: { section: PricingSection }) {
           {refreshLabel}
         </div>
       </div>
-
-      <MessageToast
-        visible={Boolean(messageToast)}
-        title={messageToast?.title ?? ""}
-        subtitle={messageToast?.subtitle}
-        onClose={() => setMessageToast(null)}
-      />
 
       <Navbar
         activeLocale={activeLocale}

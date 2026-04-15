@@ -24,10 +24,9 @@ import {
 } from "@/components/invoice/InvoiceDocument";
 import { InvoiceEmailPanel } from "@/components/invoice/InvoiceEmailPanel";
 import { InvoiceEmailTrigger } from "@/components/invoice/InvoiceEmailTrigger";
-import { MessageToast } from "@/components/ui/MessageToast";
-import { DualImageUploader } from "@/components/uploads/DualImageUploader";
 import { useInvoiceEmailSender } from "@/hooks/useInvoiceEmailSender";
 import { getInvoicePageCopy, type InvoiceLocale } from "@/components/invoice/invoicePageCopy";
+import { toastAddSuccess, toastDeleteSuccess, toastFailed, toastSaveSuccess, toastUpdateSuccess } from "@/lib/toast";
 import type { PricingItem } from "@/types/pricing";
 import type { PresetItem, RecentQuotation } from "@/components/invoice/mockData";
 
@@ -195,7 +194,7 @@ type CustomerCreateInput = {
   address: string;
 };
 
-type ListTab = "invoice" | "quotation" | "customer" | "images";
+type ListTab = "invoice" | "quotation" | "customer";
 
 function normalizeText(value: string): string {
   return value.trim().toLowerCase();
@@ -1051,12 +1050,11 @@ export function InvoicePageView({
   const [customPaymentMethod, setCustomPaymentMethod] = useState("");
   const paymentMethod = paymentMethodType === "Custom" ? customPaymentMethod : paymentMethodType;
 
-  const [activeListTab, setActiveListTab] = useState<ListTab>("invoice");
+  const [activeListTab, setActiveListTab] = useState<ListTab>(showQuotationTab ? "quotation" : "invoice");
   const [listSearch, setListSearch] = useState("");
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<"ALL" | InvoiceListStatus>("ALL");
   const [invoiceDateFilter, setInvoiceDateFilter] = useState("");
   const [saveSubmitting, setSaveSubmitting] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceRecord | null>(null);
   const [downloadingInvoice, setDownloadingInvoice] = useState<InvoiceRecord | null>(null);
@@ -1071,16 +1069,10 @@ export function InvoicePageView({
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [templateMessage, setTemplateMessage] = useState<string | null>(null);
   const [templateActiveGroup, setTemplateActiveGroup] = useState(0);
-  const [messageToast, setMessageToast] = useState<{ title: string; subtitle?: string } | null>(null);
   const [supportsHoverActions, setSupportsHoverActions] = useState(false);
   const [headerActionsOpen, setHeaderActionsOpen] = useState(false);
   const headerActionsRef = useRef<HTMLDivElement | null>(null);
   const copy = getInvoicePageCopy(activeLocale as InvoiceLocale);
-
-  const showMessageToast = (title: string, subtitle?: string) => {
-    setMessageToast({ title, subtitle });
-    window.setTimeout(() => setMessageToast(null), 2200);
-  };
 
   useEffect(() => {
     if (!templateModalOpen) return;
@@ -1491,6 +1483,7 @@ export function InvoicePageView({
       if (onRequestInvoicesRefresh) {
         await onRequestInvoicesRefresh();
       }
+      toastUpdateSuccess(activeLocale === "zh" ? "发票状态已更新" : "Invoice updated");
     },
   });
 
@@ -1618,7 +1611,6 @@ export function InvoicePageView({
   }, [downloadingInvoice]);
 
   const handleSaveInvoice = async () => {
-    setSaveMessage(null);
     setSaveError(null);
 
     const nextCustomerErrors = validateCustomer(invoiceCustomer);
@@ -1664,10 +1656,12 @@ export function InvoicePageView({
         await onRequestInvoicesRefresh();
       }
 
-      setSaveMessage(copy.feedback.invoiceSaved);
+      toastSaveSuccess(copy.feedback.invoiceSaved);
       resetInvoiceForm();
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : copy.feedback.saveFailed);
+      const message = error instanceof Error ? error.message : copy.feedback.saveFailed;
+      setSaveError(message);
+      toastFailed(message);
     } finally {
       setSaveSubmitting(false);
     }
@@ -1706,7 +1700,9 @@ export function InvoicePageView({
       }
 
       setTemplateMessage(copy.feedback.templateSaved);
+      toastSaveSuccess(copy.feedback.templateSaved);
       setTemplateModalOpen(false);
+      setTemplateError(null);
     } catch (error) {
       const rawMessage = error instanceof Error ? error.message : copy.feedback.templateSaveFailed;
       const normalized = rawMessage.toLowerCase();
@@ -1717,6 +1713,7 @@ export function InvoicePageView({
         normalized.includes("new row violates row-level security");
 
       setTemplateError(isPermissionError ? copy.feedback.noTemplatePermission : rawMessage);
+      toastFailed(isPermissionError ? copy.feedback.noTemplatePermission : rawMessage);
     } finally {
       setTemplateSaving(false);
     }
@@ -1735,6 +1732,7 @@ export function InvoicePageView({
           if (Object.keys(nextErrors).length > 0) return;
           setInvoiceCustomer(customerDraft);
           setCustomerModalOpen(false);
+          toastUpdateSuccess(activeLocale === "zh" ? "客户信息已更新" : "Customer updated");
         }}
         onClose={() => setCustomerModalOpen(false)}
       />
@@ -1793,6 +1791,7 @@ export function InvoicePageView({
                     : row,
                 ),
               );
+              toastUpdateSuccess(copy.feedback.customerSaved);
             } else {
               const created = await createCustomerProfile(payload);
               setCustomerRecords((prev) => [
@@ -1808,6 +1807,7 @@ export function InvoicePageView({
                 })(),
                 ...prev,
               ]);
+              toastAddSuccess(copy.feedback.customerSaved);
             }
             setCustomerProfileDraft(emptyCustomerInfo);
             setCustomerProfileEditingId(null);
@@ -1858,8 +1858,10 @@ export function InvoicePageView({
               await onRequestInvoicesRefresh();
             }
             setPendingDeleteInvoice(null);
+            toastDeleteSuccess(copy.feedback.invoiceDeleted);
           } catch (error) {
             setDeleteError(error instanceof Error ? error.message : copy.feedback.deleteFailed);
+            toastFailed(error instanceof Error ? error.message : copy.feedback.deleteFailed);
           } finally {
             setDeletingInvoiceId(null);
           }
@@ -2019,16 +2021,9 @@ export function InvoicePageView({
           const sent = await invoiceEmail.send();
           if (sent) {
             setEmailPanelOpen(false);
-            showMessageToast(activeLocale === "zh" ? "邮件发送成功" : "Email sent successfully", invoiceNo || undefined);
+            toastSaveSuccess(activeLocale === "zh" ? "邮件发送成功" : "Email sent successfully");
           }
         }}
-      />
-
-      <MessageToast
-        visible={Boolean(messageToast)}
-        title={messageToast?.title ?? ""}
-        subtitle={messageToast?.subtitle}
-        onClose={() => setMessageToast(null)}
       />
 
       {viewingInvoice && selectedInvoiceDocumentData ? (
@@ -2323,7 +2318,6 @@ export function InvoicePageView({
                     </button>
                   </div>
                 </div>
-                {saveMessage ? <div className="px-6 pb-4 text-xs font-medium text-emerald-600">{saveMessage}</div> : null}
                 {saveError ? <div className="px-6 pb-4 text-xs font-medium text-red-500">{saveError}</div> : null}
               </div>
             </div>
@@ -2397,16 +2391,6 @@ export function InvoicePageView({
               >
                 <MaterialIcon name="person_search" className="text-lg" /> {copy.table.tabs.customerList}
               </button>
-              <button
-                className={`flex items-center gap-2 rounded-md px-6 py-3 text-sm whitespace-nowrap transition-all ${
-                  activeListTab === "images"
-                    ? "bg-[#00A676]/12 font-bold text-[#00A676] shadow-sm"
-                    : "font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)]"
-                }`}
-                onClick={() => setActiveListTab("images")}
-              >
-                <MaterialIcon name="image" className="text-lg" /> {copy.table.tabs.imageUpload}
-              </button>
             </div>
 
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -2415,29 +2399,25 @@ export function InvoicePageView({
                   ? copy.table.management.invoice
                   : activeListTab === "quotation"
                     ? copy.table.management.quotation
-                    : activeListTab === "customer"
-                      ? copy.table.management.customer
-                      : copy.table.management.images}
+                    : copy.table.management.customer}
                 <span className="ml-2 rounded bg-[var(--color-surface-elevated)] px-2 py-0.5 text-xs font-normal text-[var(--color-text-muted)]">{copy.table.management.realtime}</span>
               </h2>
-              {activeListTab !== "images" ? (
-                <div className="relative">
-                  <MaterialIcon name="search" className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-[var(--color-text-muted)]" />
-                  <input
-                    className="w-72 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-4 pl-10 text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
-                    placeholder={
-                      activeListTab === "invoice"
-                        ? copy.table.searchPlaceholder.invoice
-                        : activeListTab === "quotation"
-                          ? copy.table.searchPlaceholder.quotation
-                          : copy.table.searchPlaceholder.customer
-                    }
-                    type="text"
-                    value={listSearch}
-                    onChange={(event) => setListSearch(event.target.value)}
-                  />
-                </div>
-              ) : null}
+              <div className="relative">
+                <MaterialIcon name="search" className="absolute top-1/2 left-3 -translate-y-1/2 text-sm text-[var(--color-text-muted)]" />
+                <input
+                  className="w-72 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] py-2 pr-4 pl-10 text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:border-[#00A676] focus:ring-[#00A676]"
+                  placeholder={
+                    activeListTab === "invoice"
+                      ? copy.table.searchPlaceholder.invoice
+                      : activeListTab === "quotation"
+                        ? copy.table.searchPlaceholder.quotation
+                        : copy.table.searchPlaceholder.customer
+                  }
+                  type="text"
+                  value={listSearch}
+                  onChange={(event) => setListSearch(event.target.value)}
+                />
+              </div>
             </div>
 
             {activeListTab === "quotation" ? (
@@ -2694,11 +2674,6 @@ export function InvoicePageView({
               </div>
             ) : null}
 
-            {activeListTab === "images" ? (
-              <div className="glass-panel overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-card)] p-6">
-                <DualImageUploader />
-              </div>
-            ) : null}
           </section>
         ) : null}
       </div>

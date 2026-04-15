@@ -229,11 +229,12 @@ export function InvoiceDocument({
               <span className="font-medium text-[color:var(--invoice-dark-grey)]">$ {data.taxAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div className="invoice-paper__total relative overflow-hidden">
-              <div className="invoice-paper__texture pointer-events-none absolute inset-0 opacity-30" />
-              <div className="relative rounded bg-[color:var(--invoice-dark-grey)] p-6 text-white shadow-lg">
+              <div className="relative px-4 py-2 text-[color:var(--invoice-dark-grey)]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold tracking-widest uppercase opacity-80">{copy.summary.total}</span>
-                  <span className="text-2xl font-black" style={{ color: settings.brandColor }}>
+                  <span className="text-[10px] font-bold tracking-widest text-[color:var(--invoice-light-grey)] uppercase">
+                    {copy.summary.total}
+                  </span>
+                  <span className="text-2xl font-black leading-none" style={{ color: settings.brandColor }}>
                     $ {data.totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>

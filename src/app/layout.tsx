@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Geist, Geist_Mono, Noto_Sans_SC, Teko } from "next/font/google";
+import { ToastHost } from "@/components/ui/ToastHost";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -81,6 +82,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansSc.variable} ${teko.variable} antialiased`}
       >
         <div className="app-shell">
+          <ToastHost />
           {children}
         </div>
         <Script id="pwa-register-sw" strategy="afterInteractive">

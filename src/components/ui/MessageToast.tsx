@@ -19,7 +19,7 @@ export function MessageToast({ title, subtitle, visible, onClose }: MessageToast
           <CheckCircle2 size={24} strokeWidth={1.4} />
         </span>
         <div className="flex flex-col">
-          <span className="text-sm font-light tracking-[0.08em] leading-tight">
+          <span className="text-sm font-light leading-tight tracking-[0.08em]">
             {title}
           </span>
           {subtitle ? (

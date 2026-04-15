@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/features/auth/useAuth";
+import { InvoicePageView } from "@/components/invoice/InvoicePageView";
+import { InvoiceScaffold } from "@/components/invoice/InvoiceScaffold";
 import { AuthLoadingScreen } from "@/features/auth/AuthLoadingScreen";
 import { AuthLoginScreen } from "@/features/auth/AuthLoginScreen";
-import { InvoicePageView } from "@/components/invoice/InvoicePageView";
+import { useAuth } from "@/features/auth/useAuth";
+import { getInitialLocale, persistLocale, type AppLocale } from "@/lib/locale";
 import { presetItems, recentQuotations } from "@/components/invoice/mockData";
-import { InvoiceScaffold } from "@/components/invoice/InvoiceScaffold";
 import { fetchCustomerProfiles, fetchInvoices, type CustomerProfile, type InvoiceRecord } from "@/lib/supabase";
+
+// cspell:ignore supabase
 
 export default function NewInvoicePage() {
   const {
@@ -24,11 +27,7 @@ export default function NewInvoicePage() {
 
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
-  const [activeLocale, setActiveLocale] = useState<"zh" | "en">(() => {
-    if (typeof window === "undefined") return "en";
-    const saved = window.localStorage.getItem("oxygen-pricing-locale");
-    return saved === "zh" || saved === "en" ? saved : "en";
-  });
+  const [activeLocale, setActiveLocale] = useState<AppLocale>(() => getInitialLocale());
 
   useEffect(() => {
     let mounted = true;
@@ -85,9 +84,7 @@ export default function NewInvoicePage() {
       onToggleLocale={() => {
         setActiveLocale((prev) => {
           const next = prev === "zh" ? "en" : "zh";
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem("oxygen-pricing-locale", next);
-          }
+          persistLocale(next);
           return next;
         });
       }}
